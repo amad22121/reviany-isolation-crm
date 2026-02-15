@@ -18,6 +18,7 @@ interface CrmState {
   dailyTarget: number;
   addAppointment: (appt: Omit<Appointment, "id" | "status" | "smsScheduled" | "createdAt">) => void;
   updateStatus: (id: string, status: Appointment["status"]) => void;
+  updateNotes: (id: string, notes: string) => void;
   setDailyTarget: (target: number) => void;
 }
 
@@ -56,6 +57,12 @@ export const useCrm = create<CrmState>((set) => ({
     set((state) => ({
       appointments: state.appointments.map((a) =>
         a.id === id ? { ...a, status } : a
+      ),
+    })),
+  updateNotes: (id, notes) =>
+    set((state) => ({
+      appointments: state.appointments.map((a) =>
+        a.id === id ? { ...a, notes } : a
       ),
     })),
   setDailyTarget: (target) => set({ dailyTarget: target }),
