@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useCrm } from "@/store/crm-store";
+import { useCrm, useAuth } from "@/store/crm-store";
 import { SALES_REPS } from "@/data/crm-data";
 import { useNavigate } from "react-router-dom";
 import {
@@ -9,12 +9,12 @@ import {
   Target,
   Plus,
   Bell,
+  TrendingUp,
 } from "lucide-react";
 
-const DAILY_TARGET = 8;
-
 const DashboardPage = () => {
-  const { appointments, updateStatus } = useCrm();
+  const { appointments, updateStatus, dailyTarget } = useCrm();
+  const { role, currentManagerId } = useAuth();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<"today" | "week">("today");
 
@@ -22,28 +22,45 @@ const DashboardPage = () => {
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
 
+  // Filter by manager's team if gestionnaire
+  const teamReps = useMemo(() => {
+    if (role === "gestionnaire" && currentManagerId) {
+      return SALES_REPS.filter((r) => r.managerId === currentManagerId);
+    }
+    return SALES_REPS;
+  }, [role, currentManagerId]);
+
+  const teamRepIds = useMemo(() => new Set(teamReps.map((r) => r.id)), [teamReps]);
+
+  const teamAppointments = useMemo(
+    () => appointments.filter((a) => teamRepIds.has(a.repId)),
+    [appointments, teamRepIds]
+  );
+
   const filtered = useMemo(() => {
-    if (filter === "today") return appointments.filter((a) => a.date === today);
-    return appointments.filter((a) => new Date(a.date) >= weekStart);
-  }, [appointments, filter, today]);
+    if (filter === "today") return teamAppointments.filter((a) => a.date === today);
+    return teamAppointments.filter((a) => new Date(a.date) >= weekStart);
+  }, [teamAppointments, filter, today]);
 
   const stats = useMemo(() => {
-    const todayAppts = appointments.filter((a) => a.date === today);
+    const todayAppts = teamAppointments.filter((a) => a.date === today);
+    const confirmed = todayAppts.filter((a) => a.status === "Confirmé" || a.status === "Fermé").length;
     return {
       total: todayAppts.length,
-      confirmed: todayAppts.filter((a) => a.status === "Confirmed" || a.status === "Completed").length,
-      noShows: todayAppts.filter((a) => a.status === "No-Show").length,
+      confirmed,
+      noShows: todayAppts.filter((a) => a.status === "Absence").length,
+      rate: todayAppts.length > 0 ? Math.round((confirmed / todayAppts.length) * 100) : 0,
     };
-  }, [appointments, today]);
+  }, [teamAppointments, today]);
 
   const getRepName = (repId: string) => SALES_REPS.find((r) => r.id === repId)?.name || repId;
 
   const statusColors: Record<string, string> = {
-    Pending: "bg-warning/20 text-warning",
-    Confirmed: "bg-primary/20 text-primary",
-    "No-Show": "bg-destructive/20 text-destructive",
-    Completed: "bg-info/20 text-info",
-    Cancelled: "bg-muted text-muted-foreground",
+    "En attente": "bg-warning/20 text-warning",
+    "Confirmé": "bg-primary/20 text-primary",
+    "Absence": "bg-destructive/20 text-destructive",
+    "Fermé": "bg-info/20 text-info",
+    "Annulé": "bg-muted text-muted-foreground",
   };
 
   return (
@@ -51,9 +68,10 @@ const DashboardPage = () => {
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Appointments Today", value: stats.total, icon: CalendarCheck, color: "text-primary" },
-          { label: "Confirmed Today", value: stats.confirmed, icon: CheckCircle2, color: "text-primary" },
-          { label: "No-Shows", value: stats.noShows, icon: XCircle, color: "text-destructive" },
+          { label: "Rendez-vous aujourd'hui", value: stats.total, icon: CalendarCheck, color: "text-primary" },
+          { label: "Confirmés aujourd'hui", value: stats.confirmed, icon: CheckCircle2, color: "text-primary" },
+          { label: "Absences", value: stats.noShows, icon: XCircle, color: "text-destructive" },
+          { label: "Taux de confirmation", value: `${stats.rate}%`, icon: TrendingUp, color: "text-info" },
         ].map((s) => (
           <div key={s.label} className="glass-card p-4">
             <div className="flex items-center justify-between mb-2">
@@ -63,18 +81,20 @@ const DashboardPage = () => {
             <div className="text-2xl font-bold text-foreground">{s.value}</div>
           </div>
         ))}
-        <div className="glass-card p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-muted-foreground">Daily Target</span>
-            <Target className="h-5 w-5 text-primary" />
-          </div>
-          <div className="text-2xl font-bold text-foreground">{stats.total}/{DAILY_TARGET}</div>
-          <div className="mt-2 h-2 bg-secondary rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary rounded-full transition-all"
-              style={{ width: `${Math.min(100, (stats.total / DAILY_TARGET) * 100)}%` }}
-            />
-          </div>
+      </div>
+
+      {/* Daily target */}
+      <div className="glass-card p-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm text-muted-foreground">Objectif du jour</span>
+          <Target className="h-5 w-5 text-primary" />
+        </div>
+        <div className="text-2xl font-bold text-foreground">{stats.total}/{dailyTarget}</div>
+        <div className="mt-2 h-2 bg-secondary rounded-full overflow-hidden">
+          <div
+            className="h-full bg-primary rounded-full transition-all"
+            style={{ width: `${Math.min(100, (stats.total / dailyTarget) * 100)}%` }}
+          />
         </div>
       </div>
 
@@ -91,7 +111,7 @@ const DashboardPage = () => {
                   : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
               }`}
             >
-              {f === "today" ? "Today" : "This Week"}
+              {f === "today" ? "Aujourd'hui" : "Cette semaine"}
             </button>
           ))}
         </div>
@@ -99,7 +119,7 @@ const DashboardPage = () => {
           onClick={() => navigate("/add-appointment")}
           className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
         >
-          <Plus className="h-4 w-4" /> Add Appointment
+          <Plus className="h-4 w-4" /> Nouveau rendez-vous
         </button>
       </div>
 
@@ -109,7 +129,7 @@ const DashboardPage = () => {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                {["Client", "Phone", "Address", "Time", "Rep", "Status", "Notes", "SMS"].map((h) => (
+                {["Client", "Téléphone", "Adresse", "Heure", "Représentant", "Statut", "Notes", "SMS"].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-muted-foreground font-medium">{h}</th>
                 ))}
               </tr>
@@ -132,22 +152,34 @@ const DashboardPage = () => {
                   <td className="px-4 py-3 text-foreground">{a.time}</td>
                   <td className="px-4 py-3 text-foreground">{getRepName(a.repId)}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[a.status]}`}>
-                      {a.status}
-                    </span>
+                    {(role === "proprietaire" || role === "gestionnaire") ? (
+                      <select
+                        value={a.status}
+                        onChange={(e) => updateStatus(a.id, e.target.value as any)}
+                        className={`px-2 py-1 rounded-full text-xs font-medium border-0 cursor-pointer ${statusColors[a.status]} bg-opacity-100`}
+                      >
+                        {["En attente", "Confirmé", "Absence", "Fermé", "Annulé"].map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[a.status]}`}>
+                        {a.status}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground text-xs max-w-[150px] truncate">{a.notes}</td>
                   <td className="px-4 py-3">
                     {a.smsScheduled && (
                       <span className="flex items-center gap-1 text-xs text-primary">
-                        <Bell className="h-3 w-3" /> Scheduled
+                        <Bell className="h-3 w-3" /> Planifié
                       </span>
                     )}
                   </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">No appointments found</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">Aucun rendez-vous trouvé</td></tr>
               )}
             </tbody>
           </table>

@@ -10,33 +10,61 @@ import {
   Building2,
   Menu,
   X,
+  Map,
+  Crown,
+  Users,
+  UserCheck,
 } from "lucide-react";
 import { useState } from "react";
 
+const ROUTE_LABELS: Record<string, string> = {
+  dashboard: "Tableau de bord",
+  "add-appointment": "Nouveau rendez-vous",
+  leaderboard: "Classement",
+  appointments: "Rendez-vous",
+  rep: "Ma vue",
+  zones: "Zones terrain",
+};
+
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
-  const { role, logout, currentRepId } = useAuth();
+  const { role, logout } = useAuth();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  const ownerLinks = [
+    { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+    { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
+    { to: "/leaderboard", label: "Classement", icon: Trophy },
+    { to: "/appointments", label: "Rendez-vous", icon: List },
+    { to: "/zones", label: "Zones terrain", icon: Map },
+  ];
+
   const managerLinks = [
-    { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { to: "/add-appointment", label: "Add Appointment", icon: CalendarPlus },
-    { to: "/leaderboard", label: "Leaderboard", icon: Trophy },
-    { to: "/appointments", label: "Appointments", icon: List },
+    { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+    { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
+    { to: "/leaderboard", label: "Classement", icon: Trophy },
+    { to: "/appointments", label: "Rendez-vous", icon: List },
+    { to: "/zones", label: "Zones terrain", icon: Map },
   ];
 
   const repLinks = [
-    { to: "/rep", label: "My View", icon: User },
-    { to: "/add-appointment", label: "Add Appointment", icon: CalendarPlus },
-    { to: "/leaderboard", label: "Leaderboard", icon: Trophy },
-    { to: "/appointments", label: "Appointments", icon: List },
+    { to: "/rep", label: "Ma vue", icon: User },
+    { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
+    { to: "/leaderboard", label: "Classement", icon: Trophy },
+    { to: "/appointments", label: "Rendez-vous", icon: List },
   ];
 
-  const links = role === "manager" ? managerLinks : repLinks;
+  const links = role === "proprietaire" ? ownerLinks : role === "gestionnaire" ? managerLinks : repLinks;
+
+  const roleIcon = role === "proprietaire" ? Crown : role === "gestionnaire" ? Users : UserCheck;
+  const roleLabel = role === "proprietaire" ? "Propriétaire" : role === "gestionnaire" ? "Gestionnaire" : "Représentant";
+  const RoleIcon = roleIcon;
+
+  const routeKey = location.pathname.replace(/^\//, "");
+  const pageTitle = ROUTE_LABELS[routeKey] || routeKey.replace(/-/g, " ") || "Tableau de bord";
 
   return (
     <div className="flex min-h-screen w-full bg-background">
-      {/* Sidebar */}
       <aside
         className={`${
           sidebarOpen ? "w-60" : "w-0 overflow-hidden"
@@ -72,12 +100,11 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50 w-full transition-colors"
           >
             <LogOut className="h-4 w-4" />
-            <span>Sign Out</span>
+            <span>Déconnexion</span>
           </button>
         </div>
       </aside>
 
-      {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-14 border-b border-border flex items-center px-4 gap-4 bg-card/50 shrink-0">
           <button
@@ -86,11 +113,10 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           >
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
-          <h2 className="text-sm font-medium text-foreground capitalize">
-            {location.pathname.replace(/^\//, "").replace(/-/g, " ") || "Dashboard"}
-          </h2>
-          <div className="ml-auto text-xs text-muted-foreground">
-            {role === "manager" ? "Manager View" : "Sales Rep View"}
+          <h2 className="text-sm font-medium text-foreground capitalize">{pageTitle}</h2>
+          <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+            <RoleIcon className="h-3.5 w-3.5" />
+            {roleLabel}
           </div>
         </header>
         <main className="flex-1 p-6 overflow-auto">{children}</main>
