@@ -3,23 +3,33 @@ import { useCrm, useAuth } from "@/store/crm-store";
 import { SALES_REPS, Appointment } from "@/data/crm-data";
 import FicheClient from "@/components/FicheClient";
 import { useNavigate } from "react-router-dom";
-import { CalendarCheck, Target, Plus, MapPin, Bell } from "lucide-react";
+import { CalendarCheck, Target, Plus, MapPin, Bell, Users, Trophy } from "lucide-react";
 
 const RepViewPage = () => {
-  const { appointments, dailyTarget } = useCrm();
+  const { appointments, dailyTarget, repGoals } = useCrm();
   const { currentRepId } = useAuth();
   const navigate = useNavigate();
   const today = new Date().toISOString().split("T")[0];
 
   const rep = SALES_REPS.find((r) => r.id === currentRepId);
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
-  
-  const DAILY_GOAL = Math.ceil(dailyTarget / SALES_REPS.length);
+
+  const myGoal = repGoals[currentRepId || ""] || 0;
 
   const todayAppts = useMemo(
     () => appointments.filter((a) => a.repId === currentRepId && a.date === today),
     [appointments, currentRepId, today]
   );
+
+  const teamTodayAppts = useMemo(
+    () => appointments.filter((a) => a.date === today),
+    [appointments, today]
+  );
+
+  const myProgress = todayAppts.length;
+  const teamProgress = teamTodayAppts.length;
+  const myPct = myGoal > 0 ? Math.min(100, (myProgress / myGoal) * 100) : 0;
+  const teamPct = dailyTarget > 0 ? Math.min(100, (teamProgress / dailyTarget) * 100) : 0;
 
   const statusColors: Record<string, string> = {
     "En attente": "bg-warning/20 text-warning",
@@ -41,26 +51,72 @@ const RepViewPage = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Personal + Team Goals */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Personal Goal */}
+        <div className="glass-card p-5 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-bl-full" />
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-primary" />
+              <span className="text-sm font-medium text-foreground">Mon objectif du jour</span>
+            </div>
+            <span className="text-xs text-muted-foreground">{myGoal > 0 ? `${myGoal} RDV` : "Non défini"}</span>
+          </div>
+          <div className="text-3xl font-bold text-foreground mb-1">
+            {myProgress} <span className="text-lg text-muted-foreground">/ {myGoal || "—"}</span>
+          </div>
+          <div className="mt-3 h-2.5 bg-secondary rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${myPct >= 100 ? "bg-green-500" : "bg-primary"}`}
+              style={{ width: `${myPct}%` }}
+            />
+          </div>
+          {myPct >= 100 && (
+            <p className="text-xs text-green-500 font-medium mt-2">🎉 Objectif atteint !</p>
+          )}
+        </div>
+
+        {/* Team Goal */}
+        <div className="glass-card p-5 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-info/5 rounded-bl-full" />
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-info" />
+              <span className="text-sm font-medium text-foreground">Objectif équipe</span>
+            </div>
+            <span className="text-xs text-muted-foreground">{dailyTarget} RDV</span>
+          </div>
+          <div className="text-3xl font-bold text-foreground mb-1">
+            {teamProgress} <span className="text-lg text-muted-foreground">/ {dailyTarget}</span>
+          </div>
+          <div className="mt-3 h-2.5 bg-secondary rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${teamPct >= 100 ? "bg-green-500" : "bg-info"}`}
+              style={{ width: `${teamPct}%` }}
+            />
+          </div>
+          {teamPct >= 100 && (
+            <p className="text-xs text-green-500 font-medium mt-2">🎉 Objectif équipe atteint !</p>
+          )}
+        </div>
+      </div>
+
+      {/* Quick stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="glass-card p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-muted-foreground">Rendez-vous aujourd'hui</span>
+            <span className="text-sm text-muted-foreground">Mes rendez-vous aujourd'hui</span>
             <CalendarCheck className="h-5 w-5 text-primary" />
           </div>
           <div className="text-2xl font-bold text-foreground">{todayAppts.length}</div>
         </div>
         <div className="glass-card p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-muted-foreground">Objectif du jour</span>
-            <Target className="h-5 w-5 text-primary" />
+            <span className="text-sm text-muted-foreground">Performance équipe</span>
+            <Target className="h-5 w-5 text-info" />
           </div>
-          <div className="text-2xl font-bold text-foreground">{todayAppts.length}/{DAILY_GOAL}</div>
-          <div className="mt-2 h-2 bg-secondary rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary rounded-full transition-all"
-              style={{ width: `${Math.min(100, (todayAppts.length / DAILY_GOAL) * 100)}%` }}
-            />
-          </div>
+          <div className="text-2xl font-bold text-foreground">{teamProgress} / {dailyTarget}</div>
         </div>
       </div>
 
