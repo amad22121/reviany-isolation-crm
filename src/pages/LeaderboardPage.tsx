@@ -1,15 +1,23 @@
 import { useMemo, useState } from "react";
-import { useCrm } from "@/store/crm-store";
+import { useCrm, useAuth } from "@/store/crm-store";
 import { SALES_REPS } from "@/data/crm-data";
 import { Trophy, Medal } from "lucide-react";
 
-const DAILY_GOAL = 4;
-
 const LeaderboardPage = () => {
-  const { appointments } = useCrm();
-  const [tab, setTab] = useState<"daily" | "weekly" | "monthly">("daily");
+  const { appointments, dailyTarget } = useCrm();
+  const { role, currentManagerId } = useAuth();
+  const [tab, setTab] = useState<"daily" | "weekly" | "monthly" | "alltime">("daily");
 
   const today = new Date().toISOString().split("T")[0];
+
+  const teamReps = useMemo(() => {
+    if (role === "gestionnaire" && currentManagerId) {
+      return SALES_REPS.filter((r) => r.managerId === currentManagerId);
+    }
+    return SALES_REPS;
+  }, [role, currentManagerId]);
+
+  const DAILY_GOAL = Math.ceil(dailyTarget / SALES_REPS.length);
 
   const data = useMemo(() => {
     const now = new Date();
@@ -21,12 +29,13 @@ const LeaderboardPage = () => {
         weekStart.setDate(now.getDate() - now.getDay());
         return d >= weekStart;
       }
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      if (tab === "monthly") return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      return true; // alltime
     });
 
-    return SALES_REPS.map((rep) => {
+    return teamReps.map((rep) => {
       const repAppts = filtered.filter((a) => a.repId === rep.id);
-      const confirmed = repAppts.filter((a) => a.status === "Confirmed" || a.status === "Completed").length;
+      const confirmed = repAppts.filter((a) => a.status === "Confirmé" || a.status === "Fermé").length;
       return {
         ...rep,
         booked: repAppts.length,
@@ -34,24 +43,29 @@ const LeaderboardPage = () => {
         rate: repAppts.length > 0 ? Math.round((confirmed / repAppts.length) * 100) : 0,
       };
     }).sort((a, b) => b.booked - a.booked);
-  }, [appointments, tab, today]);
+  }, [appointments, tab, today, teamReps]);
 
-  const goalMultiplier = tab === "daily" ? 1 : tab === "weekly" ? 5 : 22;
+  const goalMultiplier = tab === "daily" ? 1 : tab === "weekly" ? 5 : tab === "monthly" ? 22 : 260;
+
+  const tabLabels = { daily: "Jour", weekly: "Semaine", monthly: "Mois", alltime: "Tout" };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <h1 className="text-xl font-bold text-foreground">Leaderboard</h1>
+        <h1 className="text-xl font-bold text-foreground">Classement</h1>
+        {role === "gestionnaire" && (
+          <span className="text-xs bg-info/20 text-info px-2 py-1 rounded-full">Mon équipe</span>
+        )}
         <div className="flex gap-1 ml-auto">
-          {(["daily", "weekly", "monthly"] as const).map((t) => (
+          {(["daily", "weekly", "monthly", "alltime"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-4 py-2 text-sm rounded-lg capitalize transition-colors ${
+              className={`px-4 py-2 text-sm rounded-lg transition-colors ${
                 tab === t ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
               }`}
             >
-              {t}
+              {tabLabels[t]}
             </button>
           ))}
         </div>
@@ -61,7 +75,7 @@ const LeaderboardPage = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
-              {["Rank", "Rep", "Booked", "Confirmed", "Rate", "Goal Progress"].map((h) => (
+              {["Rang", "Représentant", "Réservés", "Confirmés", "Taux", "Progression objectif"].map((h) => (
                 <th key={h} className="text-left px-4 py-3 text-muted-foreground font-medium">{h}</th>
               ))}
             </tr>

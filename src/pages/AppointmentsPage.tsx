@@ -1,16 +1,29 @@
 import { useMemo, useState } from "react";
-import { useCrm } from "@/store/crm-store";
-import { SALES_REPS, Appointment } from "@/data/crm-data";
+import { useCrm, useAuth } from "@/store/crm-store";
+import { SALES_REPS } from "@/data/crm-data";
 import { Search, MapPin, Bell } from "lucide-react";
 
+const STATUS_LIST = ["En attente", "Confirmé", "Absence", "Fermé", "Annulé"];
+
 const AppointmentsPage = () => {
-  const { appointments } = useCrm();
+  const { appointments, updateStatus } = useCrm();
+  const { role, currentManagerId } = useAuth();
   const [search, setSearch] = useState("");
   const [repFilter, setRepFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
+  const teamReps = useMemo(() => {
+    if (role === "gestionnaire" && currentManagerId) {
+      return SALES_REPS.filter((r) => r.managerId === currentManagerId);
+    }
+    return SALES_REPS;
+  }, [role, currentManagerId]);
+
+  const teamRepIds = useMemo(() => new Set(teamReps.map((r) => r.id)), [teamReps]);
+
   const filtered = useMemo(() => {
     return appointments.filter((a) => {
+      if (role === "gestionnaire" && !teamRepIds.has(a.repId)) return false;
       const matchSearch =
         !search ||
         `${a.clientFirstName} ${a.clientLastName}`.toLowerCase().includes(search.toLowerCase()) ||
@@ -20,28 +33,28 @@ const AppointmentsPage = () => {
       const matchStatus = statusFilter === "all" || a.status === statusFilter;
       return matchSearch && matchRep && matchStatus;
     });
-  }, [appointments, search, repFilter, statusFilter]);
+  }, [appointments, search, repFilter, statusFilter, role, teamRepIds]);
 
   const getRepName = (repId: string) => SALES_REPS.find((r) => r.id === repId)?.name || repId;
 
   const statusColors: Record<string, string> = {
-    Pending: "bg-warning/20 text-warning",
-    Confirmed: "bg-primary/20 text-primary",
-    "No-Show": "bg-destructive/20 text-destructive",
-    Completed: "bg-info/20 text-info",
-    Cancelled: "bg-muted text-muted-foreground",
+    "En attente": "bg-warning/20 text-warning",
+    "Confirmé": "bg-primary/20 text-primary",
+    "Absence": "bg-destructive/20 text-destructive",
+    "Fermé": "bg-info/20 text-info",
+    "Annulé": "bg-muted text-muted-foreground",
   };
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-foreground">All Appointments</h1>
+      <h1 className="text-xl font-bold text-foreground">Tous les rendez-vous</h1>
 
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             className="w-full bg-secondary border border-border rounded-lg pl-10 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            placeholder="Search client, phone, address..."
+            placeholder="Rechercher client, téléphone, adresse..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -51,8 +64,8 @@ const AppointmentsPage = () => {
           value={repFilter}
           onChange={(e) => setRepFilter(e.target.value)}
         >
-          <option value="all">All Reps</option>
-          {SALES_REPS.map((r) => (
+          <option value="all">Tous les représentants</option>
+          {teamReps.map((r) => (
             <option key={r.id} value={r.id}>{r.name}</option>
           ))}
         </select>
@@ -61,8 +74,8 @@ const AppointmentsPage = () => {
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
         >
-          <option value="all">All Status</option>
-          {["Pending", "Confirmed", "No-Show", "Completed", "Cancelled"].map((s) => (
+          <option value="all">Tous les statuts</option>
+          {STATUS_LIST.map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
@@ -73,7 +86,7 @@ const AppointmentsPage = () => {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                {["Client", "Phone", "Address", "Date/Time", "Rep", "Status", "Notes"].map((h) => (
+                {["Client", "Téléphone", "Adresse", "Date/Heure", "Représentant", "Statut", "Notes"].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-muted-foreground font-medium">{h}</th>
                 ))}
               </tr>
@@ -90,15 +103,27 @@ const AppointmentsPage = () => {
                       rel="noopener noreferrer"
                       className="flex items-center gap-1 text-primary hover:underline text-xs"
                     >
-                      <MapPin className="h-3 w-3" /> View Map
+                      <MapPin className="h-3 w-3" /> Voir carte
                     </a>
                   </td>
                   <td className="px-4 py-3 text-foreground">{a.date} {a.time}</td>
                   <td className="px-4 py-3 text-foreground">{getRepName(a.repId)}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[a.status]}`}>
-                      {a.status}
-                    </span>
+                    {(role === "proprietaire" || role === "gestionnaire") ? (
+                      <select
+                        value={a.status}
+                        onChange={(e) => updateStatus(a.id, e.target.value as any)}
+                        className={`px-2 py-1 rounded-full text-xs font-medium border-0 cursor-pointer ${statusColors[a.status]}`}
+                      >
+                        {STATUS_LIST.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[a.status]}`}>
+                        {a.status}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground text-xs max-w-[150px] truncate">
                     {a.notes}
@@ -111,7 +136,7 @@ const AppointmentsPage = () => {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No appointments found</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Aucun rendez-vous trouvé</td></tr>
               )}
             </tbody>
           </table>

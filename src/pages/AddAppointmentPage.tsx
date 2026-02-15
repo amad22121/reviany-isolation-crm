@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { useCrm } from "@/store/crm-store";
+import { useCrm, useAuth } from "@/store/crm-store";
 import { SALES_REPS } from "@/data/crm-data";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/store/crm-store";
 import { toast } from "sonner";
 
 const AddAppointmentPage = () => {
@@ -17,7 +16,7 @@ const AddAppointmentPage = () => {
     address: "",
     date: new Date().toISOString().split("T")[0],
     time: "09:00",
-    repId: role === "sales_rep" ? currentRepId || SALES_REPS[0].id : SALES_REPS[0].id,
+    repId: role === "representant" ? currentRepId || SALES_REPS[0].id : SALES_REPS[0].id,
     preQual1: "",
     preQual2: "",
     notes: "",
@@ -27,13 +26,13 @@ const AddAppointmentPage = () => {
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!form.clientFirstName.trim()) e.clientFirstName = "Required";
-    if (!form.clientLastName.trim()) e.clientLastName = "Required";
-    if (!form.phone.trim()) e.phone = "Required";
-    if (!form.address.trim()) e.address = "Required";
-    if (!form.preQual1.trim()) e.preQual1 = "Required";
-    if (!form.preQual2.trim()) e.preQual2 = "Required";
-    if (!form.notes.trim()) e.notes = "Required";
+    if (!form.clientFirstName.trim()) e.clientFirstName = "Requis";
+    if (!form.clientLastName.trim()) e.clientLastName = "Requis";
+    if (!form.phone.trim()) e.phone = "Requis";
+    if (!form.address.trim()) e.address = "Requis";
+    if (!form.preQual1.trim()) e.preQual1 = "Requis";
+    if (!form.preQual2.trim()) e.preQual2 = "Requis";
+    if (!form.notes.trim()) e.notes = "Requis";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -42,11 +41,11 @@ const AddAppointmentPage = () => {
     e.preventDefault();
     if (!validate()) return;
     addAppointment(form);
-    toast.success("Appointment created! SMS Confirmation Sent (demo)", {
-      description: `Scheduled reminder for ${form.clientFirstName} ${form.clientLastName} — 24h before.`,
+    toast.success("Rendez-vous créé ! SMS de confirmation envoyé (démo)", {
+      description: `Rappel planifié pour ${form.clientFirstName} ${form.clientLastName} — 24h avant.`,
     });
-    if (role === "manager") navigate("/dashboard");
-    else navigate("/rep");
+    if (role === "representant") navigate("/rep");
+    else navigate("/dashboard");
   };
 
   const update = (field: string, value: string) => {
@@ -59,29 +58,29 @@ const AddAppointmentPage = () => {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-xl font-bold text-foreground mb-6">New Appointment</h1>
+      <h1 className="text-xl font-bold text-foreground mb-6">Nouveau rendez-vous</h1>
       <form onSubmit={handleSubmit} className="glass-card p-6 space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-sm text-muted-foreground mb-1 block">First Name *</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Prénom *</label>
             <input className={inputClass("clientFirstName")} value={form.clientFirstName} onChange={(e) => update("clientFirstName", e.target.value)} placeholder="Pierre" />
             {errors.clientFirstName && <span className="text-xs text-destructive">{errors.clientFirstName}</span>}
           </div>
           <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Last Name *</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Nom *</label>
             <input className={inputClass("clientLastName")} value={form.clientLastName} onChange={(e) => update("clientLastName", e.target.value)} placeholder="Lavoie" />
             {errors.clientLastName && <span className="text-xs text-destructive">{errors.clientLastName}</span>}
           </div>
         </div>
 
         <div>
-          <label className="text-sm text-muted-foreground mb-1 block">Phone Number *</label>
+          <label className="text-sm text-muted-foreground mb-1 block">Téléphone *</label>
           <input className={inputClass("phone")} value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="(514) 555-0100" />
           {errors.phone && <span className="text-xs text-destructive">{errors.phone}</span>}
         </div>
 
         <div>
-          <label className="text-sm text-muted-foreground mb-1 block">Address *</label>
+          <label className="text-sm text-muted-foreground mb-1 block">Adresse *</label>
           <input className={inputClass("address")} value={form.address} onChange={(e) => update("address", e.target.value)} placeholder="1234 Rue Sainte-Catherine, Montréal, QC" />
           {errors.address && <span className="text-xs text-destructive">{errors.address}</span>}
           {form.address && (
@@ -91,7 +90,7 @@ const AddAppointmentPage = () => {
               rel="noopener noreferrer"
               className="text-xs text-primary hover:underline mt-1 inline-block"
             >
-              View on Google Maps →
+              Voir sur Google Maps →
             </a>
           )}
         </div>
@@ -102,18 +101,18 @@ const AddAppointmentPage = () => {
             <input type="date" className={inputClass("date")} value={form.date} onChange={(e) => update("date", e.target.value)} />
           </div>
           <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Time *</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Heure *</label>
             <input type="time" className={inputClass("time")} value={form.time} onChange={(e) => update("time", e.target.value)} />
           </div>
         </div>
 
         <div>
-          <label className="text-sm text-muted-foreground mb-1 block">Sales Rep *</label>
+          <label className="text-sm text-muted-foreground mb-1 block">Représentant *</label>
           <select
             className={inputClass("repId")}
             value={form.repId}
             onChange={(e) => update("repId", e.target.value)}
-            disabled={role === "sales_rep"}
+            disabled={role === "representant"}
           >
             {SALES_REPS.map((r) => (
               <option key={r.id} value={r.id}>{r.name}</option>
@@ -122,20 +121,20 @@ const AddAppointmentPage = () => {
         </div>
 
         <div>
-          <label className="text-sm text-muted-foreground mb-1 block">Pre-Qualification Q1 — Is the client a homeowner? *</label>
-          <input className={inputClass("preQual1")} value={form.preQual1} onChange={(e) => update("preQual1", e.target.value)} placeholder="e.g. Yes, homeowner for 5 years" />
+          <label className="text-sm text-muted-foreground mb-1 block">Pré-qualification Q1 — Le client est-il propriétaire ? *</label>
+          <input className={inputClass("preQual1")} value={form.preQual1} onChange={(e) => update("preQual1", e.target.value)} placeholder="Ex: Oui, propriétaire depuis 5 ans" />
           {errors.preQual1 && <span className="text-xs text-destructive">{errors.preQual1}</span>}
         </div>
 
         <div>
-          <label className="text-sm text-muted-foreground mb-1 block">Pre-Qualification Q2 — What service interests them? *</label>
-          <input className={inputClass("preQual2")} value={form.preQual2} onChange={(e) => update("preQual2", e.target.value)} placeholder="e.g. Interested in energy savings" />
+          <label className="text-sm text-muted-foreground mb-1 block">Pré-qualification Q2 — Quel service l'intéresse ? *</label>
+          <input className={inputClass("preQual2")} value={form.preQual2} onChange={(e) => update("preQual2", e.target.value)} placeholder="Ex: Intéressé par les économies d'énergie" />
           {errors.preQual2 && <span className="text-xs text-destructive">{errors.preQual2}</span>}
         </div>
 
         <div>
           <label className="text-sm text-muted-foreground mb-1 block">Notes *</label>
-          <textarea className={inputClass("notes") + " min-h-[80px]"} value={form.notes} onChange={(e) => update("notes", e.target.value)} placeholder="Any additional information..." />
+          <textarea className={inputClass("notes") + " min-h-[80px]"} value={form.notes} onChange={(e) => update("notes", e.target.value)} placeholder="Informations supplémentaires..." />
           {errors.notes && <span className="text-xs text-destructive">{errors.notes}</span>}
         </div>
 
@@ -143,7 +142,7 @@ const AddAppointmentPage = () => {
           type="submit"
           className="w-full bg-primary text-primary-foreground font-medium py-3 rounded-lg hover:opacity-90 transition-opacity"
         >
-          Create Appointment & Send SMS (demo)
+          Créer le rendez-vous et envoyer SMS (démo)
         </button>
       </form>
     </div>

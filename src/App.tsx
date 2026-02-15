@@ -10,6 +10,7 @@ import AddAppointmentPage from "./pages/AddAppointmentPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import AppointmentsPage from "./pages/AppointmentsPage";
 import RepViewPage from "./pages/RepViewPage";
+import ZonesPage from "./pages/ZonesPage";
 import AppLayout from "./components/AppLayout";
 import NotFound from "./pages/NotFound";
 
@@ -24,13 +25,18 @@ const AuthGuard = ({ children }: { children: React.ReactNode }) => {
 const AppRoutes = () => {
   const { isLoggedIn, role } = useAuth();
 
+  const getDefaultRoute = () => {
+    if (role === "representant") return "/rep";
+    return "/dashboard";
+  };
+
   return (
     <Routes>
       <Route
         path="/"
         element={
           isLoggedIn && role ? (
-            <Navigate to={role === "manager" ? "/dashboard" : "/rep"} replace />
+            <Navigate to={getDefaultRoute()} replace />
           ) : (
             <LoginPage />
           )
@@ -41,6 +47,7 @@ const AppRoutes = () => {
       <Route path="/leaderboard" element={<AuthGuard><LeaderboardPage /></AuthGuard>} />
       <Route path="/appointments" element={<AuthGuard><AppointmentsPage /></AuthGuard>} />
       <Route path="/rep" element={<AuthGuard><RepViewPage /></AuthGuard>} />
+      <Route path="/zones" element={<AuthGuard><ZonesPage /></AuthGuard>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
