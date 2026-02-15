@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
-import { SALES_REPS, ZONES } from "@/data/crm-data";
+import { SALES_REPS } from "@/data/crm-data";
 import { useNavigate } from "react-router-dom";
-import { CalendarCheck, Target, Plus, MapPin, Bell, Map } from "lucide-react";
+import { CalendarCheck, Target, Plus, MapPin, Bell } from "lucide-react";
 
 const RepViewPage = () => {
   const { appointments, dailyTarget } = useCrm();
@@ -11,7 +11,7 @@ const RepViewPage = () => {
   const today = new Date().toISOString().split("T")[0];
 
   const rep = SALES_REPS.find((r) => r.id === currentRepId);
-  const repZone = ZONES.find((z) => z.assignedRepId === currentRepId);
+  
   const DAILY_GOAL = Math.ceil(dailyTarget / SALES_REPS.length);
 
   const todayAppts = useMemo(
@@ -60,16 +60,6 @@ const RepViewPage = () => {
             />
           </div>
         </div>
-        {repZone && (
-          <div className="glass-card p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Ma zone</span>
-              <Map className="h-5 w-5 text-primary" />
-            </div>
-            <div className="text-lg font-bold text-foreground">{repZone.name}</div>
-            <div className="text-xs text-muted-foreground mt-1">{repZone.description}</div>
-          </div>
-        )}
       </div>
 
       <div className="glass-card overflow-hidden">

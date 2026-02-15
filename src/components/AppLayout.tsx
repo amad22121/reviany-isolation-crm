@@ -10,7 +10,7 @@ import {
   Building2,
   Menu,
   X,
-  Map,
+  
   Crown,
   Users,
   UserCheck,
@@ -23,7 +23,7 @@ const ROUTE_LABELS: Record<string, string> = {
   leaderboard: "Classement",
   appointments: "Rendez-vous",
   rep: "Ma vue",
-  zones: "Zones terrain",
+  
 };
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
@@ -36,7 +36,6 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
     { to: "/leaderboard", label: "Classement", icon: Trophy },
     { to: "/appointments", label: "Rendez-vous", icon: List },
-    { to: "/zones", label: "Zones terrain", icon: Map },
   ];
 
   const managerLinks = [
@@ -44,7 +43,6 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
     { to: "/leaderboard", label: "Classement", icon: Trophy },
     { to: "/appointments", label: "Rendez-vous", icon: List },
-    { to: "/zones", label: "Zones terrain", icon: Map },
   ];
 
   const repLinks = [
