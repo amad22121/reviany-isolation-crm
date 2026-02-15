@@ -89,6 +89,24 @@ const DashboardPage = () => {
   return (
     <>
       <div className="space-y-6">
+        {/* Stats - TOP */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { label: "Rendez-vous aujourd'hui", value: stats.total, icon: CalendarCheck, color: "text-primary" },
+            { label: "Confirmés aujourd'hui", value: stats.confirmed, icon: CheckCircle2, color: "text-primary" },
+            { label: "Absences", value: stats.noShows, icon: XCircle, color: "text-destructive" },
+            { label: "Taux de confirmation", value: `${stats.rate}%`, icon: TrendingUp, color: "text-info" },
+          ].map((s) => (
+            <div key={s.label} className="glass-card p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-muted-foreground">{s.label}</span>
+                <s.icon className={`h-5 w-5 ${s.color}`} />
+              </div>
+              <div className="text-2xl font-bold text-foreground">{s.value}</div>
+            </div>
+          ))}
+        </div>
+
         {/* Daily target */}
         <div className="glass-card p-4">
           <div className="flex items-center justify-between mb-2">
@@ -160,7 +178,7 @@ const DashboardPage = () => {
           </button>
         </div>
 
-        {/* Table (moved to top priority) */}
+        {/* Table */}
         <div className="glass-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -172,7 +190,7 @@ const DashboardPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((a) => (
+                {[...filtered].sort((a, b) => b.id.localeCompare(a.id)).map((a) => (
                   <tr key={a.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
                     <td className="px-4 py-3 font-medium">
                       <button onClick={() => setSelectedAppt(a)} className="text-primary hover:underline text-left">{a.clientFirstName} {a.clientLastName}</button>
@@ -250,24 +268,6 @@ const DashboardPage = () => {
               </tbody>
             </table>
           </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { label: "Rendez-vous aujourd'hui", value: stats.total, icon: CalendarCheck, color: "text-primary" },
-            { label: "Confirmés aujourd'hui", value: stats.confirmed, icon: CheckCircle2, color: "text-primary" },
-            { label: "Absences", value: stats.noShows, icon: XCircle, color: "text-destructive" },
-            { label: "Taux de confirmation", value: `${stats.rate}%`, icon: TrendingUp, color: "text-info" },
-          ].map((s) => (
-            <div key={s.label} className="glass-card p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-muted-foreground">{s.label}</span>
-                <s.icon className={`h-5 w-5 ${s.color}`} />
-              </div>
-              <div className="text-2xl font-bold text-foreground">{s.value}</div>
-            </div>
-          ))}
         </div>
       </div>
 
