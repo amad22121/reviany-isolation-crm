@@ -126,12 +126,12 @@ const FicheClient = ({ appointment, open, onOpenChange }: FicheClientProps) => {
               </h3>
               <div className="space-y-2">
                 <div className="bg-secondary/50 rounded-lg p-3">
-                  <p className="text-xs text-muted-foreground mb-1">Êtes-vous propriétaire ?</p>
-                  <p className="text-sm text-foreground">{appointment.preQual1 || "—"}</p>
+                  <p className="text-xs text-muted-foreground mb-1">Question A</p>
+                  <p className="text-sm text-muted-foreground italic">{appointment.preQual1 || "Réponse à compléter ici"}</p>
                 </div>
                 <div className="bg-secondary/50 rounded-lg p-3">
-                  <p className="text-xs text-muted-foreground mb-1">Quel est votre besoin principal ?</p>
-                  <p className="text-sm text-foreground">{appointment.preQual2 || "—"}</p>
+                  <p className="text-xs text-muted-foreground mb-1">Question B</p>
+                  <p className="text-sm text-muted-foreground italic">{appointment.preQual2 || "Réponse à compléter ici"}</p>
                 </div>
               </div>
             </div>
@@ -166,9 +166,9 @@ const FicheClient = ({ appointment, open, onOpenChange }: FicheClientProps) => {
                   autoFocus
                 />
               ) : (
-                <p className="text-sm text-foreground bg-secondary/50 rounded-lg p-3">
-                  {appointment.notes || "Aucune note."}
-                </p>
+              <p className="text-sm text-foreground bg-secondary/50 rounded-lg p-3">
+                {appointment.notes || <span className="text-muted-foreground italic">Notes détaillées à ajouter ici</span>}
+              </p>
               )}
             </div>
 
