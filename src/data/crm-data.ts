@@ -25,16 +25,15 @@ export interface Appointment {
 
 
 export const MANAGERS = [
-  { id: "mgr1", name: "Catherine Lévesque" },
-  { id: "mgr2", name: "Patrick Rousseau" },
+  { id: "mgr1", name: "Arthur" },
 ];
 
 export const SALES_REPS: SalesRep[] = [
-  { id: "rep1", name: "Marc-André Dupont", avatar: "MD", managerId: "mgr1", zone: "zone1" },
-  { id: "rep2", name: "Sophie Tremblay", avatar: "ST", managerId: "mgr1", zone: "zone2" },
-  { id: "rep3", name: "Jean-Philippe Roy", avatar: "JR", managerId: "mgr1", zone: "zone3" },
-  { id: "rep4", name: "Isabelle Gagné", avatar: "IG", managerId: "mgr2", zone: "zone4" },
-  { id: "rep5", name: "Alexandre Bouchard", avatar: "AB", managerId: "mgr2", zone: "zone5" },
+  { id: "rep1", name: "Samvel", avatar: "SA", managerId: "mgr1" },
+  { id: "rep2", name: "Enzo", avatar: "EN", managerId: "mgr1" },
+  { id: "rep3", name: "Florian", avatar: "FL", managerId: "mgr1" },
+  { id: "rep4", name: "Hakim", avatar: "HA", managerId: "mgr1" },
+  { id: "rep5", name: "Alex", avatar: "AL", managerId: "mgr1" },
 ];
 
 
