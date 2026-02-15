@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
-import { SALES_REPS } from "@/data/crm-data";
+import { SALES_REPS, Appointment } from "@/data/crm-data";
+import FicheClient from "@/components/FicheClient";
 import { useNavigate } from "react-router-dom";
 import { CalendarCheck, Target, Plus, MapPin, Bell } from "lucide-react";
 
@@ -11,6 +12,7 @@ const RepViewPage = () => {
   const today = new Date().toISOString().split("T")[0];
 
   const rep = SALES_REPS.find((r) => r.id === currentRepId);
+  const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
   
   const DAILY_GOAL = Math.ceil(dailyTarget / SALES_REPS.length);
 
@@ -28,7 +30,7 @@ const RepViewPage = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <><div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-foreground">Bienvenue, {rep?.name}</h1>
         <button
@@ -79,7 +81,9 @@ const RepViewPage = () => {
               {todayAppts.sort((a, b) => a.time.localeCompare(b.time)).map((a) => (
                 <tr key={a.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
                   <td className="px-4 py-3 text-foreground font-medium">{a.time}</td>
-                  <td className="px-4 py-3 text-foreground">{a.clientFirstName} {a.clientLastName}</td>
+                  <td className="px-4 py-3">
+                    <button onClick={() => setSelectedAppt(a)} className="text-primary hover:underline text-left">{a.clientFirstName} {a.clientLastName}</button>
+                  </td>
                   <td className="px-4 py-3 text-foreground">{a.phone}</td>
                   <td className="px-4 py-3">
                     <a
@@ -108,6 +112,9 @@ const RepViewPage = () => {
         </div>
       </div>
     </div>
+
+    <FicheClient appointment={selectedAppt} open={!!selectedAppt} onOpenChange={(o) => !o && setSelectedAppt(null)} />
+    </>
   );
 };
 

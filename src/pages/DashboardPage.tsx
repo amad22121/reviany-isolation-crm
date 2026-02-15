@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
-import { SALES_REPS } from "@/data/crm-data";
+import { SALES_REPS, Appointment } from "@/data/crm-data";
+import FicheClient from "@/components/FicheClient";
 import { useNavigate } from "react-router-dom";
 import {
   CalendarCheck,
@@ -17,6 +18,7 @@ const DashboardPage = () => {
   const { role, currentManagerId } = useAuth();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<"today" | "week">("today");
+  const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
 
   const today = new Date().toISOString().split("T")[0];
   const weekStart = new Date();
@@ -64,7 +66,7 @@ const DashboardPage = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <><div className="space-y-6">
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
@@ -137,7 +139,9 @@ const DashboardPage = () => {
             <tbody>
               {filtered.map((a) => (
                 <tr key={a.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                  <td className="px-4 py-3 text-foreground font-medium">{a.clientFirstName} {a.clientLastName}</td>
+                  <td className="px-4 py-3 font-medium">
+                    <button onClick={() => setSelectedAppt(a)} className="text-primary hover:underline text-left">{a.clientFirstName} {a.clientLastName}</button>
+                  </td>
                   <td className="px-4 py-3 text-foreground">{a.phone}</td>
                   <td className="px-4 py-3">
                     <a
@@ -186,6 +190,9 @@ const DashboardPage = () => {
         </div>
       </div>
     </div>
+
+    <FicheClient appointment={selectedAppt} open={!!selectedAppt} onOpenChange={(o) => !o && setSelectedAppt(null)} />
+    </>
   );
 };
 

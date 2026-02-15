@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
-import { SALES_REPS } from "@/data/crm-data";
+import { SALES_REPS, Appointment } from "@/data/crm-data";
 import { Search, MapPin, Bell } from "lucide-react";
+import FicheClient from "@/components/FicheClient";
 
 const STATUS_LIST = ["En attente", "Confirmé", "Absence", "Fermé", "Annulé"];
 
@@ -11,6 +12,7 @@ const AppointmentsPage = () => {
   const [search, setSearch] = useState("");
   const [repFilter, setRepFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
 
   const teamReps = useMemo(() => {
     if (role === "gestionnaire" && currentManagerId) {
@@ -46,7 +48,7 @@ const AppointmentsPage = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <><div className="space-y-6">
       <h1 className="text-xl font-bold text-foreground">Tous les rendez-vous</h1>
 
       <div className="flex flex-wrap gap-3">
@@ -94,7 +96,9 @@ const AppointmentsPage = () => {
             <tbody>
               {filtered.map((a) => (
                 <tr key={a.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                  <td className="px-4 py-3 font-medium text-foreground">{a.clientFirstName} {a.clientLastName}</td>
+                  <td className="px-4 py-3 font-medium">
+                    <button onClick={() => setSelectedAppt(a)} className="text-primary hover:underline text-left">{a.clientFirstName} {a.clientLastName}</button>
+                  </td>
                   <td className="px-4 py-3 text-foreground">{a.phone}</td>
                   <td className="px-4 py-3">
                     <a
@@ -143,6 +147,9 @@ const AppointmentsPage = () => {
         </div>
       </div>
     </div>
+
+    <FicheClient appointment={selectedAppt} open={!!selectedAppt} onOpenChange={(o) => !o && setSelectedAppt(null)} />
+    </>
   );
 };
 
