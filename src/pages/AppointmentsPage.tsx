@@ -1,18 +1,28 @@
 import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
 import { SALES_REPS, Appointment } from "@/data/crm-data";
-import { Search, MapPin, Bell } from "lucide-react";
+import { Search, MapPin, Bell, Check } from "lucide-react";
 import FicheClient from "@/components/FicheClient";
 
 const STATUS_LIST = ["En attente", "Confirmé", "Absence", "Fermé", "Annulé"];
 
 const AppointmentsPage = () => {
-  const { appointments, updateStatus } = useCrm();
+  const { appointments, updateStatus, updateNotes } = useCrm();
   const { role, currentManagerId } = useAuth();
   const [search, setSearch] = useState("");
   const [repFilter, setRepFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [noteInput, setNoteInput] = useState("");
+  const [savedNoteId, setSavedNoteId] = useState<string | null>(null);
+
+  const handleSaveNote = (id: string) => {
+    updateNotes(id, noteInput);
+    setEditingNoteId(null);
+    setSavedNoteId(id);
+    setTimeout(() => setSavedNoteId(null), 1200);
+  };
 
   const teamReps = useMemo(() => {
     if (role === "gestionnaire" && currentManagerId) {
@@ -129,8 +139,33 @@ const AppointmentsPage = () => {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs max-w-[150px] truncate">
-                    {a.notes}
+                  <td className="px-4 py-3 text-xs max-w-[180px]">
+                    {editingNoteId === a.id ? (
+                      <div className="flex items-center gap-1">
+                        <input
+                          value={noteInput}
+                          onChange={(e) => setNoteInput(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && handleSaveNote(a.id)}
+                          className="flex-1 bg-secondary border border-border rounded px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                          autoFocus
+                        />
+                        <button onClick={() => handleSaveNote(a.id)} className="text-primary hover:opacity-80">
+                          <Check className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => { setEditingNoteId(a.id); setNoteInput(a.notes || ""); }}
+                        className={`text-left truncate max-w-[150px] transition-colors ${
+                          savedNoteId === a.id
+                            ? "text-primary font-medium"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                        title="Cliquer pour modifier"
+                      >
+                        {savedNoteId === a.id ? "✓ Sauvegardé" : (a.notes || "Ajouter une note…")}
+                      </button>
+                    )}
                     {a.smsScheduled && (
                       <span className="ml-2 inline-flex items-center gap-1 text-primary">
                         <Bell className="h-3 w-3" />
