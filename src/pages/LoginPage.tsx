@@ -25,7 +25,7 @@ const LoginPage = () => {
               className="w-full p-4 rounded-lg bg-secondary hover:bg-secondary/80 border border-border text-foreground text-left transition-colors"
             >
               <div className="flex items-center gap-2 font-medium">
-                <Crown className="h-4 w-4 text-warning" /> Bryan (Propriétaire)
+                <Crown className="h-4 w-4 text-warning" /> Bryan — Propriétaire
               </div>
               <div className="text-sm text-muted-foreground">
                 Accès complet, statistiques globales, objectifs et zones
