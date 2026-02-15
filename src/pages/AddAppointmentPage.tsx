@@ -121,20 +121,20 @@ const AddAppointmentPage = () => {
         </div>
 
         <div>
-          <label className="text-sm text-muted-foreground mb-1 block">Pré-qualification Q1 — Le client est-il propriétaire ? *</label>
-          <input className={inputClass("preQual1")} value={form.preQual1} onChange={(e) => update("preQual1", e.target.value)} placeholder="Ex: Oui, propriétaire depuis 5 ans" />
+          <label className="text-sm text-muted-foreground mb-1 block">Question A *</label>
+          <input className={inputClass("preQual1")} value={form.preQual1} onChange={(e) => update("preQual1", e.target.value)} placeholder="Écrivez ici" />
           {errors.preQual1 && <span className="text-xs text-destructive">{errors.preQual1}</span>}
         </div>
 
         <div>
-          <label className="text-sm text-muted-foreground mb-1 block">Pré-qualification Q2 — Quel service l'intéresse ? *</label>
-          <input className={inputClass("preQual2")} value={form.preQual2} onChange={(e) => update("preQual2", e.target.value)} placeholder="Ex: Intéressé par les économies d'énergie" />
+          <label className="text-sm text-muted-foreground mb-1 block">Question B *</label>
+          <input className={inputClass("preQual2")} value={form.preQual2} onChange={(e) => update("preQual2", e.target.value)} placeholder="Écrivez ici" />
           {errors.preQual2 && <span className="text-xs text-destructive">{errors.preQual2}</span>}
         </div>
 
         <div>
           <label className="text-sm text-muted-foreground mb-1 block">Notes *</label>
-          <textarea className={inputClass("notes") + " min-h-[80px]"} value={form.notes} onChange={(e) => update("notes", e.target.value)} placeholder="Informations supplémentaires..." />
+          <textarea className={inputClass("notes") + " min-h-[80px]"} value={form.notes} onChange={(e) => update("notes", e.target.value)} placeholder="Écrivez vos notes ici" />
           {errors.notes && <span className="text-xs text-destructive">{errors.notes}</span>}
         </div>
 
