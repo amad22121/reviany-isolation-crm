@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 
 const DashboardPage = () => {
-  const { appointments, updateStatus, updateNotes, dailyTarget, setDailyTarget } = useCrm();
+  const { appointments, updateStatus, updateNotes, dailyTarget, setDailyTarget, repGoals, setRepGoal } = useCrm();
   const { role, currentManagerId } = useAuth();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<"today" | "week">("today");
@@ -26,6 +26,8 @@ const DashboardPage = () => {
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteInput, setNoteInput] = useState("");
   const [savedNoteId, setSavedNoteId] = useState<string | null>(null);
+  const [editingRepGoal, setEditingRepGoal] = useState<string | null>(null);
+  const [repGoalInput, setRepGoalInput] = useState("");
 
   const today = new Date().toISOString().split("T")[0];
   const weekStart = new Date();
@@ -84,6 +86,12 @@ const DashboardPage = () => {
     setEditingNoteId(null);
     setSavedNoteId(id);
     setTimeout(() => setSavedNoteId(null), 1200);
+  };
+
+  const handleSaveRepGoal = (repId: string) => {
+    const val = parseInt(repGoalInput);
+    if (!isNaN(val) && val >= 0) setRepGoal(repId, val);
+    setEditingRepGoal(null);
   };
 
   return (
@@ -153,7 +161,61 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        {/* Toolbar */}
+        {/* Individual Rep Goals */}
+        {canEdit && (
+          <div className="glass-card p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Target className="h-5 w-5 text-primary" />
+              <span className="text-sm font-medium text-foreground">Objectifs individuels</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {teamReps.map((r) => {
+                const repTodayCount = teamAppointments.filter((a) => a.repId === r.id && a.date === today).length;
+                const goal = repGoals[r.id] || 0;
+                const pct = goal > 0 ? Math.min(100, (repTodayCount / goal) * 100) : 0;
+                return (
+                  <div key={r.id} className="bg-secondary/50 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-foreground">{r.name}</span>
+                      {editingRepGoal === r.id ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min={0}
+                            value={repGoalInput}
+                            onChange={(e) => setRepGoalInput(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && handleSaveRepGoal(r.id)}
+                            className="w-12 bg-background border border-border rounded px-1 py-0.5 text-sm font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-center"
+                            autoFocus
+                          />
+                          <button onClick={() => handleSaveRepGoal(r.id)} className="text-primary hover:opacity-80">
+                            <Check className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setEditingRepGoal(r.id); setRepGoalInput(String(goal)); }}
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                        >
+                          <span className="font-bold">{goal || "—"}</span>
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground mb-1">{repTodayCount} / {goal || "—"} RDV</div>
+                    <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <div className="flex gap-2">
             {(["today", "week"] as const).map((f) => (

@@ -16,11 +16,13 @@ interface AuthState {
 interface CrmState {
   appointments: Appointment[];
   dailyTarget: number;
+  repGoals: Record<string, number>;
   addAppointment: (appt: Omit<Appointment, "id" | "status" | "smsScheduled" | "createdAt">) => void;
   updateStatus: (id: string, status: Appointment["status"]) => void;
   deleteAppointment: (id: string) => void;
   updateNotes: (id: string, notes: string) => void;
   setDailyTarget: (target: number) => void;
+  setRepGoal: (repId: string, goal: number) => void;
 }
 
 export const useAuth = create<AuthState>((set) => ({
@@ -40,6 +42,7 @@ export const useAuth = create<AuthState>((set) => ({
 
 export const useCrm = create<CrmState>((set) => ({
   appointments: INITIAL_APPOINTMENTS,
+  repGoals: Object.fromEntries(SALES_REPS.map((r) => [r.id, 0])),
   dailyTarget: 15,
   addAppointment: (appt) =>
     set((state) => ({
@@ -71,4 +74,8 @@ export const useCrm = create<CrmState>((set) => ({
       ),
     })),
   setDailyTarget: (target) => set({ dailyTarget: target }),
+  setRepGoal: (repId, goal) =>
+    set((state) => ({
+      repGoals: { ...state.repGoals, [repId]: goal },
+    })),
 }));
