@@ -10,7 +10,7 @@ import AddAppointmentPage from "./pages/AddAppointmentPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import AppointmentsPage from "./pages/AppointmentsPage";
 import RepViewPage from "./pages/RepViewPage";
-import ZonesPage from "./pages/ZonesPage";
+
 import AppLayout from "./components/AppLayout";
 import NotFound from "./pages/NotFound";
 
@@ -47,7 +47,7 @@ const AppRoutes = () => {
       <Route path="/leaderboard" element={<AuthGuard><LeaderboardPage /></AuthGuard>} />
       <Route path="/appointments" element={<AuthGuard><AppointmentsPage /></AuthGuard>} />
       <Route path="/rep" element={<AuthGuard><RepViewPage /></AuthGuard>} />
-      <Route path="/zones" element={<AuthGuard><ZonesPage /></AuthGuard>} />
+      
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

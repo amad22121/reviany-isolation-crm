@@ -23,14 +23,6 @@ export interface Appointment {
   createdAt: string;
 }
 
-export interface Zone {
-  id: string;
-  name: string;
-  description: string;
-  color: string;
-  assignedRepId?: string;
-  managerId: string;
-}
 
 export const MANAGERS = [
   { id: "mgr1", name: "Catherine Lévesque" },
@@ -45,13 +37,6 @@ export const SALES_REPS: SalesRep[] = [
   { id: "rep5", name: "Alexandre Bouchard", avatar: "AB", managerId: "mgr2", zone: "zone5" },
 ];
 
-export const ZONES: Zone[] = [
-  { id: "zone1", name: "Plateau Mont-Royal", description: "Secteur résidentiel dense, maisons en rangée et duplex", color: "hsl(142, 64%, 45%)", assignedRepId: "rep1", managerId: "mgr1" },
-  { id: "zone2", name: "Rosemont–Petite-Patrie", description: "Quartier familial, bungalows et cottages", color: "hsl(210, 92%, 55%)", assignedRepId: "rep2", managerId: "mgr1" },
-  { id: "zone3", name: "Villeray–Saint-Michel", description: "Zone mixte, résidentiel et commercial", color: "hsl(38, 92%, 50%)", assignedRepId: "rep3", managerId: "mgr1" },
-  { id: "zone4", name: "Côte-des-Neiges", description: "Secteur diversifié, immeubles et maisons", color: "hsl(280, 60%, 55%)", assignedRepId: "rep4", managerId: "mgr2" },
-  { id: "zone5", name: "Ahuntsic-Cartierville", description: "Quartier résidentiel, grandes propriétés", color: "hsl(0, 72%, 51%)", assignedRepId: "rep5", managerId: "mgr2" },
-];
 
 const today = new Date().toISOString().split("T")[0];
 const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];

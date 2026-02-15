@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { Appointment, INITIAL_APPOINTMENTS, SALES_REPS, ZONES, Zone } from "@/data/crm-data";
+import { Appointment, INITIAL_APPOINTMENTS, SALES_REPS } from "@/data/crm-data";
 
 export type AppRole = "proprietaire" | "gestionnaire" | "representant";
 
@@ -15,12 +15,10 @@ interface AuthState {
 
 interface CrmState {
   appointments: Appointment[];
-  zones: Zone[];
   dailyTarget: number;
   addAppointment: (appt: Omit<Appointment, "id" | "status" | "smsScheduled" | "createdAt">) => void;
   updateStatus: (id: string, status: Appointment["status"]) => void;
   setDailyTarget: (target: number) => void;
-  assignZone: (zoneId: string, repId: string) => void;
 }
 
 export const useAuth = create<AuthState>((set) => ({
@@ -40,7 +38,6 @@ export const useAuth = create<AuthState>((set) => ({
 
 export const useCrm = create<CrmState>((set) => ({
   appointments: INITIAL_APPOINTMENTS,
-  zones: ZONES,
   dailyTarget: 15,
   addAppointment: (appt) =>
     set((state) => ({
@@ -62,10 +59,4 @@ export const useCrm = create<CrmState>((set) => ({
       ),
     })),
   setDailyTarget: (target) => set({ dailyTarget: target }),
-  assignZone: (zoneId, repId) =>
-    set((state) => ({
-      zones: state.zones.map((z) =>
-        z.id === zoneId ? { ...z, assignedRepId: repId } : z
-      ),
-    })),
 }));
