@@ -21,9 +21,26 @@ const RepViewPage = () => {
     [appointments, currentRepId, today]
   );
 
+  const startOfWeek = useMemo(() => {
+    const d = new Date();
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(d.getFullYear(), d.getMonth(), diff).toISOString().split("T")[0];
+  }, []);
+
   const teamTodayAppts = useMemo(
     () => appointments.filter((a) => a.date === today),
     [appointments, today]
+  );
+
+  const weekAppts = useMemo(
+    () => appointments.filter((a) => a.repId === currentRepId && a.date >= startOfWeek && a.date <= today),
+    [appointments, currentRepId, startOfWeek, today]
+  );
+
+  const weekConfirmed = useMemo(
+    () => weekAppts.filter((a) => a.status === "Confirmé"),
+    [weekAppts]
   );
 
   const myProgress = todayAppts.length;
@@ -102,21 +119,24 @@ const RepViewPage = () => {
         </div>
       </div>
 
-      {/* Quick stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="glass-card p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-muted-foreground">Mes rendez-vous aujourd'hui</span>
-            <CalendarCheck className="h-5 w-5 text-primary" />
+      {/* Performance semaine */}
+      <div className="glass-card p-4">
+        <h2 className="text-sm font-medium text-foreground mb-3">Performance semaine</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-secondary/40 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-muted-foreground">Mes rendez-vous cette semaine</span>
+              <CalendarCheck className="h-5 w-5 text-primary" />
+            </div>
+            <div className="text-2xl font-bold text-foreground">{weekAppts.length}</div>
           </div>
-          <div className="text-2xl font-bold text-foreground">{todayAppts.length}</div>
-        </div>
-        <div className="glass-card p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-muted-foreground">Performance équipe</span>
-            <Target className="h-5 w-5 text-info" />
+          <div className="bg-secondary/40 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-muted-foreground">Mes rendez-vous confirmés cette semaine</span>
+              <Target className="h-5 w-5 text-green-500" />
+            </div>
+            <div className="text-2xl font-bold text-foreground">{weekConfirmed.length}</div>
           </div>
-          <div className="text-2xl font-bold text-foreground">{teamProgress} / {dailyTarget}</div>
         </div>
       </div>
 
