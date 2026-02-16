@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useCrm } from "@/store/crm-store";
+import { toast } from "@/hooks/use-toast";
 import {
   UserPlus,
   Pencil,
@@ -9,24 +10,31 @@ import {
   Users,
   X,
   Check,
-  AlertTriangle,
+  Phone,
 } from "lucide-react";
 
 type ManagedUser = {
   id: string;
   name: string;
+  phone: string;
   email: string;
   role: "gestionnaire" | "representant";
   active: boolean;
 };
 
+const formatPhone = (raw: string) => {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 10) return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  return raw;
+};
+
 const INITIAL_USERS: ManagedUser[] = [
-  { id: "mgr1", name: "Arthur", email: "arthur@growthsales.ca", role: "gestionnaire", active: true },
-  { id: "rep1", name: "Samvel", email: "samvel@growthsales.ca", role: "representant", active: true },
-  { id: "rep2", name: "Enzo", email: "enzo@growthsales.ca", role: "representant", active: true },
-  { id: "rep3", name: "Florian", email: "florian@growthsales.ca", role: "representant", active: true },
-  { id: "rep4", name: "Hakim", email: "hakim@growthsales.ca", role: "representant", active: true },
-  { id: "rep5", name: "Alex", email: "alex@growthsales.ca", role: "representant", active: true },
+  { id: "mgr1", name: "Arthur", phone: "5141234567", email: "arthur@growthsales.ca", role: "gestionnaire", active: true },
+  { id: "rep1", name: "Samvel", phone: "5142345678", email: "samvel@growthsales.ca", role: "representant", active: true },
+  { id: "rep2", name: "Enzo", phone: "5143456789", email: "enzo@growthsales.ca", role: "representant", active: true },
+  { id: "rep3", name: "Florian", phone: "5144567890", email: "florian@growthsales.ca", role: "representant", active: true },
+  { id: "rep4", name: "Hakim", phone: "5145678901", email: "hakim@growthsales.ca", role: "representant", active: true },
+  { id: "rep5", name: "Alex", phone: "5146789012", email: "alex@growthsales.ca", role: "representant", active: true },
 ];
 
 const UserManagementPage = () => {
@@ -36,20 +44,28 @@ const UserManagementPage = () => {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   // Add form state
-  const [form, setForm] = useState({ name: "", email: "", password: "", role: "representant" as "gestionnaire" | "representant" });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", password: "", role: "representant" as "gestionnaire" | "representant" });
+
+  const phoneDigits = form.phone.replace(/\D/g, "");
+  const isPhoneValid = phoneDigits.length >= 10;
 
   const handleAdd = () => {
-    if (!form.name.trim() || !form.email.trim() || !form.password.trim()) return;
+    if (!form.name.trim() || !form.email.trim() || !form.password.trim() || !isPhoneValid) return;
     const newUser: ManagedUser = {
       id: `user_${Date.now()}`,
       name: form.name.trim(),
+      phone: phoneDigits,
       email: form.email.trim(),
       role: form.role,
       active: true,
     };
     setUsers((prev) => [...prev, newUser]);
-    setForm({ name: "", email: "", password: "", role: "representant" });
+    setForm({ name: "", phone: "", email: "", password: "", role: "representant" });
     setShowAddModal(false);
+    toast({
+      title: "✅ SMS de bienvenue envoyé",
+      description: `SMS de bienvenue envoyé à ${newUser.name} avec succès.`,
+    });
   };
 
   const handleRoleChange = (id: string, newRole: "gestionnaire" | "representant") => {
@@ -87,7 +103,7 @@ const UserManagementPage = () => {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                {["Nom", "Email", "Rôle", "Statut", "Actions"].map((h) => (
+                {["Nom", "Téléphone", "Email", "Rôle", "Statut", "Actions"].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-muted-foreground font-medium">{h}</th>
                 ))}
               </tr>
@@ -98,6 +114,12 @@ const UserManagementPage = () => {
                 return (
                   <tr key={u.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
                     <td className="px-4 py-3 font-medium text-foreground">{u.name}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Phone className="h-3 w-3" />
+                        {formatPhone(u.phone)}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/15 text-primary">
@@ -149,7 +171,7 @@ const UserManagementPage = () => {
               })}
               {users.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Aucun utilisateur</td>
+                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Aucun utilisateur</td>
                 </tr>
               )}
             </tbody>
@@ -176,6 +198,19 @@ const UserManagementPage = () => {
                   placeholder="Nom complet"
                   className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Téléphone</label>
+                <input
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="(514) 123-4567"
+                  className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                {form.phone && !isPhoneValid && (
+                  <p className="text-xs text-destructive mt-1">Minimum 10 chiffres requis</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Email</label>
@@ -210,7 +245,7 @@ const UserManagementPage = () => {
               </div>
               <button
                 onClick={handleAdd}
-                disabled={!form.name.trim() || !form.email.trim() || !form.password.trim()}
+                disabled={!form.name.trim() || !isPhoneValid || !form.email.trim() || !form.password.trim()}
                 className="w-full bg-primary text-primary-foreground py-2.5 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Créer le profil
