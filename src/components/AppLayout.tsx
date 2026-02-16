@@ -23,6 +23,7 @@ const ROUTE_LABELS: Record<string, string> = {
   leaderboard: "Classement",
   appointments: "Rendez-vous",
   rep: "Ma vue",
+  users: "Gestion utilisateurs",
   
 };
 
@@ -36,6 +37,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
     { to: "/leaderboard", label: "Classement", icon: Trophy },
     { to: "/appointments", label: "Rendez-vous", icon: List },
+    { to: "/users", label: "Gestion utilisateurs", icon: Users },
   ];
 
   const managerLinks = [
