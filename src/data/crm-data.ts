@@ -78,6 +78,37 @@ export const HOT_CALL_STATUSES: HotCallStatus[] = [
   "Dead",
 ];
 
+export type HotCallPhase = "À rappeler" | "En cours" | "Re-booké" | "Converti" | "Perdu";
+
+export const HOT_CALL_PHASES: HotCallPhase[] = [
+  "À rappeler",
+  "En cours",
+  "Re-booké",
+  "Converti",
+  "Perdu",
+];
+
+export type HotCallFeedback =
+  | "No answer"
+  | "Call back later"
+  | "Reschedule requested"
+  | "Not interested"
+  | "Follow-up 3 months"
+  | "Follow-up 6 months"
+  | "Follow-up 9 months"
+  | "Follow-up 12 months";
+
+export const HOT_CALL_FEEDBACKS: HotCallFeedback[] = [
+  "No answer",
+  "Call back later",
+  "Reschedule requested",
+  "Not interested",
+  "Follow-up 3 months",
+  "Follow-up 6 months",
+  "Follow-up 9 months",
+  "Follow-up 12 months",
+];
+
 export interface CallLogEntry {
   date: string;
   time: string;
@@ -94,6 +125,8 @@ export interface HotCall {
   source: "Door-to-door" | "Referral";
   repId: string;
   status: HotCallStatus;
+  phase: HotCallPhase;
+  lastFeedback: HotCallFeedback;
   attempts: number;
   lastContactDate: string;
   followUpDate: string;

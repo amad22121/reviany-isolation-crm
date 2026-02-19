@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
-import { SALES_REPS, HOT_CALL_STATUSES, HotCallStatus, HotCall, Appointment } from "@/data/crm-data";
+import { SALES_REPS, HOT_CALL_PHASES, HOT_CALL_FEEDBACKS, HotCallStatus, HotCallPhase, HotCallFeedback, HotCall, Appointment } from "@/data/crm-data";
 import FicheClient from "@/components/FicheClient";
 import {
   Dialog,
@@ -16,11 +16,13 @@ import {
   CalendarCheck,
   TrendingUp,
   RotateCcw,
-  Hash,
   Trash2,
   Plus,
   X,
   Tag,
+  MapPin,
+  CalendarPlus,
+  Pencil,
 } from "lucide-react";
 
 const DEFAULT_TAGS = ["Callback", "Client chaud", "Client froid", "Budget", "À rappeler matin", "À rappeler soir"];
@@ -28,16 +30,16 @@ const DEFAULT_TAGS = ["Callback", "Client chaud", "Client froid", "Budget", "À 
 const HotCallsPage = () => {
   const {
     hotCalls, appointments,
-    updateHotCallStatus, deleteHotCall,
-    incrementHotCallAttempts, updateHotCallFollowUpDate,
-    updateHotCallTags, logCallAndUpdate,
+    updateHotCallPhase, updateHotCallFeedback,
+    deleteHotCall, incrementHotCallAttempts,
+    updateHotCallFollowUpDate, updateHotCallTags,
+    logCallAndUpdate, reassignHotCall, rebookHotCall,
   } = useCrm();
   const { role, currentRepId } = useAuth();
 
   const [view, setView] = useState<"all" | "today">("today");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [phaseFilter, setPhaseFilter] = useState("all");
   const [repFilter, setRepFilter] = useState("all");
-  const [cityFilter, setCityFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
@@ -47,9 +49,18 @@ const HotCallsPage = () => {
 
   // Post-call popup
   const [postCallId, setPostCallId] = useState<string | null>(null);
-  const [postCallStatus, setPostCallStatus] = useState<HotCallStatus>("No answer");
+  const [postCallFeedback, setPostCallFeedback] = useState<HotCallFeedback>("No answer");
   const [postCallNote, setPostCallNote] = useState("");
   const [postCallDate, setPostCallDate] = useState("");
+
+  // Rebook popup
+  const [rebookId, setRebookId] = useState<string | null>(null);
+  const [rebookDate, setRebookDate] = useState("");
+  const [rebookTime, setRebookTime] = useState("09:00");
+
+  // Edit follow-up date popup
+  const [editDateId, setEditDateId] = useState<string | null>(null);
+  const [editDateValue, setEditDateValue] = useState("");
 
   // Tag editing
   const [editingTagsId, setEditingTagsId] = useState<string | null>(null);
@@ -57,6 +68,8 @@ const HotCallsPage = () => {
 
   const today = new Date().toISOString().split("T")[0];
   const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+  const canManage = role === "proprietaire" || role === "gestionnaire";
 
   const hotCallToAppointment = (hc: HotCall): Appointment => {
     const original = hc.originalAppointmentId
@@ -88,15 +101,13 @@ const HotCallsPage = () => {
     return hotCalls;
   }, [hotCalls, role, currentRepId]);
 
-  const cities = useMemo(() => [...new Set(visibleCalls.map((h) => h.city))].sort(), [visibleCalls]);
-
   const todayCalls = useMemo(
     () =>
       visibleCalls.filter(
         (h) =>
           h.followUpDate === today ||
-          (h.status === "No answer" && h.lastContactDate === yesterday) ||
-          (h.status === "Call back later" && h.followUpDate <= today)
+          (h.lastFeedback === "No answer" && h.lastContactDate === yesterday) ||
+          (h.lastFeedback === "Call back later" && h.followUpDate <= today)
       ),
     [visibleCalls, today, yesterday]
   );
@@ -105,16 +116,15 @@ const HotCallsPage = () => {
 
   const filtered = useMemo(() => {
     return displayCalls.filter((h) => {
-      if (statusFilter !== "all" && h.status !== statusFilter) return false;
+      if (phaseFilter !== "all" && h.phase !== phaseFilter) return false;
       if (repFilter !== "all" && h.repId !== repFilter) return false;
-      if (cityFilter !== "all" && h.city !== cityFilter) return false;
       if (search) {
         const q = search.toLowerCase();
         if (!h.fullName.toLowerCase().includes(q) && !h.phone.includes(q) && !h.address.toLowerCase().includes(q)) return false;
       }
       return true;
     });
-  }, [displayCalls, statusFilter, repFilter, cityFilter, search]);
+  }, [displayCalls, phaseFilter, repFilter, search]);
 
   const startOfWeek = useMemo(() => {
     const d = new Date();
@@ -125,7 +135,7 @@ const HotCallsPage = () => {
 
   const weekStats = useMemo(() => {
     const weekCalls = visibleCalls.filter((h) => h.createdAt >= startOfWeek);
-    const rebooked = visibleCalls.filter((h) => h.status === "Booked" && h.lastContactDate >= startOfWeek);
+    const rebooked = visibleCalls.filter((h) => h.phase === "Re-booké" && h.lastContactDate >= startOfWeek);
     const totalAttempts = visibleCalls.reduce((s, h) => s + h.attempts, 0);
     const avgAttempts = visibleCalls.length > 0 ? (totalAttempts / visibleCalls.length).toFixed(1) : "0";
     const recoveryRate = weekCalls.length > 0 ? Math.round((rebooked.length / weekCalls.length) * 100) : 0;
@@ -134,27 +144,29 @@ const HotCallsPage = () => {
 
   const getRepName = (repId: string) => SALES_REPS.find((r) => r.id === repId)?.name || repId;
 
-  const statusColors: Record<string, string> = {
-    "Premier contact": "bg-info/20 text-info",
-    "Deuxième contact": "bg-info/20 text-info",
-    "Troisième contact": "bg-info/20 text-info",
+  const phaseColors: Record<HotCallPhase, string> = {
+    "À rappeler": "bg-warning/20 text-warning",
+    "En cours": "bg-info/20 text-info",
+    "Re-booké": "bg-primary/20 text-primary",
+    "Converti": "bg-success/20 text-success",
+    "Perdu": "bg-destructive/20 text-destructive",
+  };
+
+  const feedbackColors: Record<HotCallFeedback, string> = {
     "No answer": "bg-warning/20 text-warning",
     "Call back later": "bg-info/20 text-info",
     "Reschedule requested": "bg-primary/20 text-primary",
     "Not interested": "bg-muted text-muted-foreground",
-    "Follow-up 3 months": "bg-accent text-accent-foreground",
-    "Follow-up 6 months": "bg-accent text-accent-foreground",
-    "Follow-up 9 months": "bg-accent text-accent-foreground",
-    "Follow-up 12 months": "bg-accent text-accent-foreground",
-    Booked: "bg-primary/20 text-primary",
-    Closed: "bg-secondary text-secondary-foreground",
-    Dead: "bg-destructive/20 text-destructive",
+    "Follow-up 3 months": "bg-accent/20 text-accent-foreground",
+    "Follow-up 6 months": "bg-accent/20 text-accent-foreground",
+    "Follow-up 9 months": "bg-accent/20 text-accent-foreground",
+    "Follow-up 12 months": "bg-accent/20 text-accent-foreground",
   };
 
   const openPostCallPopup = (hcId: string) => {
     const hc = hotCalls.find((h) => h.id === hcId);
     setPostCallId(hcId);
-    setPostCallStatus(hc?.status || "No answer");
+    setPostCallFeedback(hc?.lastFeedback || "No answer");
     setPostCallNote("");
     setPostCallDate(hc?.followUpDate || today);
   };
@@ -162,13 +174,33 @@ const HotCallsPage = () => {
   const submitPostCall = () => {
     if (!postCallId) return;
     const repId = currentRepId || "rep1";
-    logCallAndUpdate(postCallId, postCallStatus, postCallNote, postCallDate, repId);
+    logCallAndUpdate(postCallId, postCallFeedback as HotCallStatus, postCallNote, postCallDate, repId);
     setPostCallId(null);
   };
 
   const handleOpenFiche = (hc: HotCall) => {
     setSelectedAppt(hotCallToAppointment(hc));
     setSelectedHotCall(hc);
+  };
+
+  const openGoogleMaps = (address: string, city: string) => {
+    const query = encodeURIComponent(`${address}, ${city}`);
+    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, "_blank");
+  };
+
+  const handleRebook = () => {
+    if (!rebookId || !rebookDate) return;
+    rebookHotCall(rebookId, rebookDate, rebookTime);
+    setRebookId(null);
+    setRebookDate("");
+    setRebookTime("09:00");
+  };
+
+  const handleEditDate = () => {
+    if (!editDateId || !editDateValue) return;
+    updateHotCallFollowUpDate(editDateId, editDateValue);
+    setEditDateId(null);
+    setEditDateValue("");
   };
 
   const addTag = (hcId: string, tag: string) => {
@@ -194,17 +226,18 @@ const HotCallsPage = () => {
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: "Hot calls cette semaine", value: weekStats.total, icon: Flame, color: "text-destructive" },
-            { label: "Re-bookés cette semaine", value: weekStats.rebooked, icon: CalendarCheck, color: "text-primary" },
-            { label: "Taux de récupération", value: `${weekStats.recoveryRate}%`, icon: TrendingUp, color: "text-info" },
-            { label: "Tentatives moy./lead", value: weekStats.avgAttempts, icon: RotateCcw, color: "text-muted-foreground" },
+            { label: "Hot calls", sub: "Cette semaine", value: weekStats.total, icon: Flame, color: "text-destructive" },
+            { label: "Re-bookés", sub: "Cette semaine", value: weekStats.rebooked, icon: CalendarCheck, color: "text-primary" },
+            { label: "Récupération", sub: "Taux de conversion", value: `${weekStats.recoveryRate}%`, icon: TrendingUp, color: "text-info" },
+            { label: "Tentatives", sub: "Moyenne par lead", value: weekStats.avgAttempts, icon: RotateCcw, color: "text-muted-foreground" },
           ].map((s) => (
             <div key={s.label} className="glass-card p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-muted-foreground">{s.label}</span>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium text-muted-foreground">{s.label}</span>
                 <s.icon className={`h-4 w-4 ${s.color}`} />
               </div>
               <div className="text-2xl font-bold text-foreground">{s.value}</div>
+              <span className="text-[10px] text-muted-foreground/70">{s.sub}</span>
             </div>
           ))}
         </div>
@@ -229,28 +262,23 @@ const HotCallsPage = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               className="w-full bg-secondary border border-border rounded-lg pl-10 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="Rechercher..."
+              placeholder="Rechercher nom, tél, adresse..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
 
-          <select className="bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="all">Tous les statuts</option>
-            {HOT_CALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+          <select className="bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground" value={phaseFilter} onChange={(e) => setPhaseFilter(e.target.value)}>
+            <option value="all">Toutes les phases</option>
+            {HOT_CALL_PHASES.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
 
-          {role !== "representant" && (
+          {canManage && (
             <select className="bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground" value={repFilter} onChange={(e) => setRepFilter(e.target.value)}>
               <option value="all">Tous les reps</option>
               {SALES_REPS.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
           )}
-
-          <select className="bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground" value={cityFilter} onChange={(e) => setCityFilter(e.target.value)}>
-            <option value="all">Toutes les villes</option>
-            {cities.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
         </div>
 
         {/* Table */}
@@ -259,7 +287,7 @@ const HotCallsPage = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  {["Nom", "Téléphone", "Ville", "Statut", "Tentatives", "Prochaine relance", "Assigné à", "Tags", ...(role === "proprietaire" ? [""] : [])].map((h) => (
+                  {["Nom", "Téléphone", "Adresse", "Phase", "Dernier feedback", "Tentatives", "Relance", "Assigné à", "Tags", "Actions"].map((h) => (
                     <th key={h} className="text-left px-3 py-3 text-muted-foreground font-medium text-xs">{h}</th>
                   ))}
                 </tr>
@@ -267,17 +295,14 @@ const HotCallsPage = () => {
               <tbody>
                 {filtered.map((h) => (
                   <tr key={h.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                    {/* Nom - clickable */}
+                    {/* Nom */}
                     <td className="px-3 py-3 font-medium whitespace-nowrap">
-                      <button
-                        onClick={() => handleOpenFiche(h)}
-                        className="text-primary hover:underline text-left"
-                      >
+                      <button onClick={() => handleOpenFiche(h)} className="text-primary hover:underline text-left">
                         {h.fullName}
                       </button>
                     </td>
 
-                    {/* Téléphone - clickable to call, then opens post-call popup */}
+                    {/* Téléphone */}
                     <td className="px-3 py-3">
                       <a
                         href={`tel:${h.phone.replace(/\D/g, "")}`}
@@ -288,28 +313,50 @@ const HotCallsPage = () => {
                       </a>
                     </td>
 
-                    {/* Ville */}
-                    <td className="px-3 py-3 text-foreground text-xs">{h.city}</td>
+                    {/* Adresse - clickable Google Maps */}
+                    <td className="px-3 py-3">
+                      <button
+                        onClick={() => openGoogleMaps(h.address, h.city)}
+                        className="flex items-center gap-1 text-info hover:underline text-left text-xs max-w-[200px] truncate"
+                        title={`${h.address}, ${h.city}`}
+                      >
+                        <MapPin className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">{h.address}</span>
+                      </button>
+                    </td>
 
-                    {/* Statut - editable dropdown */}
+                    {/* Phase */}
+                    <td className="px-3 py-3">
+                      {canManage ? (
+                        <select
+                          value={h.phase}
+                          onChange={(e) => updateHotCallPhase(h.id, e.target.value as HotCallPhase)}
+                          className={`px-2 py-1 rounded-full text-xs font-medium border-none outline-none cursor-pointer ${phaseColors[h.phase]}`}
+                        >
+                          {HOT_CALL_PHASES.map((p) => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                      ) : (
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${phaseColors[h.phase]}`}>
+                          {h.phase}
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Dernier feedback */}
                     <td className="px-3 py-3">
                       <select
-                        value={h.status}
-                        onChange={(e) => updateHotCallStatus(h.id, e.target.value as HotCallStatus)}
-                        className={`px-2 py-1 rounded-full text-xs font-medium border-none outline-none cursor-pointer ${statusColors[h.status] || "bg-secondary text-secondary-foreground"}`}
+                        value={h.lastFeedback}
+                        onChange={(e) => updateHotCallFeedback(h.id, e.target.value as HotCallFeedback)}
+                        className={`px-2 py-1 rounded-full text-xs font-medium border-none outline-none cursor-pointer ${feedbackColors[h.lastFeedback]}`}
                       >
-                        {HOT_CALL_STATUSES.map((s) => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
+                        {HOT_CALL_FEEDBACKS.map((f) => <option key={f} value={f}>{f}</option>)}
                       </select>
                     </td>
 
-                    {/* Tentatives - with +1 button */}
+                    {/* Tentatives */}
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-1">
-                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                          <Hash className="h-3 w-3" /> {h.attempts}
-                        </span>
+                        <span className="text-sm font-bold text-foreground">{h.attempts}</span>
                         <button
                           onClick={() => incrementHotCallAttempts(h.id)}
                           className="ml-1 w-5 h-5 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-primary flex items-center justify-center transition-colors"
@@ -320,24 +367,31 @@ const HotCallsPage = () => {
                       </div>
                     </td>
 
-                    {/* Prochaine relance - editable date */}
-                    <td className="px-3 py-3">
-                      <input
-                        type="date"
-                        value={h.followUpDate}
-                        onChange={(e) => updateHotCallFollowUpDate(h.id, e.target.value)}
-                        className="bg-transparent border-none text-foreground text-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary rounded px-1"
-                      />
+                    {/* Prochaine relance */}
+                    <td className="px-3 py-3 text-xs text-foreground whitespace-nowrap">
+                      {h.followUpDate}
                     </td>
 
                     {/* Assigné à */}
-                    <td className="px-3 py-3 text-foreground text-xs">{getRepName(h.repId)}</td>
-
-                    {/* Tags - editable */}
                     <td className="px-3 py-3">
-                      <div className="flex flex-wrap gap-1 items-center">
+                      {canManage ? (
+                        <select
+                          value={h.repId}
+                          onChange={(e) => reassignHotCall(h.id, e.target.value)}
+                          className="bg-transparent border-none text-foreground text-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary rounded px-1"
+                        >
+                          {SALES_REPS.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                        </select>
+                      ) : (
+                        <span className="text-foreground text-xs">{getRepName(h.repId)}</span>
+                      )}
+                    </td>
+
+                    {/* Tags */}
+                    <td className="px-3 py-3">
+                      <div className="flex flex-wrap gap-1 items-center max-w-[150px]">
                         {h.tags.map((tag) => (
-                          <span key={tag} className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent text-accent-foreground">
+                          <span key={tag} className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent/20 text-accent-foreground">
                             {tag}
                             <button onClick={() => removeTag(h.id, tag)} className="hover:text-destructive ml-0.5">
                               <X className="h-2.5 w-2.5" />
@@ -396,26 +450,48 @@ const HotCallsPage = () => {
                       </div>
                     </td>
 
-                    {/* Delete */}
-                    {role === "proprietaire" && (
-                      <td className="px-3 py-3">
-                        {deleteConfirm === h.id ? (
-                          <div className="flex items-center gap-1">
-                            <button onClick={() => { deleteHotCall(h.id); setDeleteConfirm(null); }} className="text-xs text-destructive font-medium">Oui</button>
-                            <button onClick={() => setDeleteConfirm(null)} className="text-xs text-muted-foreground">Non</button>
-                          </div>
-                        ) : (
-                          <button onClick={() => setDeleteConfirm(h.id)} className="text-muted-foreground hover:text-destructive">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+                    {/* Actions */}
+                    <td className="px-3 py-3">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => { setRebookId(h.id); setRebookDate(today); setRebookTime("09:00"); }}
+                          className="p-1.5 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
+                          title="Rebook RDV"
+                        >
+                          <CalendarPlus className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => { setEditDateId(h.id); setEditDateValue(h.followUpDate); }}
+                          className="p-1.5 rounded hover:bg-info/20 text-muted-foreground hover:text-info transition-colors"
+                          title="Modifier date relance"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        {canManage && (
+                          <>
+                            {deleteConfirm === h.id ? (
+                              <div className="flex items-center gap-1">
+                                <button onClick={() => { deleteHotCall(h.id); setDeleteConfirm(null); }} className="text-xs text-destructive font-medium">Oui</button>
+                                <button onClick={() => setDeleteConfirm(null)} className="text-xs text-muted-foreground">Non</button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setDeleteConfirm(h.id)}
+                                className="p-1.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
+                                title="Supprimer"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </>
                         )}
-                      </td>
-                    )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={role === "proprietaire" ? 9 : 8} className="px-4 py-8 text-center text-muted-foreground">
+                    <td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">
                       {view === "today" ? "Aucun appel prévu aujourd'hui" : "Aucun hot call trouvé"}
                     </td>
                   </tr>
@@ -442,13 +518,13 @@ const HotCallsPage = () => {
           </DialogHeader>
           <div className="space-y-4 mt-2">
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Statut</label>
+              <label className="text-xs text-muted-foreground mb-1 block">Dernier feedback</label>
               <select
-                value={postCallStatus}
-                onChange={(e) => setPostCallStatus(e.target.value as HotCallStatus)}
+                value={postCallFeedback}
+                onChange={(e) => setPostCallFeedback(e.target.value as HotCallFeedback)}
                 className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground"
               >
-                {HOT_CALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                {HOT_CALL_FEEDBACKS.map((f) => <option key={f} value={f}>{f}</option>)}
               </select>
             </div>
             <div>
@@ -474,6 +550,71 @@ const HotCallsPage = () => {
                 Enregistrer + 1 tentative
               </Button>
               <Button variant="outline" onClick={() => setPostCallId(null)}>
+                Annuler
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rebook RDV Popup */}
+      <Dialog open={!!rebookId} onOpenChange={(o) => { if (!o) setRebookId(null); }}>
+        <DialogContent className="sm:max-w-[400px] bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-foreground">Rebook RDV</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Date du RDV</label>
+              <input
+                type="date"
+                value={rebookDate}
+                onChange={(e) => setRebookDate(e.target.value)}
+                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Heure</label>
+              <input
+                type="time"
+                value={rebookTime}
+                onChange={(e) => setRebookTime(e.target.value)}
+                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button onClick={handleRebook} className="flex-1">
+                Créer le RDV
+              </Button>
+              <Button variant="outline" onClick={() => setRebookId(null)}>
+                Annuler
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Follow-up Date Popup */}
+      <Dialog open={!!editDateId} onOpenChange={(o) => { if (!o) setEditDateId(null); }}>
+        <DialogContent className="sm:max-w-[350px] bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-foreground">Modifier date de relance</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Nouvelle date</label>
+              <input
+                type="date"
+                value={editDateValue}
+                onChange={(e) => setEditDateValue(e.target.value)}
+                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button onClick={handleEditDate} className="flex-1">
+                Enregistrer
+              </Button>
+              <Button variant="outline" onClick={() => setEditDateId(null)}>
                 Annuler
               </Button>
             </div>
