@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { Appointment, AppointmentStatus, AppointmentResult, INITIAL_APPOINTMENTS, SALES_REPS, HotCall, HotCallStatus, CallLogEntry, StatusChangeLog } from "@/data/crm-data";
+import { Appointment, AppointmentStatus, INITIAL_APPOINTMENTS, SALES_REPS, HotCall, HotCallStatus, CallLogEntry, StatusChangeLog } from "@/data/crm-data";
 
 export type AppRole = "proprietaire" | "gestionnaire" | "representant";
 
@@ -21,7 +21,6 @@ interface CrmState {
   repGoals: Record<string, number>;
   addAppointment: (appt: Omit<Appointment, "id" | "smsScheduled" | "createdAt" | "statusLog">) => void;
   updateStatus: (id: string, status: AppointmentStatus, userId?: string) => void;
-  updateResult: (id: string, result: AppointmentResult, userId?: string) => void;
   deleteAppointment: (id: string) => void;
   updateNotes: (id: string, notes: string) => void;
   setDailyTarget: (target: number) => void;
@@ -60,12 +59,12 @@ const computeFollowUpDate = (status: HotCallStatus, fromDate: string): string =>
   return fromDate;
 };
 
-const createLogEntry = (field: "status" | "result", prev: string, next: string, userId: string): StatusChangeLog => {
+const createLogEntry = (prev: string, next: string, userId: string): StatusChangeLog => {
   const now = new Date();
   return {
     date: now.toISOString().split("T")[0],
     time: `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`,
-    field,
+    field: "status",
     previousValue: prev,
     newValue: next,
     userId,
@@ -95,18 +94,8 @@ export const useCrm = create<CrmState>((set, get) => ({
     set((state) => ({
       appointments: state.appointments.map((a) => {
         if (a.id !== id) return a;
-        const log = createLogEntry("status", a.status, status, userId);
-        // Clear result if moving away from Closed
-        const result = status === "Closed" ? a.result : undefined;
-        return { ...a, status, result, statusLog: [...a.statusLog, log] };
-      }),
-    })),
-  updateResult: (id, result, userId = "system") =>
-    set((state) => ({
-      appointments: state.appointments.map((a) => {
-        if (a.id !== id || a.status !== "Closed") return a;
-        const log = createLogEntry("result", a.result || "—", result, userId);
-        return { ...a, result, statusLog: [...a.statusLog, log] };
+        const log = createLogEntry(a.status, status, userId);
+        return { ...a, status, statusLog: [...a.statusLog, log] };
       }),
     })),
   deleteAppointment: (id) =>
@@ -269,7 +258,6 @@ export const useCrm = create<CrmState>((set, get) => ({
       const appt = state.appointments.find((a) => a.id === appointmentId);
       if (!appt) return state;
       const todayStr = new Date().toISOString().split("T")[0];
-      // Check if already in hot calls
       const existing = state.hotCalls.find((h) => h.originalAppointmentId === appointmentId);
       if (existing) return state;
       return {
@@ -299,25 +287,14 @@ export const useCrm = create<CrmState>((set, get) => ({
     }),
   autoTriggerHotCalls: () => {
     const state = get();
-    const todayStr = new Date().toISOString().split("T")[0];
-    
+
     state.appointments.forEach((appt) => {
       if (appt.status === "Backlog") return;
       const alreadyInHotCalls = state.hotCalls.some((h) => h.originalAppointmentId === appt.id);
       if (alreadyInHotCalls) return;
 
-      let shouldTrigger = false;
-
-      // Non confirmé → hot call
-      if (appt.status === "Non confirmé") shouldTrigger = true;
-
-      // Result-based triggers
-      if (appt.status === "Closed" && appt.result) {
-        if (appt.result === "Soumission envoyée") shouldTrigger = true;
-        if (appt.result.startsWith("À rappeler")) shouldTrigger = true;
-      }
-
-      if (shouldTrigger) {
+      // Annulé → automatically move to Hot Calls
+      if (appt.status === "Annulé") {
         state.moveAppointmentToHotCalls(appt.id, "Premier contact");
       }
     });

@@ -51,7 +51,7 @@ const RepViewPage = () => {
   const statusColors: Record<string, string> = {
     "En attente": "bg-warning/20 text-warning",
     "Confirmé": "bg-green-500/20 text-green-400",
-    "Non confirmé": "bg-destructive/20 text-destructive",
+    "À risque": "bg-destructive/20 text-destructive",
     "Closed": "bg-info/20 text-info",
     "Annulé": "bg-muted text-muted-foreground",
   };

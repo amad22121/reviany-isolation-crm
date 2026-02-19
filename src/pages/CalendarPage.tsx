@@ -16,7 +16,7 @@ type ViewType = "day" | "week" | "month";
 const STATUS_COLORS: Record<string, string> = {
   Confirmé: "border-l-green-500 bg-green-500/10",
   "En attente": "border-l-orange-400 bg-orange-400/10",
-  "Non confirmé": "border-l-red-500 bg-red-500/10",
+  "À risque": "border-l-red-500 bg-red-500/10",
   Closed: "border-l-blue-500 bg-blue-500/10",
   Annulé: "border-l-gray-500 bg-gray-500/10",
 };
@@ -24,7 +24,7 @@ const STATUS_COLORS: Record<string, string> = {
 const STATUS_BADGE: Record<string, string> = {
   Confirmé: "bg-green-500/20 text-green-400",
   "En attente": "bg-orange-400/20 text-orange-400",
-  "Non confirmé": "bg-red-500/20 text-red-400",
+  "À risque": "bg-red-500/20 text-red-400",
   Closed: "bg-blue-500/20 text-blue-400",
   Annulé: "bg-gray-500/20 text-gray-400",
 };
@@ -85,7 +85,7 @@ const CalendarPage = () => {
   const stats = useMemo(() => {
     const todayAppts = visibleAppointments.filter((a) => a.date === todayKey);
     const confirmed = todayAppts.filter((a) => a.status === "Confirmé").length;
-    const atRisk = todayAppts.filter((a) => a.status === "Non confirmé" || a.status === "Annulé").length;
+    const atRisk = todayAppts.filter((a) => a.status === "À risque" || a.status === "Annulé").length;
 
     const weekStart = getMonday(today);
     const weekEnd = addDays(weekStart, 6);
