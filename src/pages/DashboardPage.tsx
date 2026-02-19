@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 
 type Period = "7d" | "30d" | "month";
-type SortKey = "name" | "generated" | "confirmed" | "nonConfirmed" | "closed" | "closingRate";
+type SortKey = "name" | "generated" | "confirmed" | "atRisk" | "closed" | "cancelled";
 type DayPreset = "today" | "yesterday" | "before" | "custom";
 
 const toDateStr = (d: Date) => d.toISOString().split("T")[0];
@@ -84,15 +84,13 @@ const DashboardPage = () => {
   const dailyKpis = useMemo(() => {
     const total = dayAppts.length;
     const confirmed = dayAppts.filter((a) => a.status === "Confirmé" || a.status === "Closed").length;
-    const nonConfirmed = dayAppts.filter((a) => a.status === "Non confirmé").length;
+    const atRisk = dayAppts.filter((a) => a.status === "À risque").length;
     const closed = dayAppts.filter((a) => a.status === "Closed").length;
-    const ventes = dayAppts.filter((a) => a.status === "Closed" && a.result === "Vente").length;
     return {
       total,
       confirmRate: total > 0 ? Math.round((confirmed / total) * 100) : 0,
-      nonConfirmRate: total > 0 ? Math.round((nonConfirmed / total) * 100) : 0,
+      atRisk,
       closed,
-      closingRate: closed > 0 ? Math.round((ventes / closed) * 100) : 0,
     };
   }, [dayAppts]);
 
@@ -120,15 +118,15 @@ const DashboardPage = () => {
   const kpis = useMemo(() => {
     const total = periodAppts.length;
     const confirmed = periodAppts.filter((a) => a.status === "Confirmé" || a.status === "Closed").length;
-    const nonConfirmed = periodAppts.filter((a) => a.status === "Non confirmé").length;
+    const atRisk = periodAppts.filter((a) => a.status === "À risque").length;
     const closed = periodAppts.filter((a) => a.status === "Closed").length;
-    const ventes = periodAppts.filter((a) => a.status === "Closed" && a.result === "Vente").length;
+    const cancelled = periodAppts.filter((a) => a.status === "Annulé").length;
     return {
       total,
       confirmRate: total > 0 ? Math.round((confirmed / total) * 100) : 0,
-      nonConfirmRate: total > 0 ? Math.round((nonConfirmed / total) * 100) : 0,
+      atRisk,
       closed,
-      closingRate: closed > 0 ? Math.round((ventes / closed) * 100) : 0,
+      cancelled,
     };
   }, [periodAppts]);
 
@@ -138,11 +136,10 @@ const DashboardPage = () => {
       const ra = periodAppts.filter((a) => a.repId === r.id);
       const generated = ra.length;
       const confirmed = ra.filter((a) => a.status === "Confirmé" || a.status === "Closed").length;
-      const nonConfirmed = ra.filter((a) => a.status === "Non confirmé").length;
+      const atRisk = ra.filter((a) => a.status === "À risque").length;
       const closed = ra.filter((a) => a.status === "Closed").length;
-      const ventes = ra.filter((a) => a.status === "Closed" && a.result === "Vente").length;
-      const closingRate = closed > 0 ? Math.round((ventes / closed) * 100) : 0;
-      return { id: r.id, name: r.name, generated, confirmed, nonConfirmed, closed, closingRate };
+      const cancelled = ra.filter((a) => a.status === "Annulé").length;
+      return { id: r.id, name: r.name, generated, confirmed, atRisk, closed, cancelled };
     });
   }, [teamReps, periodAppts]);
 
@@ -159,12 +156,12 @@ const DashboardPage = () => {
   // Alerts
   const alerts = useMemo(() => {
     const items: { label: string; type: "warning" | "danger" }[] = [];
-    const tomorrowAtRisk = teamAppts.filter((a) => a.date === tomorrow && a.status === "En attente");
+    const tomorrowAtRisk = teamAppts.filter((a) => a.date === tomorrow && (a.status === "En attente" || a.status === "À risque"));
     if (tomorrowAtRisk.length > 0)
-      items.push({ label: `${tomorrowAtRisk.length} RDV à risque demain (non confirmés)`, type: "warning" });
-    const nonConfirmedRecent = teamAppts.filter((a) => a.status === "Non confirmé" && a.date >= threeDaysAgo);
-    if (nonConfirmedRecent.length > 0)
-      items.push({ label: `${nonConfirmedRecent.length} RDV non confirmés récents`, type: "danger" });
+      items.push({ label: `${tomorrowAtRisk.length} RDV à risque demain`, type: "warning" });
+    const atRiskRecent = teamAppts.filter((a) => a.status === "À risque" && a.date >= threeDaysAgo);
+    if (atRiskRecent.length > 0)
+      items.push({ label: `${atRiskRecent.length} RDV à risque récents`, type: "danger" });
     const staleLeads = teamAppts.filter((a) => a.status === "En attente" && a.date < threeDaysAgo);
     if (staleLeads.length > 0)
       items.push({ label: `${staleLeads.length} leads sans suivi depuis +3 jours`, type: "danger" });
@@ -204,7 +201,7 @@ const DashboardPage = () => {
   const statusColors: Record<string, string> = {
     "En attente": "bg-warning/20 text-warning",
     "Confirmé": "bg-green-500/20 text-green-400",
-    "Non confirmé": "bg-destructive/20 text-destructive",
+    "À risque": "bg-destructive/20 text-destructive",
     "Closed": "bg-info/20 text-info",
     "Annulé": "bg-muted text-muted-foreground",
   };
@@ -270,8 +267,8 @@ const DashboardPage = () => {
             {[
               { label: "RDV générés", value: dailyKpis.total, icon: CalendarCheck, color: "text-primary" },
               { label: "Taux de confirmation", value: `${dailyKpis.confirmRate}%`, icon: CheckCircle2, color: "text-green-400" },
-              { label: "Taux de non-confirmation", value: `${dailyKpis.nonConfirmRate}%`, icon: XCircle, color: "text-destructive" },
-              { label: "Taux de closing", value: `${dailyKpis.closingRate}%`, icon: TrendingUp, color: "text-info" },
+              { label: "À risque", value: dailyKpis.atRisk, icon: XCircle, color: "text-destructive" },
+              { label: "Closed (ventes)", value: dailyKpis.closed, icon: TrendingUp, color: "text-info" },
             ].map((s) => (
               <div key={s.label} className="glass-card p-5">
                 <div className="flex items-center justify-between mb-3">
@@ -408,8 +405,8 @@ const DashboardPage = () => {
             {[
               { label: "RDV générés", value: kpis.total, icon: CalendarCheck, color: "text-primary" },
               { label: "Taux de confirmation", value: `${kpis.confirmRate}%`, icon: CheckCircle2, color: "text-green-400" },
-              { label: "Taux de non-confirmation", value: `${kpis.nonConfirmRate}%`, icon: XCircle, color: "text-destructive" },
-              { label: "Taux de closing", value: `${kpis.closingRate}%`, icon: TrendingUp, color: "text-info" },
+              { label: "À risque", value: kpis.atRisk, icon: XCircle, color: "text-destructive" },
+              { label: "Closed (ventes)", value: kpis.closed, icon: TrendingUp, color: "text-info" },
             ].map((s) => (
               <div key={s.label} className="glass-card p-5">
                 <div className="flex items-center justify-between mb-3">
@@ -435,9 +432,9 @@ const DashboardPage = () => {
                     ["name", "Représentant"],
                     ["generated", "RDV générés"],
                     ["confirmed", "Confirmés"],
-                    ["nonConfirmed", "Non confirmés"],
-                    ["closed", "Closés"],
-                    ["closingRate", "Taux closing"],
+                    ["atRisk", "À risque"],
+                    ["closed", "Closed"],
+                    ["cancelled", "Annulés"],
                   ] as [SortKey, string][]).map(([key, label]) => (
                     <th
                       key={key}
@@ -455,9 +452,9 @@ const DashboardPage = () => {
                     <td className="px-4 py-3 font-medium text-foreground">{r.name}</td>
                     <td className="px-4 py-3 text-foreground">{r.generated}</td>
                     <td className="px-4 py-3 text-foreground">{r.confirmed}</td>
-                    <td className="px-4 py-3 text-foreground">{r.nonConfirmed}</td>
+                    <td className="px-4 py-3 text-foreground">{r.atRisk}</td>
                     <td className="px-4 py-3 text-foreground">{r.closed}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{r.closingRate}%</td>
+                    <td className="px-4 py-3 text-muted-foreground">{r.cancelled}</td>
                   </tr>
                 ))}
               </tbody>

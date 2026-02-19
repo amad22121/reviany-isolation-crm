@@ -23,7 +23,7 @@ import { MapPin, Phone, Calendar, Clock, User, HelpCircle, StickyNote, Pencil, C
 const statusColors: Record<string, string> = {
   "En attente": "bg-warning/20 text-warning border-warning/30",
   "Confirmé": "bg-green-500/20 text-green-400 border-green-500/30",
-  "Non confirmé": "bg-destructive/20 text-destructive border-destructive/30",
+  "À risque": "bg-destructive/20 text-destructive border-destructive/30",
   "Closed": "bg-info/20 text-info border-info/30",
   "Annulé": "bg-muted text-muted-foreground border-border",
 };
@@ -69,7 +69,6 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
   const getRepName = (repId: string) => SALES_REPS.find((r) => r.id === repId)?.name || repId;
 
   const displayStatus = hotCall ? hotCall.status : appointment.status;
-  const resultLabel = appointment.result;
 
   return (
     <>
@@ -87,16 +86,9 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
               <h2 className="text-lg font-semibold text-foreground">
                 {appointment.fullName}
               </h2>
-              <div className="flex items-center gap-2">
-                <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[appointment.status] || "bg-secondary text-secondary-foreground border-border"}`}>
-                  {displayStatus}
-                </span>
-                {resultLabel && (
-                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-info/20 text-info border border-info/30">
-                    {resultLabel}
-                  </span>
-                )}
-              </div>
+              <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[appointment.status] || "bg-secondary text-secondary-foreground border-border"}`}>
+                {displayStatus}
+              </span>
             </div>
 
             {/* Informations principales + Origine */}
@@ -196,7 +188,7 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
                         <div>{log.time}</div>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs text-primary font-medium">{log.field === "status" ? "Statut" : "Résultat"}</p>
+                        <p className="text-xs text-primary font-medium">Statut</p>
                         <p className="text-sm text-foreground">{log.previousValue} → {log.newValue}</p>
                         <p className="text-[10px] text-muted-foreground">par {log.userId}</p>
                       </div>
