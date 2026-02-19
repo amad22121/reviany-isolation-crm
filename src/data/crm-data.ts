@@ -26,6 +26,9 @@ export interface Appointment {
 }
 
 export type HotCallStatus =
+  | "Premier contact"
+  | "Deuxième contact"
+  | "Troisième contact"
   | "No answer"
   | "Call back later"
   | "Reschedule requested"
@@ -39,6 +42,9 @@ export type HotCallStatus =
   | "Dead";
 
 export const HOT_CALL_STATUSES: HotCallStatus[] = [
+  "Premier contact",
+  "Deuxième contact",
+  "Troisième contact",
   "No answer",
   "Call back later",
   "Reschedule requested",
@@ -51,6 +57,13 @@ export const HOT_CALL_STATUSES: HotCallStatus[] = [
   "Closed",
   "Dead",
 ];
+
+export interface CallLogEntry {
+  date: string;
+  time: string;
+  repId: string;
+  note: string;
+}
 
 export interface HotCall {
   id: string;
@@ -67,6 +80,9 @@ export interface HotCall {
   notes: string;
   createdAt: string;
   originalAppointmentId?: string;
+  origin?: string;
+  tags: string[];
+  callHistory: CallLogEntry[];
 }
 
 

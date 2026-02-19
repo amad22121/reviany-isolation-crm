@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Appointment, SALES_REPS } from "@/data/crm-data";
+import { Appointment, SALES_REPS, HotCall, CallLogEntry } from "@/data/crm-data";
 import { useCrm } from "@/store/crm-store";
 import { useAuth } from "@/store/crm-store";
 import {
@@ -18,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MapPin, Phone, Calendar, Clock, User, HelpCircle, StickyNote, Pencil, Check, Trash2 } from "lucide-react";
+import { MapPin, Phone, Calendar, Clock, User, HelpCircle, StickyNote, Pencil, Check, Trash2, BadgeCheck, History } from "lucide-react";
 
 const statusColors: Record<string, string> = {
   "En attente": "bg-warning/20 text-warning border-warning/30",
@@ -30,11 +30,12 @@ const statusColors: Record<string, string> = {
 
 interface FicheClientProps {
   appointment: Appointment | null;
+  hotCall?: HotCall | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const FicheClient = ({ appointment, open, onOpenChange }: FicheClientProps) => {
+const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientProps) => {
   const { updateNotes, deleteAppointment } = useCrm();
   const { role } = useAuth();
   const [editingNotes, setEditingNotes] = useState(false);
@@ -45,6 +46,9 @@ const FicheClient = ({ appointment, open, onOpenChange }: FicheClientProps) => {
 
   const rep = SALES_REPS.find((r) => r.id === appointment.repId);
   const canDelete = role === "proprietaire" || role === "gestionnaire";
+
+  const origin = hotCall?.origin || appointment.origin;
+  const callHistory = hotCall?.callHistory || [];
 
   const handleEditNotes = () => {
     setNotesInput(appointment.notes || "");
@@ -62,10 +66,12 @@ const FicheClient = ({ appointment, open, onOpenChange }: FicheClientProps) => {
     onOpenChange(false);
   };
 
+  const getRepName = (repId: string) => SALES_REPS.find((r) => r.id === repId)?.name || repId;
+
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => { if (!o) setEditingNotes(false); onOpenChange(o); }}>
-        <DialogContent className="sm:max-w-[560px] bg-card border-border">
+        <DialogContent className="sm:max-w-[560px] bg-card border-border max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-foreground">
               Fiche Client
@@ -78,12 +84,12 @@ const FicheClient = ({ appointment, open, onOpenChange }: FicheClientProps) => {
               <h2 className="text-lg font-semibold text-foreground">
                 {appointment.fullName}
               </h2>
-              <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[appointment.status]}`}>
-                {appointment.status}
+              <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[appointment.status] || "bg-secondary text-secondary-foreground border-border"}`}>
+                {hotCall ? hotCall.status : appointment.status}
               </span>
             </div>
 
-            {/* Informations principales */}
+            {/* Informations principales + Origine */}
             <div className="glass-card p-4 space-y-3">
               <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
                 Informations principales
@@ -99,22 +105,29 @@ const FicheClient = ({ appointment, open, onOpenChange }: FicheClientProps) => {
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <Clock className="h-4 w-4 text-primary shrink-0" />
-                  <span className="text-foreground">{appointment.time}</span>
+                  <span className="text-foreground">{appointment.time || "—"}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <User className="h-4 w-4 text-primary shrink-0" />
                   <span className="text-foreground">{rep?.name || "—"}</span>
                 </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <BadgeCheck className="h-4 w-4 text-primary shrink-0" />
+                  <span className="text-muted-foreground text-xs mr-1">Origine:</span>
+                  <span className={`text-sm ${origin ? "text-foreground" : "text-muted-foreground italic"}`}>
+                    {origin || "Non renseigné"}
+                  </span>
+                </div>
               </div>
               <div className="flex items-start gap-2 text-sm pt-1">
                 <MapPin className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                 <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(appointment.address)}`}
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${appointment.address}, ${appointment.city}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary hover:underline"
                 >
-                  {appointment.address}
+                  {appointment.address}, {appointment.city}
                 </a>
               </div>
             </div>
@@ -136,18 +149,28 @@ const FicheClient = ({ appointment, open, onOpenChange }: FicheClientProps) => {
               </div>
             </div>
 
-            {/* Profil */}
-            <div className="glass-card p-4 space-y-3">
-              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-                <User className="h-4 w-4" /> Profil
-              </h3>
-              <div className="bg-secondary/50 rounded-lg p-3">
-                <p className="text-xs text-muted-foreground mb-1">Origine</p>
-                <p className={`text-sm ${appointment.origin ? "text-foreground" : "text-muted-foreground italic"}`}>
-                  {appointment.origin || "Non renseigné"}
-                </p>
+            {/* Historique des appels */}
+            {callHistory.length > 0 && (
+              <div className="glass-card p-4 space-y-3">
+                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                  <History className="h-4 w-4" /> Historique des appels
+                </h3>
+                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                  {[...callHistory].reverse().map((entry, i) => (
+                    <div key={i} className="bg-secondary/50 rounded-lg p-3 flex items-start gap-3">
+                      <div className="shrink-0 text-xs text-muted-foreground w-20">
+                        <div>{entry.date}</div>
+                        <div>{entry.time}</div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-primary font-medium">{getRepName(entry.repId)}</p>
+                        <p className="text-sm text-foreground">{entry.note}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Notes - editable */}
             <div className="glass-card p-4 space-y-3">
@@ -155,20 +178,22 @@ const FicheClient = ({ appointment, open, onOpenChange }: FicheClientProps) => {
                 <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
                   <StickyNote className="h-4 w-4" /> Notes
                 </h3>
-                {editingNotes ? (
-                  <button
-                    onClick={handleSaveNotes}
-                    className="flex items-center gap-1 text-xs text-primary hover:opacity-80 font-medium"
-                  >
-                    <Check className="h-3.5 w-3.5" /> Sauvegarder
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleEditNotes}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    <Pencil className="h-3.5 w-3.5" /> Modifier
-                  </button>
+                {!hotCall && (
+                  editingNotes ? (
+                    <button
+                      onClick={handleSaveNotes}
+                      className="flex items-center gap-1 text-xs text-primary hover:opacity-80 font-medium"
+                    >
+                      <Check className="h-3.5 w-3.5" /> Sauvegarder
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleEditNotes}
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <Pencil className="h-3.5 w-3.5" /> Modifier
+                    </button>
+                  )
                 )}
               </div>
               {editingNotes ? (
@@ -185,8 +210,8 @@ const FicheClient = ({ appointment, open, onOpenChange }: FicheClientProps) => {
               )}
             </div>
 
-            {/* Delete button - discreet, bottom right */}
-            {canDelete && (
+            {/* Delete button */}
+            {canDelete && !hotCall && (
               <div className="flex justify-end">
                 <button
                   onClick={() => setConfirmOpen(true)}
