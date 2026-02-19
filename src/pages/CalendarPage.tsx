@@ -280,23 +280,34 @@ const CalendarPage = () => {
   return (
     <>
       <div className="space-y-6">
-        <h1 className="text-xl font-bold text-foreground">Calendrier</h1>
+      <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold text-foreground">Calendrier</h1>
+        </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { label: "RDV aujourd'hui", value: stats.total, icon: CalendarCheck, color: "text-primary" },
-            { label: "Confirmés aujourd'hui", value: stats.confirmed, icon: CheckCircle2, color: "text-green-400" },
-            { label: "À risque aujourd'hui", value: stats.atRisk, icon: AlertTriangle, color: "text-destructive" },
-            { label: "Taux closing semaine", value: `${stats.closingRate}%`, icon: TrendingUp, color: "text-info" },
-          ].map((s) => (
-            <div key={s.label} className="glass-card p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-muted-foreground">{s.label}</span>
-                <s.icon className={`h-4 w-4 ${s.color}`} />
+        <div>
+          <h2 className="text-sm font-medium text-muted-foreground mb-3">
+            Vue du jour —{" "}
+            <span className="text-foreground capitalize">
+              {today.toLocaleDateString("fr-CA", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+            </span>
+          </h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: "RDV", sub: "Total planifiés", value: stats.total, icon: CalendarCheck, color: "text-primary" },
+              { label: "Confirmés", sub: "Clients confirmés", value: stats.confirmed, icon: CheckCircle2, color: "text-green-400" },
+              { label: "À risque", sub: "Non confirmés", value: stats.atRisk, icon: AlertTriangle, color: "text-destructive" },
+              { label: "Ventes (%)", sub: "Taux de closing", value: `${stats.closingRate}%`, icon: TrendingUp, color: "text-info" },
+            ].map((s) => (
+              <div key={s.label} className="glass-card p-4">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-secondary-foreground">{s.label}</span>
+                  <s.icon className={`h-4 w-4 ${s.color}`} />
+                </div>
+                <div className="text-[10px] text-muted-foreground mb-2">{s.sub}</div>
+                <div className="text-2xl font-bold text-foreground">{s.value}</div>
               </div>
-              <div className="text-2xl font-bold text-foreground">{s.value}</div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
