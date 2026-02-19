@@ -17,12 +17,14 @@ interface CrmState {
   appointments: Appointment[];
   hotCalls: HotCall[];
   dailyTarget: number;
+  weeklyTarget: number;
   repGoals: Record<string, number>;
   addAppointment: (appt: Omit<Appointment, "id" | "smsScheduled" | "createdAt">) => void;
   updateStatus: (id: string, status: Appointment["status"]) => void;
   deleteAppointment: (id: string) => void;
   updateNotes: (id: string, notes: string) => void;
   setDailyTarget: (target: number) => void;
+  setWeeklyTarget: (target: number) => void;
   setRepGoal: (repId: string, goal: number) => void;
   addHotCall: (hc: Omit<HotCall, "id" | "attempts" | "createdAt" | "tags" | "callHistory">) => void;
   updateHotCallStatus: (id: string, status: HotCallStatus) => void;
@@ -62,6 +64,7 @@ export const useCrm = create<CrmState>((set, get) => ({
   hotCalls: INITIAL_HOT_CALLS,
   repGoals: Object.fromEntries(SALES_REPS.map((r) => [r.id, 0])),
   dailyTarget: 15,
+  weeklyTarget: 75,
   addAppointment: (appt) =>
     set((state) => ({
       appointments: [
@@ -91,6 +94,7 @@ export const useCrm = create<CrmState>((set, get) => ({
       ),
     })),
   setDailyTarget: (target) => set({ dailyTarget: target }),
+  setWeeklyTarget: (target) => set({ weeklyTarget: target }),
   setRepGoal: (repId, goal) =>
     set((state) => ({
       repGoals: { ...state.repGoals, [repId]: goal },
