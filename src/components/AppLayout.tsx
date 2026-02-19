@@ -10,7 +10,7 @@ import {
   Building2,
   Menu,
   X,
-  
+  Flame,
   Crown,
   Users,
   UserCheck,
@@ -24,7 +24,7 @@ const ROUTE_LABELS: Record<string, string> = {
   appointments: "Rendez-vous",
   rep: "Ma vue",
   users: "Gestion utilisateurs",
-  
+  "hot-calls": "Hot Calls",
 };
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
@@ -35,6 +35,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const ownerLinks = [
     { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
     { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
+    { to: "/hot-calls", label: "Hot Calls", icon: Flame },
     { to: "/leaderboard", label: "Classement", icon: Trophy },
     { to: "/appointments", label: "Rendez-vous", icon: List },
     { to: "/users", label: "Gestion utilisateurs", icon: Users },
@@ -43,6 +44,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const managerLinks = [
     { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
     { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
+    { to: "/hot-calls", label: "Hot Calls", icon: Flame },
     { to: "/leaderboard", label: "Classement", icon: Trophy },
     { to: "/appointments", label: "Rendez-vous", icon: List },
   ];
@@ -50,6 +52,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const repLinks = [
     { to: "/rep", label: "Ma vue", icon: User },
     { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
+    { to: "/hot-calls", label: "Hot Calls", icon: Flame },
     { to: "/leaderboard", label: "Classement", icon: Trophy },
     { to: "/appointments", label: "Rendez-vous", icon: List },
   ];

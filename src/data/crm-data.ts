@@ -12,6 +12,7 @@ export interface Appointment {
   clientLastName: string;
   phone: string;
   address: string;
+  city?: string;
   date: string;
   time: string;
   repId: string;
@@ -19,8 +20,54 @@ export interface Appointment {
   preQual2: string;
   notes: string;
   status: "En attente" | "Confirmé" | "Absence" | "Fermé" | "Annulé";
+  source?: "Door-to-door" | "Referral";
   smsScheduled: boolean;
   createdAt: string;
+}
+
+export type HotCallStatus =
+  | "No answer"
+  | "Call back later"
+  | "Reschedule requested"
+  | "Not interested"
+  | "Follow-up 3 months"
+  | "Follow-up 6 months"
+  | "Follow-up 9 months"
+  | "Follow-up 12 months"
+  | "Booked"
+  | "Closed"
+  | "Dead";
+
+export const HOT_CALL_STATUSES: HotCallStatus[] = [
+  "No answer",
+  "Call back later",
+  "Reschedule requested",
+  "Not interested",
+  "Follow-up 3 months",
+  "Follow-up 6 months",
+  "Follow-up 9 months",
+  "Follow-up 12 months",
+  "Booked",
+  "Closed",
+  "Dead",
+];
+
+export interface HotCall {
+  id: string;
+  clientFirstName: string;
+  clientLastName: string;
+  phone: string;
+  address: string;
+  city: string;
+  source: "Door-to-door" | "Referral";
+  repId: string;
+  status: HotCallStatus;
+  attempts: number;
+  lastContactDate: string;
+  followUpDate: string;
+  notes: string;
+  createdAt: string;
+  originalAppointmentId?: string;
 }
 
 

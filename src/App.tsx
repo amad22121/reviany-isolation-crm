@@ -11,6 +11,7 @@ import LeaderboardPage from "./pages/LeaderboardPage";
 import AppointmentsPage from "./pages/AppointmentsPage";
 import RepViewPage from "./pages/RepViewPage";
 import UserManagementPage from "./pages/UserManagementPage";
+import HotCallsPage from "./pages/HotCallsPage";
 
 import AppLayout from "./components/AppLayout";
 import NotFound from "./pages/NotFound";
@@ -48,6 +49,7 @@ const AppRoutes = () => {
       <Route path="/leaderboard" element={<AuthGuard><LeaderboardPage /></AuthGuard>} />
       <Route path="/appointments" element={<AuthGuard><AppointmentsPage /></AuthGuard>} />
       <Route path="/rep" element={<AuthGuard><RepViewPage /></AuthGuard>} />
+      <Route path="/hot-calls" element={<AuthGuard><HotCallsPage /></AuthGuard>} />
       <Route path="/users" element={<AuthGuard><UserManagementPage /></AuthGuard>} />
       
       <Route path="*" element={<NotFound />} />
