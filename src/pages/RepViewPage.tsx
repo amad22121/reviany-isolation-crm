@@ -17,7 +17,7 @@ const RepViewPage = () => {
   const myGoal = repGoals[currentRepId || ""] || 0;
 
   const todayAppts = useMemo(
-    () => appointments.filter((a) => a.repId === currentRepId && a.date === today),
+    () => appointments.filter((a) => a.repId === currentRepId && a.date === today && a.status !== "Backlog"),
     [appointments, currentRepId, today]
   );
 
@@ -158,7 +158,7 @@ const RepViewPage = () => {
                 <tr key={a.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
                   <td className="px-4 py-3 text-foreground font-medium">{a.time}</td>
                   <td className="px-4 py-3">
-                    <button onClick={() => setSelectedAppt(a)} className="text-primary hover:underline text-left">{a.clientFirstName} {a.clientLastName}</button>
+                    <button onClick={() => setSelectedAppt(a)} className="text-primary hover:underline text-left">{a.fullName}</button>
                   </td>
                   <td className="px-4 py-3 text-foreground">{a.phone}</td>
                   <td className="px-4 py-3">

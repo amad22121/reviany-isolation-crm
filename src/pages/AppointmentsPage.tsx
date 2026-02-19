@@ -36,9 +36,10 @@ const AppointmentsPage = () => {
   const filtered = useMemo(() => {
     return appointments.filter((a) => {
       if (role === "gestionnaire" && !teamRepIds.has(a.repId)) return false;
+      if (a.status === "Backlog") return false;
       const matchSearch =
         !search ||
-        `${a.clientFirstName} ${a.clientLastName}`.toLowerCase().includes(search.toLowerCase()) ||
+        a.fullName.toLowerCase().includes(search.toLowerCase()) ||
         a.phone.includes(search) ||
         a.address.toLowerCase().includes(search.toLowerCase());
       const matchRep = repFilter === "all" || a.repId === repFilter;
@@ -107,7 +108,7 @@ const AppointmentsPage = () => {
               {filtered.map((a) => (
                 <tr key={a.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
                   <td className="px-4 py-3 font-medium">
-                    <button onClick={() => setSelectedAppt(a)} className="text-primary hover:underline text-left">{a.clientFirstName} {a.clientLastName}</button>
+                    <button onClick={() => setSelectedAppt(a)} className="text-primary hover:underline text-left">{a.fullName}</button>
                   </td>
                   <td className="px-4 py-3 text-foreground">{a.phone}</td>
                   <td className="px-4 py-3">

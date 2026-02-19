@@ -119,7 +119,7 @@ const StatistiquesPage = () => {
   // Filtered appointments
   const filtered = useMemo(() => {
     return appointments.filter((a) => {
-      if (a.date < dateRange.start || a.date > dateRange.end) return false;
+      if (a.status === "Backlog") return false;
       if (sourceFilter !== "all") {
         const src = getSource(a);
         if (src !== sourceFilter) return false;

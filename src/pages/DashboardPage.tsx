@@ -50,12 +50,13 @@ const DashboardPage = () => {
   );
 
   const filtered = useMemo(() => {
-    if (filter === "today") return teamAppointments.filter((a) => a.date === today);
-    return teamAppointments.filter((a) => new Date(a.date) >= weekStart);
+    const nonBacklog = teamAppointments.filter((a) => a.status !== "Backlog");
+    if (filter === "today") return nonBacklog.filter((a) => a.date === today);
+    return nonBacklog.filter((a) => new Date(a.date) >= weekStart);
   }, [teamAppointments, filter, today]);
 
   const stats = useMemo(() => {
-    const todayAppts = teamAppointments.filter((a) => a.date === today);
+    const todayAppts = teamAppointments.filter((a) => a.date === today && a.status !== "Backlog");
     const confirmed = todayAppts.filter((a) => a.status === "Confirmé" || a.status === "Fermé").length;
     return {
       total: todayAppts.length,
@@ -255,7 +256,7 @@ const DashboardPage = () => {
                 {[...filtered].sort((a, b) => b.id.localeCompare(a.id)).map((a) => (
                   <tr key={a.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
                     <td className="px-4 py-3 font-medium">
-                      <button onClick={() => setSelectedAppt(a)} className="text-primary hover:underline text-left">{a.clientFirstName} {a.clientLastName}</button>
+                      <button onClick={() => setSelectedAppt(a)} className="text-primary hover:underline text-left">{a.fullName}</button>
                     </td>
                     <td className="px-4 py-3 text-foreground">{a.phone}</td>
                     <td className="px-4 py-3">

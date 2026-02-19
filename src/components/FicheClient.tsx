@@ -76,7 +76,7 @@ const FicheClient = ({ appointment, open, onOpenChange }: FicheClientProps) => {
             {/* Client name & status */}
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-foreground">
-                {appointment.clientFirstName} {appointment.clientLastName}
+                {appointment.fullName}
               </h2>
               <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[appointment.status]}`}>
                 {appointment.status}

@@ -74,12 +74,13 @@ const CalendarPage = () => {
 
   // Permission filtering
   const visibleAppointments = useMemo(() => {
-    if (role === "representant") return appointments.filter((a) => a.repId === currentRepId);
+    let appts = appointments.filter((a) => a.status !== "Backlog");
+    if (role === "representant") return appts.filter((a) => a.repId === currentRepId);
     if (role === "gestionnaire" && currentManagerId) {
       const managerReps = new Set(SALES_REPS.filter((r) => r.managerId === currentManagerId).map((r) => r.id));
-      return appointments.filter((a) => managerReps.has(a.repId));
+      return appts.filter((a) => managerReps.has(a.repId));
     }
-    return appointments;
+    return appts;
   }, [appointments, role, currentRepId, currentManagerId]);
 
   // Stats
@@ -143,7 +144,7 @@ const CalendarPage = () => {
     >
       <div className="flex items-center justify-between gap-1">
         <span className="text-xs font-medium text-foreground truncate">
-          {appt.clientFirstName} {appt.clientLastName}
+          {appt.fullName}
         </span>
         <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 ${STATUS_BADGE[appt.status] || "bg-secondary text-secondary-foreground"}`}>
           {appt.status}
@@ -152,7 +153,7 @@ const CalendarPage = () => {
       <div className="flex items-center gap-2 mt-0.5">
         <span className="text-[11px] text-muted-foreground">{appt.time}</span>
         <span className="text-[11px] text-muted-foreground">·</span>
-        <span className="text-[11px] text-muted-foreground truncate">{extractCity(appt.address)}</span>
+        <span className="text-[11px] text-muted-foreground truncate">{appt.city || extractCity(appt.address)}</span>
       </div>
       <div className="text-[10px] text-muted-foreground mt-0.5">{getRepName(appt.repId)}</div>
     </button>
@@ -274,7 +275,7 @@ const CalendarPage = () => {
                     className={`w-full text-left border-l-2 rounded px-1 py-0.5 mb-0.5 text-[10px] truncate ${STATUS_COLORS[a.status] || "border-l-gray-500 bg-secondary/50"}`}
                   >
                     <span className="font-medium text-foreground">{a.time}</span>{" "}
-                    <span className="text-muted-foreground">{a.clientFirstName} {a.clientLastName.charAt(0)}.</span>
+                    <span className="text-muted-foreground">{a.fullName}</span>
                   </button>
                 ))}
                 {dayAppts.length > 3 && (
