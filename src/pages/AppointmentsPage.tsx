@@ -1,13 +1,11 @@
 import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
-import { SALES_REPS, Appointment } from "@/data/crm-data";
+import { SALES_REPS, Appointment, APPOINTMENT_STATUSES, APPOINTMENT_RESULTS, AppointmentStatus, AppointmentResult } from "@/data/crm-data";
 import { Search, MapPin, Bell, Check } from "lucide-react";
 import FicheClient from "@/components/FicheClient";
 
-const STATUS_LIST = ["En attente", "Confirmé", "Absence", "Fermé", "Annulé"];
-
 const AppointmentsPage = () => {
-  const { appointments, updateStatus, updateNotes } = useCrm();
+  const { appointments, updateStatus, updateResult, updateNotes } = useCrm();
   const { role, currentManagerId } = useAuth();
   const [search, setSearch] = useState("");
   const [repFilter, setRepFilter] = useState("all");
@@ -52,10 +50,22 @@ const AppointmentsPage = () => {
 
   const statusColors: Record<string, string> = {
     "En attente": "bg-warning/20 text-warning",
-    "Confirmé": "bg-primary/20 text-primary",
-    "Absence": "bg-destructive/20 text-destructive",
-    "Fermé": "bg-info/20 text-info",
+    "Confirmé": "bg-green-500/20 text-green-400",
+    "Non confirmé": "bg-destructive/20 text-destructive",
+    "Closed": "bg-info/20 text-info",
     "Annulé": "bg-muted text-muted-foreground",
+  };
+
+  const resultColors: Record<string, string> = {
+    "Vente": "bg-green-500/20 text-green-400",
+    "Soumission envoyée": "bg-info/20 text-info",
+    "Refus": "bg-destructive/20 text-destructive",
+    "À rappeler 3 mois": "bg-warning/20 text-warning",
+    "À rappeler 6 mois": "bg-warning/20 text-warning",
+    "À rappeler 9 mois": "bg-warning/20 text-warning",
+    "À rappeler 12 mois": "bg-warning/20 text-warning",
+    "Client absent à l'arrivée": "bg-destructive/20 text-destructive",
+    "Dead": "bg-muted text-muted-foreground",
   };
 
   return (
@@ -88,7 +98,7 @@ const AppointmentsPage = () => {
           onChange={(e) => setStatusFilter(e.target.value)}
         >
           <option value="all">Tous les statuts</option>
-          {STATUS_LIST.map((s) => (
+          {APPOINTMENT_STATUSES.map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
@@ -99,7 +109,7 @@ const AppointmentsPage = () => {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                {["Client", "Téléphone", "Adresse", "Date/Heure", "Représentant", "Statut", "Notes"].map((h) => (
+                {["Client", "Téléphone", "Adresse", "Date/Heure", "Représentant", "Statut", "Résultat", "Notes"].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-muted-foreground font-medium">{h}</th>
                 ))}
               </tr>
@@ -127,10 +137,10 @@ const AppointmentsPage = () => {
                     {(role === "proprietaire" || role === "gestionnaire") ? (
                       <select
                         value={a.status}
-                        onChange={(e) => updateStatus(a.id, e.target.value as any)}
+                        onChange={(e) => updateStatus(a.id, e.target.value as AppointmentStatus, role || "system")}
                         className={`px-2 py-1 rounded-full text-xs font-medium border-0 cursor-pointer ${statusColors[a.status]}`}
                       >
-                        {STATUS_LIST.map((s) => (
+                        {APPOINTMENT_STATUSES.map((s) => (
                           <option key={s} value={s}>{s}</option>
                         ))}
                       </select>
@@ -138,6 +148,28 @@ const AppointmentsPage = () => {
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[a.status]}`}>
                         {a.status}
                       </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {a.status === "Closed" ? (
+                      (role === "proprietaire" || role === "gestionnaire") ? (
+                        <select
+                          value={a.result || ""}
+                          onChange={(e) => updateResult(a.id, e.target.value as AppointmentResult, role || "system")}
+                          className={`px-2 py-1 rounded-full text-xs font-medium border-0 cursor-pointer ${a.result ? resultColors[a.result] || "" : "bg-secondary text-muted-foreground"}`}
+                        >
+                          <option value="">Choisir...</option>
+                          {APPOINTMENT_RESULTS.map((r) => (
+                            <option key={r} value={r}>{r}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${a.result ? resultColors[a.result] || "" : "text-muted-foreground"}`}>
+                          {a.result || "—"}
+                        </span>
+                      )
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-xs max-w-[180px]">
@@ -176,7 +208,7 @@ const AppointmentsPage = () => {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Aucun rendez-vous trouvé</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">Aucun rendez-vous trouvé</td></tr>
               )}
             </tbody>
           </table>

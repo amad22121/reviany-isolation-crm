@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { Appointment, INITIAL_APPOINTMENTS, SALES_REPS, HotCall, HotCallStatus, CallLogEntry } from "@/data/crm-data";
+import { Appointment, AppointmentStatus, AppointmentResult, INITIAL_APPOINTMENTS, SALES_REPS, HotCall, HotCallStatus, CallLogEntry, StatusChangeLog } from "@/data/crm-data";
 
 export type AppRole = "proprietaire" | "gestionnaire" | "representant";
 
@@ -19,8 +19,9 @@ interface CrmState {
   dailyTarget: number;
   weeklyTarget: number;
   repGoals: Record<string, number>;
-  addAppointment: (appt: Omit<Appointment, "id" | "smsScheduled" | "createdAt">) => void;
-  updateStatus: (id: string, status: Appointment["status"]) => void;
+  addAppointment: (appt: Omit<Appointment, "id" | "smsScheduled" | "createdAt" | "statusLog">) => void;
+  updateStatus: (id: string, status: AppointmentStatus, userId?: string) => void;
+  updateResult: (id: string, result: AppointmentResult, userId?: string) => void;
   deleteAppointment: (id: string) => void;
   updateNotes: (id: string, notes: string) => void;
   setDailyTarget: (target: number) => void;
@@ -37,19 +38,19 @@ interface CrmState {
   updateHotCallTags: (id: string, tags: string[]) => void;
   addHotCallLog: (id: string, entry: CallLogEntry) => void;
   logCallAndUpdate: (id: string, status: HotCallStatus, note: string, followUpDate: string, repId: string) => void;
+  autoTriggerHotCalls: () => void;
 }
 
 const today = new Date().toISOString().split("T")[0];
 const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
 const INITIAL_HOT_CALLS: HotCall[] = [
-  { id: "hc1", fullName: "Diane Simard", phone: "(438) 555-0112", address: "430 Rue Beaubien E", city: "Montréal", source: "Door-to-door", repId: "rep2", status: "No answer", attempts: 2, lastContactDate: yesterday, followUpDate: today, notes: "Absence, replanifier", createdAt: yesterday, tags: ["Callback"], callHistory: [{ date: yesterday, time: "10:30", repId: "rep2", note: "Pas de réponse" }] },
+  { id: "hc1", fullName: "Diane Simard", phone: "(438) 555-0112", address: "430 Rue Beaubien E", city: "Montréal", source: "Door-to-door", repId: "rep2", status: "No answer", attempts: 2, lastContactDate: yesterday, followUpDate: today, notes: "Non confirmé, replanifier", createdAt: yesterday, tags: ["Callback"], callHistory: [{ date: yesterday, time: "10:30", repId: "rep2", note: "Pas de réponse" }] },
   { id: "hc2", fullName: "Lucie Tremblay", phone: "(514) 555-0120", address: "890 Rue Wellington", city: "Verdun", source: "Referral", repId: "rep1", status: "Call back later", attempts: 1, lastContactDate: yesterday, followUpDate: today, notes: "Rappeler le matin", createdAt: yesterday, tags: ["À rappeler matin"], callHistory: [{ date: yesterday, time: "14:00", repId: "rep1", note: "Rappeler le matin" }] },
   { id: "hc3", fullName: "Yves Bouchard", phone: "(438) 555-0130", address: "1200 Avenue du Parc", city: "Montréal", source: "Door-to-door", repId: "rep3", status: "Follow-up 3 months", attempts: 3, lastContactDate: yesterday, followUpDate: "2026-05-19", notes: "Intéressé mais pas maintenant", createdAt: yesterday, tags: ["Client chaud"], callHistory: [{ date: yesterday, time: "11:00", repId: "rep3", note: "Intéressé mais pas maintenant" }] },
   { id: "hc4", fullName: "Julie Roy", phone: "(514) 555-0140", address: "567 Boulevard Gouin O", city: "Laval", source: "Door-to-door", repId: "rep4", status: "Reschedule requested", attempts: 1, lastContactDate: today, followUpDate: today, notes: "Veut un RDV en soirée", createdAt: today, tags: ["À rappeler soir"], callHistory: [{ date: today, time: "09:00", repId: "rep4", note: "Veut un RDV en soirée" }] },
 ];
 
-// Helper to compute follow-up date from status
 const computeFollowUpDate = (status: HotCallStatus, fromDate: string): string => {
   const d = new Date(fromDate);
   if (status === "Follow-up 3 months") { d.setMonth(d.getMonth() + 3); return d.toISOString().split("T")[0]; }
@@ -57,6 +58,18 @@ const computeFollowUpDate = (status: HotCallStatus, fromDate: string): string =>
   if (status === "Follow-up 9 months") { d.setMonth(d.getMonth() + 9); return d.toISOString().split("T")[0]; }
   if (status === "Follow-up 12 months") { d.setMonth(d.getMonth() + 12); return d.toISOString().split("T")[0]; }
   return fromDate;
+};
+
+const createLogEntry = (field: "status" | "result", prev: string, next: string, userId: string): StatusChangeLog => {
+  const now = new Date();
+  return {
+    date: now.toISOString().split("T")[0],
+    time: `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`,
+    field,
+    previousValue: prev,
+    newValue: next,
+    userId,
+  };
 };
 
 export const useCrm = create<CrmState>((set, get) => ({
@@ -74,14 +87,27 @@ export const useCrm = create<CrmState>((set, get) => ({
           id: `a${Date.now()}`,
           smsScheduled: false,
           createdAt: new Date().toISOString().split("T")[0],
+          statusLog: [],
         },
       ],
     })),
-  updateStatus: (id, status) =>
+  updateStatus: (id, status, userId = "system") =>
     set((state) => ({
-      appointments: state.appointments.map((a) =>
-        a.id === id ? { ...a, status } : a
-      ),
+      appointments: state.appointments.map((a) => {
+        if (a.id !== id) return a;
+        const log = createLogEntry("status", a.status, status, userId);
+        // Clear result if moving away from Closed
+        const result = status === "Closed" ? a.result : undefined;
+        return { ...a, status, result, statusLog: [...a.statusLog, log] };
+      }),
+    })),
+  updateResult: (id, result, userId = "system") =>
+    set((state) => ({
+      appointments: state.appointments.map((a) => {
+        if (a.id !== id || a.status !== "Closed") return a;
+        const log = createLogEntry("result", a.result || "—", result, userId);
+        return { ...a, result, statusLog: [...a.statusLog, log] };
+      }),
     })),
   deleteAppointment: (id) =>
     set((state) => ({
@@ -133,6 +159,7 @@ export const useCrm = create<CrmState>((set, get) => ({
                 source: hc.source,
                 smsScheduled: false,
                 createdAt: todayStr,
+                statusLog: [],
               },
             ],
           };
@@ -215,6 +242,7 @@ export const useCrm = create<CrmState>((set, get) => ({
                 source: hc.source,
                 smsScheduled: false,
                 createdAt: todayStr,
+                statusLog: [],
               },
             ],
           };
@@ -241,8 +269,10 @@ export const useCrm = create<CrmState>((set, get) => ({
       const appt = state.appointments.find((a) => a.id === appointmentId);
       if (!appt) return state;
       const todayStr = new Date().toISOString().split("T")[0];
+      // Check if already in hot calls
+      const existing = state.hotCalls.find((h) => h.originalAppointmentId === appointmentId);
+      if (existing) return state;
       return {
-        appointments: state.appointments.filter((a) => a.id !== appointmentId),
         hotCalls: [
           ...state.hotCalls,
           {
@@ -256,7 +286,7 @@ export const useCrm = create<CrmState>((set, get) => ({
             status,
             attempts: 1,
             lastContactDate: todayStr,
-            followUpDate: todayStr,
+            followUpDate: new Date(Date.now() + 86400000).toISOString().split("T")[0],
             notes: appt.notes,
             createdAt: todayStr,
             originalAppointmentId: appt.id,
@@ -267,6 +297,31 @@ export const useCrm = create<CrmState>((set, get) => ({
         ],
       };
     }),
+  autoTriggerHotCalls: () => {
+    const state = get();
+    const todayStr = new Date().toISOString().split("T")[0];
+    
+    state.appointments.forEach((appt) => {
+      if (appt.status === "Backlog") return;
+      const alreadyInHotCalls = state.hotCalls.some((h) => h.originalAppointmentId === appt.id);
+      if (alreadyInHotCalls) return;
+
+      let shouldTrigger = false;
+
+      // Non confirmé → hot call
+      if (appt.status === "Non confirmé") shouldTrigger = true;
+
+      // Result-based triggers
+      if (appt.status === "Closed" && appt.result) {
+        if (appt.result === "Soumission envoyée") shouldTrigger = true;
+        if (appt.result.startsWith("À rappeler")) shouldTrigger = true;
+      }
+
+      if (shouldTrigger) {
+        state.moveAppointmentToHotCalls(appt.id, "Premier contact");
+      }
+    });
+  },
   convertBacklogToAppointment: (id, updates) =>
     set((state) => ({
       appointments: state.appointments.map((a) =>

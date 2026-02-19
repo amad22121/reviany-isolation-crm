@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 
 type Period = "7d" | "30d" | "month";
-type SortKey = "name" | "generated" | "confirmed" | "noShow" | "closed" | "recovery";
+type SortKey = "name" | "generated" | "confirmed" | "nonConfirmed" | "closed" | "closingRate";
 type DayPreset = "today" | "yesterday" | "before" | "custom";
 
 const toDateStr = (d: Date) => d.toISOString().split("T")[0];
@@ -37,7 +37,6 @@ const DashboardPage = () => {
   const [sortKey, setSortKey] = useState<SortKey>("generated");
   const [sortAsc, setSortAsc] = useState(false);
 
-  // Daily section state
   const [dayPreset, setDayPreset] = useState<DayPreset>("today");
   const [customDate, setCustomDate] = useState<Date | undefined>(undefined);
   const [editingDailyTarget, setEditingDailyTarget] = useState(false);
@@ -84,14 +83,16 @@ const DashboardPage = () => {
 
   const dailyKpis = useMemo(() => {
     const total = dayAppts.length;
-    const confirmed = dayAppts.filter((a) => a.status === "Confirmé" || a.status === "Fermé").length;
-    const noShows = dayAppts.filter((a) => a.status === "Absence").length;
-    const closed = dayAppts.filter((a) => a.status === "Fermé").length;
+    const confirmed = dayAppts.filter((a) => a.status === "Confirmé" || a.status === "Closed").length;
+    const nonConfirmed = dayAppts.filter((a) => a.status === "Non confirmé").length;
+    const closed = dayAppts.filter((a) => a.status === "Closed").length;
+    const ventes = dayAppts.filter((a) => a.status === "Closed" && a.result === "Vente").length;
     return {
       total,
       confirmRate: total > 0 ? Math.round((confirmed / total) * 100) : 0,
-      noShowRate: confirmed > 0 ? Math.round((noShows / confirmed) * 100) : 0,
+      nonConfirmRate: total > 0 ? Math.round((nonConfirmed / total) * 100) : 0,
       closed,
+      closingRate: closed > 0 ? Math.round((ventes / closed) * 100) : 0,
     };
   }, [dayAppts]);
 
@@ -118,14 +119,16 @@ const DashboardPage = () => {
 
   const kpis = useMemo(() => {
     const total = periodAppts.length;
-    const confirmed = periodAppts.filter((a) => a.status === "Confirmé" || a.status === "Fermé").length;
-    const noShows = periodAppts.filter((a) => a.status === "Absence").length;
-    const closed = periodAppts.filter((a) => a.status === "Fermé").length;
+    const confirmed = periodAppts.filter((a) => a.status === "Confirmé" || a.status === "Closed").length;
+    const nonConfirmed = periodAppts.filter((a) => a.status === "Non confirmé").length;
+    const closed = periodAppts.filter((a) => a.status === "Closed").length;
+    const ventes = periodAppts.filter((a) => a.status === "Closed" && a.result === "Vente").length;
     return {
       total,
       confirmRate: total > 0 ? Math.round((confirmed / total) * 100) : 0,
-      noShowRate: confirmed > 0 ? Math.round((noShows / confirmed) * 100) : 0,
+      nonConfirmRate: total > 0 ? Math.round((nonConfirmed / total) * 100) : 0,
       closed,
+      closingRate: closed > 0 ? Math.round((ventes / closed) * 100) : 0,
     };
   }, [periodAppts]);
 
@@ -134,11 +137,12 @@ const DashboardPage = () => {
     return teamReps.map((r) => {
       const ra = periodAppts.filter((a) => a.repId === r.id);
       const generated = ra.length;
-      const confirmed = ra.filter((a) => a.status === "Confirmé" || a.status === "Fermé").length;
-      const noShow = ra.filter((a) => a.status === "Absence").length;
-      const closed = ra.filter((a) => a.status === "Fermé").length;
-      const recovery = noShow > 0 ? 0 : 0;
-      return { id: r.id, name: r.name, generated, confirmed, noShow, closed, recovery };
+      const confirmed = ra.filter((a) => a.status === "Confirmé" || a.status === "Closed").length;
+      const nonConfirmed = ra.filter((a) => a.status === "Non confirmé").length;
+      const closed = ra.filter((a) => a.status === "Closed").length;
+      const ventes = ra.filter((a) => a.status === "Closed" && a.result === "Vente").length;
+      const closingRate = closed > 0 ? Math.round((ventes / closed) * 100) : 0;
+      return { id: r.id, name: r.name, generated, confirmed, nonConfirmed, closed, closingRate };
     });
   }, [teamReps, periodAppts]);
 
@@ -158,9 +162,9 @@ const DashboardPage = () => {
     const tomorrowAtRisk = teamAppts.filter((a) => a.date === tomorrow && a.status === "En attente");
     if (tomorrowAtRisk.length > 0)
       items.push({ label: `${tomorrowAtRisk.length} RDV à risque demain (non confirmés)`, type: "warning" });
-    const noShowNotFollowed = teamAppts.filter((a) => a.status === "Absence" && a.date >= threeDaysAgo);
-    if (noShowNotFollowed.length > 0)
-      items.push({ label: `${noShowNotFollowed.length} no-show non rappelés`, type: "danger" });
+    const nonConfirmedRecent = teamAppts.filter((a) => a.status === "Non confirmé" && a.date >= threeDaysAgo);
+    if (nonConfirmedRecent.length > 0)
+      items.push({ label: `${nonConfirmedRecent.length} RDV non confirmés récents`, type: "danger" });
     const staleLeads = teamAppts.filter((a) => a.status === "En attente" && a.date < threeDaysAgo);
     if (staleLeads.length > 0)
       items.push({ label: `${staleLeads.length} leads sans suivi depuis +3 jours`, type: "danger" });
@@ -199,9 +203,9 @@ const DashboardPage = () => {
 
   const statusColors: Record<string, string> = {
     "En attente": "bg-warning/20 text-warning",
-    "Confirmé": "bg-primary/20 text-primary",
-    "Absence": "bg-destructive/20 text-destructive",
-    "Fermé": "bg-info/20 text-info",
+    "Confirmé": "bg-green-500/20 text-green-400",
+    "Non confirmé": "bg-destructive/20 text-destructive",
+    "Closed": "bg-info/20 text-info",
     "Annulé": "bg-muted text-muted-foreground",
   };
 
@@ -265,9 +269,9 @@ const DashboardPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { label: "RDV générés", value: dailyKpis.total, icon: CalendarCheck, color: "text-primary" },
-              { label: "Taux de confirmation", value: `${dailyKpis.confirmRate}%`, icon: CheckCircle2, color: "text-primary" },
-              { label: "Taux de no-show", value: `${dailyKpis.noShowRate}%`, icon: XCircle, color: "text-destructive" },
-              { label: "RDV closés", value: dailyKpis.closed, icon: TrendingUp, color: "text-info" },
+              { label: "Taux de confirmation", value: `${dailyKpis.confirmRate}%`, icon: CheckCircle2, color: "text-green-400" },
+              { label: "Taux de non-confirmation", value: `${dailyKpis.nonConfirmRate}%`, icon: XCircle, color: "text-destructive" },
+              { label: "Taux de closing", value: `${dailyKpis.closingRate}%`, icon: TrendingUp, color: "text-info" },
             ].map((s) => (
               <div key={s.label} className="glass-card p-5">
                 <div className="flex items-center justify-between mb-3">
@@ -403,9 +407,9 @@ const DashboardPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { label: "RDV générés", value: kpis.total, icon: CalendarCheck, color: "text-primary" },
-              { label: "Taux de confirmation", value: `${kpis.confirmRate}%`, icon: CheckCircle2, color: "text-primary" },
-              { label: "Taux de no-show", value: `${kpis.noShowRate}%`, icon: XCircle, color: "text-destructive" },
-              { label: "RDV closés", value: kpis.closed, icon: TrendingUp, color: "text-info" },
+              { label: "Taux de confirmation", value: `${kpis.confirmRate}%`, icon: CheckCircle2, color: "text-green-400" },
+              { label: "Taux de non-confirmation", value: `${kpis.nonConfirmRate}%`, icon: XCircle, color: "text-destructive" },
+              { label: "Taux de closing", value: `${kpis.closingRate}%`, icon: TrendingUp, color: "text-info" },
             ].map((s) => (
               <div key={s.label} className="glass-card p-5">
                 <div className="flex items-center justify-between mb-3">
@@ -431,9 +435,9 @@ const DashboardPage = () => {
                     ["name", "Représentant"],
                     ["generated", "RDV générés"],
                     ["confirmed", "Confirmés"],
-                    ["noShow", "No-show"],
+                    ["nonConfirmed", "Non confirmés"],
                     ["closed", "Closés"],
-                    ["recovery", "Taux récup."],
+                    ["closingRate", "Taux closing"],
                   ] as [SortKey, string][]).map(([key, label]) => (
                     <th
                       key={key}
@@ -451,9 +455,9 @@ const DashboardPage = () => {
                     <td className="px-4 py-3 font-medium text-foreground">{r.name}</td>
                     <td className="px-4 py-3 text-foreground">{r.generated}</td>
                     <td className="px-4 py-3 text-foreground">{r.confirmed}</td>
-                    <td className="px-4 py-3 text-foreground">{r.noShow}</td>
+                    <td className="px-4 py-3 text-foreground">{r.nonConfirmed}</td>
                     <td className="px-4 py-3 text-foreground">{r.closed}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{r.recovery}%</td>
+                    <td className="px-4 py-3 text-muted-foreground">{r.closingRate}%</td>
                   </tr>
                 ))}
               </tbody>

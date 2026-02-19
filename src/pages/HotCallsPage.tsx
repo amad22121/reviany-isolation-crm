@@ -79,6 +79,7 @@ const HotCallsPage = () => {
       source: hc.source,
       smsScheduled: false,
       createdAt: hc.createdAt,
+      statusLog: [],
     };
   };
 

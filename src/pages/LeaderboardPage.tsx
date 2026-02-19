@@ -35,7 +35,7 @@ const LeaderboardPage = () => {
 
     return teamReps.map((rep) => {
       const repAppts = filtered.filter((a) => a.repId === rep.id);
-      const confirmed = repAppts.filter((a) => a.status === "Confirmé" || a.status === "Fermé").length;
+      const confirmed = repAppts.filter((a) => a.status === "Confirmé" || a.status === "Closed").length;
       return {
         ...rep,
         booked: repAppts.length,
