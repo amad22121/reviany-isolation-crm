@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   CalendarPlus,
   CalendarDays,
+  BarChart3,
   Trophy,
   List,
   User,
@@ -27,6 +28,7 @@ const ROUTE_LABELS: Record<string, string> = {
   users: "Gestion utilisateurs",
   "hot-calls": "Hot Calls",
   calendar: "Calendrier",
+  statistiques: "Statistiques",
 };
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
@@ -37,6 +39,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const ownerLinks = [
     { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
     { to: "/calendar", label: "Calendrier", icon: CalendarDays },
+    { to: "/statistiques", label: "Statistiques", icon: BarChart3 },
     { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
     { to: "/hot-calls", label: "Hot Calls", icon: Flame },
     { to: "/leaderboard", label: "Classement", icon: Trophy },
@@ -47,6 +50,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const managerLinks = [
     { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
     { to: "/calendar", label: "Calendrier", icon: CalendarDays },
+    { to: "/statistiques", label: "Statistiques", icon: BarChart3 },
     { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
     { to: "/hot-calls", label: "Hot Calls", icon: Flame },
     { to: "/leaderboard", label: "Classement", icon: Trophy },
