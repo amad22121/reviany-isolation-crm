@@ -462,31 +462,7 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        {/* ===== SECTION 6 — Zone d'alerte ===== */}
-        <div className="glass-card p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle className="h-5 w-5 text-warning" />
-            <h3 className="text-sm font-medium text-foreground">Zone d'alerte</h3>
-          </div>
-          {alerts.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Aucune alerte critique</p>
-          ) : (
-            <ul className="space-y-2">
-              {alerts.map((a, i) => (
-                <li
-                  key={i}
-                  className={`text-sm px-3 py-2 rounded-lg ${
-                    a.type === "danger" ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning"
-                  }`}
-                >
-                  {a.label}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* ===== SECTION 7 — RDV récents ===== */}
+        {/* ===== SECTION 6 — RDV récents ===== */}
         <div className="glass-card overflow-hidden">
           <div className="px-5 py-4 border-b border-border">
             <h3 className="text-sm font-medium text-foreground">RDV récents</h3>
