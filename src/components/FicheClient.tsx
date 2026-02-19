@@ -136,6 +136,19 @@ const FicheClient = ({ appointment, open, onOpenChange }: FicheClientProps) => {
               </div>
             </div>
 
+            {/* Profil */}
+            <div className="glass-card p-4 space-y-3">
+              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                <User className="h-4 w-4" /> Profil
+              </h3>
+              <div className="bg-secondary/50 rounded-lg p-3">
+                <p className="text-xs text-muted-foreground mb-1">Origine</p>
+                <p className={`text-sm ${appointment.origin ? "text-foreground" : "text-muted-foreground italic"}`}>
+                  {appointment.origin || "Non renseigné"}
+                </p>
+              </div>
+            </div>
+
             {/* Notes - editable */}
             <div className="glass-card p-4 space-y-3">
               <div className="flex items-center justify-between">
