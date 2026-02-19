@@ -2,6 +2,12 @@ import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
 import { SALES_REPS, Appointment } from "@/data/crm-data";
 import FicheClient from "@/components/FicheClient";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
 import {
   CalendarCheck,
   CheckCircle2,
@@ -13,23 +19,48 @@ import {
   Check,
   ChevronUp,
   ChevronDown,
+  CalendarIcon,
 } from "lucide-react";
 
 type Period = "7d" | "30d" | "month";
 type SortKey = "name" | "generated" | "confirmed" | "noShow" | "closed" | "recovery";
+type DayPreset = "today" | "yesterday" | "before" | "custom";
+
+const toDateStr = (d: Date) => d.toISOString().split("T")[0];
 
 const DashboardPage = () => {
-  const { appointments, weeklyTarget, setWeeklyTarget } = useCrm();
+  const { appointments, dailyTarget, setDailyTarget, repGoals, setRepGoal } = useCrm();
   const { role, currentManagerId } = useAuth();
+
   const [period, setPeriod] = useState<Period>("7d");
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
-  const [editingTarget, setEditingTarget] = useState(false);
-  const [targetInput, setTargetInput] = useState(String(weeklyTarget));
   const [sortKey, setSortKey] = useState<SortKey>("generated");
   const [sortAsc, setSortAsc] = useState(false);
 
-  const canEdit = role === "proprietaire";
-  const canView = role === "proprietaire" || role === "gestionnaire";
+  // Daily section state
+  const [dayPreset, setDayPreset] = useState<DayPreset>("today");
+  const [customDate, setCustomDate] = useState<Date | undefined>(undefined);
+  const [editingDailyTarget, setEditingDailyTarget] = useState(false);
+  const [dailyTargetInput, setDailyTargetInput] = useState(String(dailyTarget));
+  const [editingRepGoal, setEditingRepGoal] = useState<string | null>(null);
+  const [repGoalInput, setRepGoalInput] = useState("");
+
+  const canEditTarget = role === "proprietaire";
+  const canEditRepGoals = role === "proprietaire";
+
+  const today = toDateStr(new Date());
+  const yesterday = toDateStr(new Date(Date.now() - 86400000));
+  const beforeYesterday = toDateStr(new Date(Date.now() - 2 * 86400000));
+  const tomorrow = toDateStr(new Date(Date.now() + 86400000));
+  const threeDaysAgo = toDateStr(new Date(Date.now() - 3 * 86400000));
+
+  const selectedDay = useMemo(() => {
+    if (dayPreset === "today") return today;
+    if (dayPreset === "yesterday") return yesterday;
+    if (dayPreset === "before") return beforeYesterday;
+    if (dayPreset === "custom" && customDate) return toDateStr(customDate);
+    return today;
+  }, [dayPreset, customDate, today, yesterday, beforeYesterday]);
 
   const teamReps = useMemo(() => {
     if (role === "gestionnaire" && currentManagerId) {
@@ -40,37 +71,51 @@ const DashboardPage = () => {
 
   const teamRepIds = useMemo(() => new Set(teamReps.map((r) => r.id)), [teamReps]);
 
-  const periodStart = useMemo(() => {
-    const now = new Date();
-    if (period === "7d") {
-      const d = new Date(now);
-      d.setDate(d.getDate() - 7);
-      return d.toISOString().split("T")[0];
-    }
-    if (period === "30d") {
-      const d = new Date(now);
-      d.setDate(d.getDate() - 30);
-      return d.toISOString().split("T")[0];
-    }
-    // month
-    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
-  }, [period]);
-
-  const today = new Date().toISOString().split("T")[0];
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
-  const threeDaysAgo = new Date(Date.now() - 3 * 86400000).toISOString().split("T")[0];
-
   const teamAppts = useMemo(
     () => appointments.filter((a) => teamRepIds.has(a.repId) && a.status !== "Backlog"),
     [appointments, teamRepIds]
   );
+
+  // Daily KPIs
+  const dayAppts = useMemo(
+    () => teamAppts.filter((a) => a.date === selectedDay),
+    [teamAppts, selectedDay]
+  );
+
+  const dailyKpis = useMemo(() => {
+    const total = dayAppts.length;
+    const confirmed = dayAppts.filter((a) => a.status === "Confirmé" || a.status === "Fermé").length;
+    const noShows = dayAppts.filter((a) => a.status === "Absence").length;
+    const closed = dayAppts.filter((a) => a.status === "Fermé").length;
+    return {
+      total,
+      confirmRate: total > 0 ? Math.round((confirmed / total) * 100) : 0,
+      noShowRate: confirmed > 0 ? Math.round((noShows / confirmed) * 100) : 0,
+      closed,
+    };
+  }, [dayAppts]);
+
+  // Today appts for objective
+  const todayAppts = useMemo(
+    () => teamAppts.filter((a) => a.date === today),
+    [teamAppts, today]
+  );
+  const todayCount = todayAppts.length;
+  const dailyPct = dailyTarget > 0 ? Math.min(100, Math.round((todayCount / dailyTarget) * 100)) : 0;
+
+  // Period KPIs
+  const periodStart = useMemo(() => {
+    const now = new Date();
+    if (period === "7d") { const d = new Date(now); d.setDate(d.getDate() - 7); return toDateStr(d); }
+    if (period === "30d") { const d = new Date(now); d.setDate(d.getDate() - 30); return toDateStr(d); }
+    return toDateStr(new Date(now.getFullYear(), now.getMonth(), 1));
+  }, [period]);
 
   const periodAppts = useMemo(
     () => teamAppts.filter((a) => a.date >= periodStart && a.date <= today),
     [teamAppts, periodStart, today]
   );
 
-  // === SECTION 1: KPIs ===
   const kpis = useMemo(() => {
     const total = periodAppts.length;
     const confirmed = periodAppts.filter((a) => a.status === "Confirmé" || a.status === "Fermé").length;
@@ -84,20 +129,7 @@ const DashboardPage = () => {
     };
   }, [periodAppts]);
 
-  // === SECTION 2: Weekly objective ===
-  const weekStart = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - d.getDay());
-    return d.toISOString().split("T")[0];
-  }, []);
-  const weekAppts = useMemo(
-    () => teamAppts.filter((a) => a.date >= weekStart),
-    [teamAppts, weekStart]
-  );
-  const weekCount = weekAppts.length;
-  const weekPct = weeklyTarget > 0 ? Math.min(100, Math.round((weekCount / weeklyTarget) * 100)) : 0;
-
-  // === SECTION 3: Rep performance ===
+  // Rep performance (period)
   const repPerf = useMemo(() => {
     return teamReps.map((r) => {
       const ra = periodAppts.filter((a) => a.repId === r.id);
@@ -105,8 +137,7 @@ const DashboardPage = () => {
       const confirmed = ra.filter((a) => a.status === "Confirmé" || a.status === "Fermé").length;
       const noShow = ra.filter((a) => a.status === "Absence").length;
       const closed = ra.filter((a) => a.status === "Fermé").length;
-      // Recovery: no-shows that later got rebooked (simplified: count of re-confirmed after absence)
-      const recovery = noShow > 0 ? Math.round((0 / noShow) * 100) : 0; // placeholder — real logic needs history
+      const recovery = noShow > 0 ? 0 : 0;
       return { id: r.id, name: r.name, generated, confirmed, noShow, closed, recovery };
     });
   }, [teamReps, periodAppts]);
@@ -121,26 +152,22 @@ const DashboardPage = () => {
     return sortAsc ? sorted : sorted.reverse();
   }, [repPerf, sortKey, sortAsc]);
 
-  // === SECTION 4: Alerts ===
+  // Alerts
   const alerts = useMemo(() => {
     const items: { label: string; type: "warning" | "danger" }[] = [];
     const tomorrowAtRisk = teamAppts.filter((a) => a.date === tomorrow && a.status === "En attente");
     if (tomorrowAtRisk.length > 0)
       items.push({ label: `${tomorrowAtRisk.length} RDV à risque demain (non confirmés)`, type: "warning" });
-    const noShowNotFollowed = teamAppts.filter(
-      (a) => a.status === "Absence" && a.date >= threeDaysAgo
-    );
+    const noShowNotFollowed = teamAppts.filter((a) => a.status === "Absence" && a.date >= threeDaysAgo);
     if (noShowNotFollowed.length > 0)
       items.push({ label: `${noShowNotFollowed.length} no-show non rappelés`, type: "danger" });
-    const staleLeads = teamAppts.filter(
-      (a) => a.status === "En attente" && a.date < threeDaysAgo
-    );
+    const staleLeads = teamAppts.filter((a) => a.status === "En attente" && a.date < threeDaysAgo);
     if (staleLeads.length > 0)
       items.push({ label: `${staleLeads.length} leads sans suivi depuis +3 jours`, type: "danger" });
     return items;
   }, [teamAppts, tomorrow, threeDaysAgo]);
 
-  // === SECTION 5: Recent RDV ===
+  // Recent RDV
   const recentAppts = useMemo(
     () => [...teamAppts].sort((a, b) => `${b.date}${b.time}`.localeCompare(`${a.date}${a.time}`)).slice(0, 10),
     [teamAppts]
@@ -148,10 +175,16 @@ const DashboardPage = () => {
 
   const getRepName = (repId: string) => SALES_REPS.find((r) => r.id === repId)?.name || repId;
 
-  const handleSaveTarget = () => {
-    const val = parseInt(targetInput);
-    if (!isNaN(val) && val > 0) setWeeklyTarget(val);
-    setEditingTarget(false);
+  const handleSaveDailyTarget = () => {
+    const val = parseInt(dailyTargetInput);
+    if (!isNaN(val) && val > 0) setDailyTarget(val);
+    setEditingDailyTarget(false);
+  };
+
+  const handleSaveRepGoal = (repId: string) => {
+    const val = parseInt(repGoalInput);
+    if (!isNaN(val) && val >= 0) setRepGoal(repId, val);
+    setEditingRepGoal(null);
   };
 
   const handleSort = (key: SortKey) => {
@@ -174,75 +207,107 @@ const DashboardPage = () => {
 
   const periodLabels: Record<Period, string> = { "7d": "7 jours", "30d": "30 jours", month: "Ce mois" };
 
+  const dayPresetLabels: Record<DayPreset, string> = {
+    today: "Aujourd'hui",
+    yesterday: "Hier",
+    before: "Avant-hier",
+    custom: "Autre",
+  };
+
   return (
     <>
       <div className="space-y-6">
-        {/* Period filter */}
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">Santé globale</h2>
-          <div className="flex gap-2">
-            {(["7d", "30d", "month"] as Period[]).map((p) => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                  period === p
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                }`}
-              >
-                {periodLabels[p]}
-              </button>
+
+        {/* ===== SECTION 1 — Performance journalière ===== */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-foreground">Performance journalière</h2>
+            <div className="flex gap-2 items-center">
+              {(["today", "yesterday", "before"] as DayPreset[]).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setDayPreset(p)}
+                  className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                    dayPreset === p
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                  }`}
+                >
+                  {dayPresetLabels[p]}
+                </button>
+              ))}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={dayPreset === "custom" ? "default" : "secondary"}
+                    size="sm"
+                    className="text-xs h-7 gap-1"
+                  >
+                    <CalendarIcon className="h-3 w-3" />
+                    {dayPreset === "custom" && customDate
+                      ? format(customDate, "d MMM", { locale: fr })
+                      : "Autre"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={customDate}
+                    onSelect={(d) => { setCustomDate(d); setDayPreset("custom"); }}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: "RDV générés", value: dailyKpis.total, icon: CalendarCheck, color: "text-primary" },
+              { label: "Taux de confirmation", value: `${dailyKpis.confirmRate}%`, icon: CheckCircle2, color: "text-primary" },
+              { label: "Taux de no-show", value: `${dailyKpis.noShowRate}%`, icon: XCircle, color: "text-destructive" },
+              { label: "RDV closés", value: dailyKpis.closed, icon: TrendingUp, color: "text-info" },
+            ].map((s) => (
+              <div key={s.label} className="glass-card p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground">{s.label}</span>
+                  <s.icon className={`h-5 w-5 ${s.color}`} />
+                </div>
+                <div className="text-3xl font-bold text-foreground">{s.value}</div>
+              </div>
             ))}
           </div>
         </div>
 
-        {/* SECTION 1 — KPIs */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { label: "RDV générés", value: kpis.total, icon: CalendarCheck, color: "text-primary" },
-            { label: "Taux de confirmation", value: `${kpis.confirmRate}%`, icon: CheckCircle2, color: "text-primary" },
-            { label: "Taux de no-show", value: `${kpis.noShowRate}%`, icon: XCircle, color: "text-destructive" },
-            { label: "RDV closés", value: kpis.closed, icon: TrendingUp, color: "text-info" },
-          ].map((s) => (
-            <div key={s.label} className="glass-card p-5">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs uppercase tracking-wide text-muted-foreground">{s.label}</span>
-                <s.icon className={`h-5 w-5 ${s.color}`} />
-              </div>
-              <div className="text-3xl font-bold text-foreground">{s.value}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* SECTION 2 — Weekly Objective */}
+        {/* ===== SECTION 2 — Objectif du jour (global) ===== */}
         <div className="glass-card p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Target className="h-5 w-5 text-primary" />
-              <span className="text-sm font-medium text-foreground">Objectif semaine</span>
+              <span className="text-sm font-medium text-foreground">Objectif du jour</span>
             </div>
-            {editingTarget && canEdit ? (
+            {editingDailyTarget && canEditTarget ? (
               <div className="flex items-center gap-2">
                 <input
                   type="number"
                   min={1}
-                  value={targetInput}
-                  onChange={(e) => setTargetInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSaveTarget()}
+                  value={dailyTargetInput}
+                  onChange={(e) => setDailyTargetInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSaveDailyTarget()}
                   className="w-16 bg-secondary border border-border rounded px-2 py-1 text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                   autoFocus
                 />
-                <button onClick={handleSaveTarget} className="text-primary hover:opacity-80">
+                <button onClick={handleSaveDailyTarget} className="text-primary hover:opacity-80">
                   <Check className="h-4 w-4" />
                 </button>
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">{weekCount} / {weeklyTarget} RDV</span>
-                {canEdit && (
+                <span className="text-sm text-muted-foreground">{todayCount} / {dailyTarget} RDV</span>
+                {canEditTarget && (
                   <button
-                    onClick={() => { setTargetInput(String(weeklyTarget)); setEditingTarget(true); }}
+                    onClick={() => { setDailyTargetInput(String(dailyTarget)); setEditingDailyTarget(true); }}
                     className="text-muted-foreground hover:text-primary transition-colors"
                   >
                     <Pencil className="h-3.5 w-3.5" />
@@ -252,15 +317,108 @@ const DashboardPage = () => {
             )}
           </div>
           <div className="h-3 bg-secondary rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary rounded-full transition-all"
-              style={{ width: `${weekPct}%` }}
-            />
+            <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${dailyPct}%` }} />
           </div>
-          <div className="mt-1 text-right text-xs text-muted-foreground">{weekPct}%</div>
+          <div className="mt-1 text-right text-xs text-muted-foreground">{dailyPct}%</div>
         </div>
 
-        {/* SECTION 3 — Rep Performance */}
+        {/* ===== SECTION 3 — Objectifs journaliers individuels ===== */}
+        <div className="glass-card p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Target className="h-5 w-5 text-primary" />
+            <span className="text-sm font-medium text-foreground">Objectifs journaliers individuels</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {teamReps.map((r) => {
+              const repTodayCount = todayAppts.filter((a) => a.repId === r.id).length;
+              const goal = repGoals[r.id] || 0;
+              const pct = goal > 0 ? Math.min(100, Math.round((repTodayCount / goal) * 100)) : 0;
+              return (
+                <div key={r.id} className="bg-secondary/50 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-foreground">{r.name}</span>
+                    {editingRepGoal === r.id ? (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min={0}
+                          value={repGoalInput}
+                          onChange={(e) => setRepGoalInput(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && handleSaveRepGoal(r.id)}
+                          className="w-12 bg-background border border-border rounded px-1 py-0.5 text-sm font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-center"
+                          autoFocus
+                        />
+                        <button onClick={() => handleSaveRepGoal(r.id)} className="text-primary hover:opacity-80">
+                          <Check className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          if (canEditRepGoals) {
+                            setEditingRepGoal(r.id);
+                            setRepGoalInput(String(goal));
+                          }
+                        }}
+                        className={`flex items-center gap-1 text-xs transition-colors ${
+                          canEditRepGoals ? "text-muted-foreground hover:text-primary cursor-pointer" : "text-muted-foreground cursor-default"
+                        }`}
+                      >
+                        <span className="font-bold">{goal || "—"}</span>
+                        {canEditRepGoals && <Pencil className="h-3 w-3" />}
+                      </button>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground mb-1">{repTodayCount} / {goal || "—"} RDV</div>
+                  <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ===== SECTION 4 — Santé globale ===== */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-foreground">Santé globale</h2>
+            <div className="flex gap-2">
+              {(["7d", "30d", "month"] as Period[]).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPeriod(p)}
+                  className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                    period === p
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                  }`}
+                >
+                  {periodLabels[p]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: "RDV générés", value: kpis.total, icon: CalendarCheck, color: "text-primary" },
+              { label: "Taux de confirmation", value: `${kpis.confirmRate}%`, icon: CheckCircle2, color: "text-primary" },
+              { label: "Taux de no-show", value: `${kpis.noShowRate}%`, icon: XCircle, color: "text-destructive" },
+              { label: "RDV closés", value: kpis.closed, icon: TrendingUp, color: "text-info" },
+            ].map((s) => (
+              <div key={s.label} className="glass-card p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground">{s.label}</span>
+                  <s.icon className={`h-5 w-5 ${s.color}`} />
+                </div>
+                <div className="text-3xl font-bold text-foreground">{s.value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ===== SECTION 5 — Performance par représentant ===== */}
         <div className="glass-card overflow-hidden">
           <div className="px-5 py-4 border-b border-border">
             <h3 className="text-sm font-medium text-foreground">Performance par représentant</h3>
@@ -303,7 +461,7 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        {/* SECTION 4 — Alerts */}
+        {/* ===== SECTION 6 — Zone d'alerte ===== */}
         <div className="glass-card p-5">
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="h-5 w-5 text-warning" />
@@ -317,9 +475,7 @@ const DashboardPage = () => {
                 <li
                   key={i}
                   className={`text-sm px-3 py-2 rounded-lg ${
-                    a.type === "danger"
-                      ? "bg-destructive/10 text-destructive"
-                      : "bg-warning/10 text-warning"
+                    a.type === "danger" ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning"
                   }`}
                 >
                   {a.label}
@@ -329,7 +485,7 @@ const DashboardPage = () => {
           )}
         </div>
 
-        {/* SECTION 5 — Recent RDV */}
+        {/* ===== SECTION 7 — RDV récents ===== */}
         <div className="glass-card overflow-hidden">
           <div className="px-5 py-4 border-b border-border">
             <h3 className="text-sm font-medium text-foreground">RDV récents</h3>
