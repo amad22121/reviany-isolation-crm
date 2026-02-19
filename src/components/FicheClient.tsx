@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Appointment, SALES_REPS, HotCall, CallLogEntry } from "@/data/crm-data";
+import { useState, useRef, useEffect } from "react";
+import { Appointment, AppointmentStatus, SALES_REPS, HotCall, CallLogEntry } from "@/data/crm-data";
 import { useCrm } from "@/store/crm-store";
 import { useAuth } from "@/store/crm-store";
 import {
@@ -35,17 +35,51 @@ interface FicheClientProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const ALL_STATUSES: AppointmentStatus[] = ["En attente", "Confirmé", "À risque", "Closed", "Annulé"];
+
 const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientProps) => {
-  const { updateNotes, deleteAppointment } = useCrm();
+  const { updateNotes, deleteAppointment, updateStatus, moveAppointmentToHotCalls } = useCrm();
   const { role } = useAuth();
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesInput, setNotesInput] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setStatusDropdownOpen(false);
+      }
+    };
+    if (statusDropdownOpen) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [statusDropdownOpen]);
 
   if (!appointment) return null;
 
   const rep = SALES_REPS.find((r) => r.id === appointment.repId);
   const canDelete = role === "proprietaire" || role === "gestionnaire";
+
+  const allowedStatuses: AppointmentStatus[] = (() => {
+    if (role === "proprietaire") return ALL_STATUSES;
+    if (role === "gestionnaire") return ALL_STATUSES;
+    // Représentant: only En attente and Confirmé
+    return ["En attente", "Confirmé"] as AppointmentStatus[];
+  })();
+
+  const canEditStatus = !hotCall && allowedStatuses.length > 0;
+
+  const handleStatusChange = (newStatus: AppointmentStatus) => {
+    if (newStatus === appointment.status) { setStatusDropdownOpen(false); return; }
+    const userId = role || "system";
+    updateStatus(appointment.id, newStatus, userId);
+    if (newStatus === "Annulé") {
+      moveAppointmentToHotCalls(appointment.id, "Premier contact");
+    }
+    setStatusDropdownOpen(false);
+  };
 
   const origin = hotCall?.origin || appointment.origin;
   const callHistory = hotCall?.callHistory || [];
@@ -86,9 +120,49 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
               <h2 className="text-lg font-semibold text-foreground">
                 {appointment.fullName}
               </h2>
-              <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[appointment.status] || "bg-secondary text-secondary-foreground border-border"}`}>
-                {displayStatus}
-              </span>
+              {canEditStatus ? (
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium border cursor-pointer hover:brightness-110 transition-colors ${statusColors[appointment.status] || "bg-secondary text-secondary-foreground border-border"}`}
+                  >
+                    {appointment.status} ▾
+                  </button>
+                  {statusDropdownOpen && (
+                    <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[160px]">
+                      {ALL_STATUSES.map((s) => {
+                        const allowed = allowedStatuses.includes(s);
+                        return (
+                          <button
+                            key={s}
+                            disabled={!allowed}
+                            onClick={() => allowed && handleStatusChange(s)}
+                            className={`w-full text-left px-3 py-2 text-xs transition-colors ${
+                              s === appointment.status
+                                ? "bg-primary/10 text-primary font-medium"
+                                : allowed
+                                ? "text-foreground hover:bg-secondary"
+                                : "text-muted-foreground/40 cursor-not-allowed"
+                            }`}
+                          >
+                            <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
+                              s === "En attente" ? "bg-warning" :
+                              s === "Confirmé" ? "bg-green-500" :
+                              s === "À risque" ? "bg-destructive" :
+                              s === "Closed" ? "bg-info" : "bg-muted-foreground"
+                            }`} />
+                            {s}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[appointment.status] || "bg-secondary text-secondary-foreground border-border"}`}>
+                  {displayStatus}
+                </span>
+              )}
             </div>
 
             {/* Informations principales + Origine */}
