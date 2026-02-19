@@ -50,9 +50,9 @@ const RepViewPage = () => {
 
   const statusColors: Record<string, string> = {
     "En attente": "bg-warning/20 text-warning",
-    "Confirmé": "bg-primary/20 text-primary",
-    "Absence": "bg-destructive/20 text-destructive",
-    "Fermé": "bg-info/20 text-info",
+    "Confirmé": "bg-green-500/20 text-green-400",
+    "Non confirmé": "bg-destructive/20 text-destructive",
+    "Closed": "bg-info/20 text-info",
     "Annulé": "bg-muted text-muted-foreground",
   };
 
@@ -70,7 +70,6 @@ const RepViewPage = () => {
 
       {/* Personal + Team Goals */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Personal Goal */}
         <div className="glass-card p-5 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-bl-full" />
           <div className="flex items-center justify-between mb-3">
@@ -94,7 +93,6 @@ const RepViewPage = () => {
           )}
         </div>
 
-        {/* Team Goal */}
         <div className="glass-card p-5 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-20 h-20 bg-info/5 rounded-bl-full" />
           <div className="flex items-center justify-between mb-3">
@@ -119,7 +117,6 @@ const RepViewPage = () => {
         </div>
       </div>
 
-      {/* Performance semaine */}
       <div className="glass-card p-4">
         <h2 className="text-sm font-medium text-foreground mb-3">Performance semaine</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -22,9 +22,9 @@ import { MapPin, Phone, Calendar, Clock, User, HelpCircle, StickyNote, Pencil, C
 
 const statusColors: Record<string, string> = {
   "En attente": "bg-warning/20 text-warning border-warning/30",
-  "Confirmé": "bg-primary/20 text-primary border-primary/30",
-  "Absence": "bg-destructive/20 text-destructive border-destructive/30",
-  "Fermé": "bg-info/20 text-info border-info/30",
+  "Confirmé": "bg-green-500/20 text-green-400 border-green-500/30",
+  "Non confirmé": "bg-destructive/20 text-destructive border-destructive/30",
+  "Closed": "bg-info/20 text-info border-info/30",
   "Annulé": "bg-muted text-muted-foreground border-border",
 };
 
@@ -68,6 +68,9 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
 
   const getRepName = (repId: string) => SALES_REPS.find((r) => r.id === repId)?.name || repId;
 
+  const displayStatus = hotCall ? hotCall.status : appointment.status;
+  const resultLabel = appointment.result;
+
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => { if (!o) setEditingNotes(false); onOpenChange(o); }}>
@@ -84,9 +87,16 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
               <h2 className="text-lg font-semibold text-foreground">
                 {appointment.fullName}
               </h2>
-              <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[appointment.status] || "bg-secondary text-secondary-foreground border-border"}`}>
-                {hotCall ? hotCall.status : appointment.status}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[appointment.status] || "bg-secondary text-secondary-foreground border-border"}`}>
+                  {displayStatus}
+                </span>
+                {resultLabel && (
+                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-info/20 text-info border border-info/30">
+                    {resultLabel}
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Informations principales + Origine */}
@@ -165,6 +175,30 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-primary font-medium">{getRepName(entry.repId)}</p>
                         <p className="text-sm text-foreground">{entry.note}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Status change log */}
+            {appointment.statusLog && appointment.statusLog.length > 0 && (
+              <div className="glass-card p-4 space-y-3">
+                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                  <History className="h-4 w-4" /> Historique des changements
+                </h3>
+                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                  {[...appointment.statusLog].reverse().map((log, i) => (
+                    <div key={i} className="bg-secondary/50 rounded-lg p-3 flex items-start gap-3">
+                      <div className="shrink-0 text-xs text-muted-foreground w-20">
+                        <div>{log.date}</div>
+                        <div>{log.time}</div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-primary font-medium">{log.field === "status" ? "Statut" : "Résultat"}</p>
+                        <p className="text-sm text-foreground">{log.previousValue} → {log.newValue}</p>
+                        <p className="text-[10px] text-muted-foreground">par {log.userId}</p>
                       </div>
                     </div>
                   ))}

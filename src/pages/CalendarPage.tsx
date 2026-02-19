@@ -16,20 +16,20 @@ type ViewType = "day" | "week" | "month";
 const STATUS_COLORS: Record<string, string> = {
   Confirmé: "border-l-green-500 bg-green-500/10",
   "En attente": "border-l-orange-400 bg-orange-400/10",
-  Absence: "border-l-red-500 bg-red-500/10",
-  Fermé: "border-l-blue-500 bg-blue-500/10",
+  "Non confirmé": "border-l-red-500 bg-red-500/10",
+  Closed: "border-l-blue-500 bg-blue-500/10",
   Annulé: "border-l-gray-500 bg-gray-500/10",
 };
 
 const STATUS_BADGE: Record<string, string> = {
   Confirmé: "bg-green-500/20 text-green-400",
   "En attente": "bg-orange-400/20 text-orange-400",
-  Absence: "bg-red-500/20 text-red-400",
-  Fermé: "bg-blue-500/20 text-blue-400",
+  "Non confirmé": "bg-red-500/20 text-red-400",
+  Closed: "bg-blue-500/20 text-blue-400",
   Annulé: "bg-gray-500/20 text-gray-400",
 };
 
-const HOURS = Array.from({ length: 12 }, (_, i) => i + 7); // 7AM–18PM
+const HOURS = Array.from({ length: 12 }, (_, i) => i + 7);
 
 function formatDateKey(d: Date) {
   return d.toISOString().split("T")[0];
@@ -72,7 +72,6 @@ const CalendarPage = () => {
   const today = new Date();
   const todayKey = formatDateKey(today);
 
-  // Permission filtering
   const visibleAppointments = useMemo(() => {
     let appts = appointments.filter((a) => a.status !== "Backlog");
     if (role === "representant") return appts.filter((a) => a.repId === currentRepId);
@@ -83,18 +82,17 @@ const CalendarPage = () => {
     return appts;
   }, [appointments, role, currentRepId, currentManagerId]);
 
-  // Stats
   const stats = useMemo(() => {
     const todayAppts = visibleAppointments.filter((a) => a.date === todayKey);
     const confirmed = todayAppts.filter((a) => a.status === "Confirmé").length;
-    const atRisk = todayAppts.filter((a) => a.status === "Absence" || a.status === "Annulé").length;
+    const atRisk = todayAppts.filter((a) => a.status === "Non confirmé" || a.status === "Annulé").length;
 
     const weekStart = getMonday(today);
     const weekEnd = addDays(weekStart, 6);
     const weekKey = formatDateKey(weekEnd);
     const weekStartKey = formatDateKey(weekStart);
     const weekAppts = visibleAppointments.filter((a) => a.date >= weekStartKey && a.date <= weekKey);
-    const weekClosed = weekAppts.filter((a) => a.status === "Fermé" || a.status === "Confirmé").length;
+    const weekClosed = weekAppts.filter((a) => a.status === "Closed" || a.status === "Confirmé").length;
     const closingRate = weekAppts.length > 0 ? Math.round((weekClosed / weekAppts.length) * 100) : 0;
 
     return { total: todayAppts.length, confirmed, atRisk, closingRate };
@@ -102,7 +100,6 @@ const CalendarPage = () => {
 
   const getRepName = (id: string) => SALES_REPS.find((r) => r.id === id)?.name || id;
 
-  // Navigation
   const navigate = (dir: number) => {
     const d = new Date(currentDate);
     if (view === "day") d.setDate(d.getDate() + dir);
@@ -113,7 +110,6 @@ const CalendarPage = () => {
 
   const goToday = () => setCurrentDate(new Date());
 
-  // Header label
   const headerLabel = useMemo(() => {
     if (view === "day") {
       return currentDate.toLocaleDateString("fr-CA", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -126,7 +122,6 @@ const CalendarPage = () => {
     return `${MONTHS[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
   }, [view, currentDate]);
 
-  // Appointments grouped by date
   const apptsByDate = useMemo(() => {
     const map: Record<string, Appointment[]> = {};
     visibleAppointments.forEach((a) => {
@@ -136,7 +131,6 @@ const CalendarPage = () => {
     return map;
   }, [visibleAppointments]);
 
-  // Event card
   const EventCard = ({ appt }: { appt: Appointment }) => (
     <button
       onClick={() => setSelectedAppt(appt)}
@@ -159,7 +153,6 @@ const CalendarPage = () => {
     </button>
   );
 
-  // DAILY VIEW
   const renderDayView = () => {
     const dateKey = formatDateKey(currentDate);
     const dayAppts = (apptsByDate[dateKey] || []).sort((a, b) => a.time.localeCompare(b.time));
@@ -188,14 +181,12 @@ const CalendarPage = () => {
     );
   };
 
-  // WEEKLY VIEW
   const renderWeekView = () => {
     const monday = getMonday(currentDate);
     const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
 
     return (
       <div className="glass-card overflow-hidden">
-        {/* Header row */}
         <div className="grid grid-cols-7 border-b border-border">
           {days.map((d, i) => {
             const key = formatDateKey(d);
@@ -208,7 +199,6 @@ const CalendarPage = () => {
             );
           })}
         </div>
-        {/* Body */}
         <div className="grid grid-cols-7 min-h-[420px]">
           {days.map((d, i) => {
             const key = formatDateKey(d);
@@ -227,14 +217,12 @@ const CalendarPage = () => {
     );
   };
 
-  // MONTHLY VIEW
   const renderMonthView = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
 
-    // start from monday
     let startOffset = firstDay.getDay() - 1;
     if (startOffset < 0) startOffset = 6;
 
@@ -294,7 +282,6 @@ const CalendarPage = () => {
       <div className="space-y-6">
         <h1 className="text-xl font-bold text-foreground">Calendrier</h1>
 
-        {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { label: "RDV aujourd'hui", value: stats.total, icon: CalendarCheck, color: "text-primary" },
@@ -312,7 +299,6 @@ const CalendarPage = () => {
           ))}
         </div>
 
-        {/* Navigation & View Toggle */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <button onClick={() => navigate(-1)} className="p-2 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
@@ -342,7 +328,6 @@ const CalendarPage = () => {
           </div>
         </div>
 
-        {/* Calendar */}
         {view === "day" && renderDayView()}
         {view === "week" && renderWeekView()}
         {view === "month" && renderMonthView()}
