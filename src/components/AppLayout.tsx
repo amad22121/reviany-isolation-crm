@@ -16,6 +16,7 @@ import {
   Crown,
   Users,
   UserCheck,
+  Archive,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -29,6 +30,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "hot-calls": "Hot Calls",
   calendar: "Calendrier",
   statistiques: "Statistiques",
+  backlog: "Backlog",
 };
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
@@ -42,6 +44,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     { to: "/statistiques", label: "Statistiques", icon: BarChart3 },
     { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
     { to: "/hot-calls", label: "Hot Calls", icon: Flame },
+    { to: "/backlog", label: "Backlog", icon: Archive },
     { to: "/leaderboard", label: "Classement", icon: Trophy },
     { to: "/appointments", label: "Rendez-vous", icon: List },
     { to: "/users", label: "Gestion utilisateurs", icon: Users },
@@ -53,6 +56,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     { to: "/statistiques", label: "Statistiques", icon: BarChart3 },
     { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
     { to: "/hot-calls", label: "Hot Calls", icon: Flame },
+    { to: "/backlog", label: "Backlog", icon: Archive },
     { to: "/leaderboard", label: "Classement", icon: Trophy },
     { to: "/appointments", label: "Rendez-vous", icon: List },
   ];
@@ -62,6 +66,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     { to: "/calendar", label: "Calendrier", icon: CalendarDays },
     { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
     { to: "/hot-calls", label: "Hot Calls", icon: Flame },
+    { to: "/backlog", label: "Backlog", icon: Archive },
     { to: "/leaderboard", label: "Classement", icon: Trophy },
     { to: "/appointments", label: "Rendez-vous", icon: List },
   ];

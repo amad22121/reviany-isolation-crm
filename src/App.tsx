@@ -14,6 +14,7 @@ import UserManagementPage from "./pages/UserManagementPage";
 import HotCallsPage from "./pages/HotCallsPage";
 import CalendarPage from "./pages/CalendarPage";
 import StatistiquesPage from "./pages/StatistiquesPage";
+import BacklogPage from "./pages/BacklogPage";
 
 import AppLayout from "./components/AppLayout";
 import NotFound from "./pages/NotFound";
@@ -54,6 +55,7 @@ const AppRoutes = () => {
       <Route path="/hot-calls" element={<AuthGuard><HotCallsPage /></AuthGuard>} />
       <Route path="/calendar" element={<AuthGuard><CalendarPage /></AuthGuard>} />
       <Route path="/statistiques" element={<AuthGuard><StatistiquesPage /></AuthGuard>} />
+      <Route path="/backlog" element={<AuthGuard><BacklogPage /></AuthGuard>} />
       <Route path="/users" element={<AuthGuard><UserManagementPage /></AuthGuard>} />
       
       <Route path="*" element={<NotFound />} />

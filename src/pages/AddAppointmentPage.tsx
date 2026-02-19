@@ -1,49 +1,108 @@
 import { useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
 import { SALES_REPS } from "@/data/crm-data";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
+const CITY_CHIPS = ["Montréal", "Laval", "Longueuil", "Terrebonne", "Mascouche"];
+
 const AddAppointmentPage = () => {
-  const { addAppointment } = useCrm();
+  const { addAppointment, appointments } = useCrm();
   const { role, currentRepId } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Pre-fill from backlog conversion
+  const backlogId = searchParams.get("backlog");
+  const backlogItem = backlogId ? appointments.find((a) => a.id === backlogId && a.status === "Backlog") : null;
 
   const [form, setForm] = useState({
-    clientFirstName: "",
-    clientLastName: "",
-    phone: "",
-    address: "",
-    date: new Date().toISOString().split("T")[0],
-    time: "09:00",
-    repId: role === "representant" ? currentRepId || SALES_REPS[0].id : SALES_REPS[0].id,
-    preQual1: "",
-    preQual2: "",
-    notes: "",
+    fullName: backlogItem?.fullName || "",
+    phone: backlogItem?.phone || "",
+    address: backlogItem?.address || "",
+    city: backlogItem?.city || "",
+    origin: backlogItem?.origin || "",
+    date: backlogItem?.date || new Date().toISOString().split("T")[0],
+    time: backlogItem?.time || "09:00",
+    repId: backlogItem?.repId || (role === "representant" ? currentRepId || SALES_REPS[0].id : SALES_REPS[0].id),
+    preQual1: backlogItem?.preQual1 || "",
+    preQual2: backlogItem?.preQual2 || "",
+    notes: backlogItem?.notes || "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const validate = () => {
+  const validate = (isBacklog: boolean) => {
     const e: Record<string, string> = {};
-    if (!form.clientFirstName.trim()) e.clientFirstName = "Requis";
-    if (!form.clientLastName.trim()) e.clientLastName = "Requis";
+    if (!form.fullName.trim()) e.fullName = "Requis";
     if (!form.phone.trim()) e.phone = "Requis";
     if (!form.address.trim()) e.address = "Requis";
-    if (!form.preQual1.trim()) e.preQual1 = "Requis";
-    if (!form.preQual2.trim()) e.preQual2 = "Requis";
-    if (!form.notes.trim()) e.notes = "Requis";
+    if (!form.city.trim()) e.city = "Requis";
+    if (!isBacklog && !form.date) e.date = "Requis";
+    if (!isBacklog && !form.time) e.time = "Requis";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
-    addAppointment(form);
-    toast.success("Rendez-vous créé ! SMS de confirmation envoyé (démo)", {
-      description: `Rappel planifié pour ${form.clientFirstName} ${form.clientLastName} — 24h avant.`,
+    if (!validate(false)) return;
+
+    if (backlogItem) {
+      // Converting from backlog - update the existing record
+      const { convertBacklogToAppointment } = useCrm.getState();
+      convertBacklogToAppointment(backlogItem.id, {
+        fullName: form.fullName,
+        phone: form.phone,
+        address: form.address,
+        city: form.city,
+        origin: form.origin || undefined,
+        date: form.date,
+        time: form.time,
+        repId: form.repId,
+        preQual1: form.preQual1,
+        preQual2: form.preQual2,
+        notes: form.notes,
+      });
+      toast.success("Rendez-vous créé depuis le backlog.");
+    } else {
+      addAppointment({
+        fullName: form.fullName,
+        phone: form.phone,
+        address: form.address,
+        city: form.city,
+        origin: form.origin || undefined,
+        date: form.date,
+        time: form.time,
+        repId: form.repId,
+        preQual1: form.preQual1,
+        preQual2: form.preQual2,
+        notes: form.notes,
+        status: "En attente",
+      });
+      toast.success("Rendez-vous créé.");
+    }
+    if (role === "representant") navigate("/rep");
+    else navigate("/dashboard");
+  };
+
+  const handleBacklog = () => {
+    if (!validate(true)) return;
+    addAppointment({
+      fullName: form.fullName,
+      phone: form.phone,
+      address: form.address,
+      city: form.city,
+      origin: form.origin || undefined,
+      date: form.date || "",
+      time: form.time || "",
+      repId: form.repId,
+      preQual1: form.preQual1,
+      preQual2: form.preQual2,
+      notes: form.notes,
+      status: "Backlog",
     });
+    toast.success("Ajouté au backlog.");
     if (role === "representant") navigate("/rep");
     else navigate("/dashboard");
   };
@@ -58,34 +117,33 @@ const AddAppointmentPage = () => {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-xl font-bold text-foreground mb-6">Nouveau rendez-vous</h1>
-      <form onSubmit={handleSubmit} className="glass-card p-6 space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Prénom *</label>
-            <input className={inputClass("clientFirstName")} value={form.clientFirstName} onChange={(e) => update("clientFirstName", e.target.value)} placeholder="Pierre" />
-            {errors.clientFirstName && <span className="text-xs text-destructive">{errors.clientFirstName}</span>}
-          </div>
-          <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Nom *</label>
-            <input className={inputClass("clientLastName")} value={form.clientLastName} onChange={(e) => update("clientLastName", e.target.value)} placeholder="Lavoie" />
-            {errors.clientLastName && <span className="text-xs text-destructive">{errors.clientLastName}</span>}
-          </div>
+      <h1 className="text-xl font-bold text-foreground mb-6">
+        {backlogItem ? "Convertir en rendez-vous" : "Nouveau rendez-vous"}
+      </h1>
+      <form onSubmit={handleCreate} className="glass-card p-6 space-y-4">
+        {/* Full Name */}
+        <div>
+          <label className="text-sm text-muted-foreground mb-1 block">Nom du client *</label>
+          <input className={inputClass("fullName")} value={form.fullName} onChange={(e) => update("fullName", e.target.value)} placeholder="Ex: Pierre Lavoie" />
+          {errors.fullName && <span className="text-xs text-destructive">{errors.fullName}</span>}
         </div>
 
+        {/* Phone */}
         <div>
           <label className="text-sm text-muted-foreground mb-1 block">Téléphone *</label>
           <input className={inputClass("phone")} value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="(514) 555-0100" />
           {errors.phone && <span className="text-xs text-destructive">{errors.phone}</span>}
         </div>
 
+        {/* Address */}
         <div>
           <label className="text-sm text-muted-foreground mb-1 block">Adresse *</label>
-          <input className={inputClass("address")} value={form.address} onChange={(e) => update("address", e.target.value)} placeholder="1234 Rue Sainte-Catherine, Montréal, QC" />
+          <input className={inputClass("address")} value={form.address} onChange={(e) => update("address", e.target.value)} placeholder="1234 Rue Sainte-Catherine" />
+          <p className="text-[11px] text-muted-foreground mt-1">Adresse civique seulement (sans la ville).</p>
           {errors.address && <span className="text-xs text-destructive">{errors.address}</span>}
           {form.address && (
             <a
-              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(form.address)}`}
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${form.address}, ${form.city}`)}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs text-primary hover:underline mt-1 inline-block"
@@ -95,17 +153,44 @@ const AddAppointmentPage = () => {
           )}
         </div>
 
+        {/* City */}
+        <div>
+          <label className="text-sm text-muted-foreground mb-1 block">Ville *</label>
+          <input className={inputClass("city")} value={form.city} onChange={(e) => update("city", e.target.value)} placeholder="Ex: Montréal" />
+          {errors.city && <span className="text-xs text-destructive">{errors.city}</span>}
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {CITY_CHIPS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => update("city", c)}
+                className={`px-3 py-1 rounded-full text-xs transition-colors ${
+                  form.city === c
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Date & Time */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Date *</label>
             <input type="date" className={inputClass("date")} value={form.date} onChange={(e) => update("date", e.target.value)} />
+            {errors.date && <span className="text-xs text-destructive">{errors.date}</span>}
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Heure *</label>
             <input type="time" className={inputClass("time")} value={form.time} onChange={(e) => update("time", e.target.value)} />
+            {errors.time && <span className="text-xs text-destructive">{errors.time}</span>}
           </div>
         </div>
 
+        {/* Rep */}
         <div>
           <label className="text-sm text-muted-foreground mb-1 block">Représentant *</label>
           <select
@@ -120,30 +205,47 @@ const AddAppointmentPage = () => {
           </select>
         </div>
 
+        {/* Origin */}
         <div>
-          <label className="text-sm text-muted-foreground mb-1 block">Question A *</label>
+          <label className="text-sm text-muted-foreground mb-1 block">Origine / Profil (optionnel)</label>
+          <input className={inputClass("origin")} value={form.origin} onChange={(e) => update("origin", e.target.value)} placeholder="Ex: Arabe / Haïtien / Québécois / etc." />
+        </div>
+
+        {/* PreQual */}
+        <div>
+          <label className="text-sm text-muted-foreground mb-1 block">Question A</label>
           <input className={inputClass("preQual1")} value={form.preQual1} onChange={(e) => update("preQual1", e.target.value)} placeholder="Écrivez ici" />
-          {errors.preQual1 && <span className="text-xs text-destructive">{errors.preQual1}</span>}
         </div>
 
         <div>
-          <label className="text-sm text-muted-foreground mb-1 block">Question B *</label>
+          <label className="text-sm text-muted-foreground mb-1 block">Question B</label>
           <input className={inputClass("preQual2")} value={form.preQual2} onChange={(e) => update("preQual2", e.target.value)} placeholder="Écrivez ici" />
-          {errors.preQual2 && <span className="text-xs text-destructive">{errors.preQual2}</span>}
         </div>
 
+        {/* Notes */}
         <div>
-          <label className="text-sm text-muted-foreground mb-1 block">Notes *</label>
+          <label className="text-sm text-muted-foreground mb-1 block">Notes</label>
           <textarea className={inputClass("notes") + " min-h-[80px]"} value={form.notes} onChange={(e) => update("notes", e.target.value)} placeholder="Écrivez vos notes ici" />
-          {errors.notes && <span className="text-xs text-destructive">{errors.notes}</span>}
         </div>
 
-        <button
-          type="submit"
-          className="w-full bg-primary text-primary-foreground font-medium py-3 rounded-lg hover:opacity-90 transition-opacity"
-        >
-          Créer le rendez-vous et envoyer SMS (démo)
-        </button>
+        {/* Two action buttons */}
+        <div className="flex flex-col gap-3 pt-2">
+          <button
+            type="submit"
+            className="w-full bg-primary text-primary-foreground font-medium py-3 rounded-lg hover:opacity-90 transition-opacity"
+          >
+            {backlogItem ? "Convertir en rendez-vous" : "Créer le rendez-vous"}
+          </button>
+          {!backlogItem && (
+            <button
+              type="button"
+              onClick={handleBacklog}
+              className="w-full border border-border text-foreground font-medium py-3 rounded-lg hover:bg-secondary transition-colors"
+            >
+              Ajouter à la liste (backlog)
+            </button>
+          )}
+        </div>
       </form>
     </div>
   );

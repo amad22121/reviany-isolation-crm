@@ -18,7 +18,7 @@ interface CrmState {
   hotCalls: HotCall[];
   dailyTarget: number;
   repGoals: Record<string, number>;
-  addAppointment: (appt: Omit<Appointment, "id" | "status" | "smsScheduled" | "createdAt">) => void;
+  addAppointment: (appt: Omit<Appointment, "id" | "smsScheduled" | "createdAt">) => void;
   updateStatus: (id: string, status: Appointment["status"]) => void;
   deleteAppointment: (id: string) => void;
   updateNotes: (id: string, notes: string) => void;
@@ -29,16 +29,17 @@ interface CrmState {
   updateHotCallNotes: (id: string, notes: string) => void;
   deleteHotCall: (id: string) => void;
   moveAppointmentToHotCalls: (appointmentId: string, status?: HotCallStatus) => void;
+  convertBacklogToAppointment: (id: string, updates: Partial<Appointment>) => void;
 }
 
 const today = new Date().toISOString().split("T")[0];
 const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
 const INITIAL_HOT_CALLS: HotCall[] = [
-  { id: "hc1", clientFirstName: "Diane", clientLastName: "Simard", phone: "(438) 555-0112", address: "430 Rue Beaubien E, Montréal, QC H2S 1R8", city: "Montréal", source: "Door-to-door", repId: "rep2", status: "No answer", attempts: 2, lastContactDate: yesterday, followUpDate: today, notes: "Absence, replanifier", createdAt: yesterday },
-  { id: "hc2", clientFirstName: "Lucie", clientLastName: "Tremblay", phone: "(514) 555-0120", address: "890 Rue Wellington, Verdun, QC H4G 1V3", city: "Verdun", source: "Referral", repId: "rep1", status: "Call back later", attempts: 1, lastContactDate: yesterday, followUpDate: today, notes: "Rappeler le matin", createdAt: yesterday },
-  { id: "hc3", clientFirstName: "Yves", clientLastName: "Bouchard", phone: "(438) 555-0130", address: "1200 Avenue du Parc, Montréal, QC H2W 1S2", city: "Montréal", source: "Door-to-door", repId: "rep3", status: "Follow-up 3 months", attempts: 3, lastContactDate: yesterday, followUpDate: "2026-05-19", notes: "Intéressé mais pas maintenant", createdAt: yesterday },
-  { id: "hc4", clientFirstName: "Julie", clientLastName: "Roy", phone: "(514) 555-0140", address: "567 Boulevard Gouin O, Laval, QC H7L 1L1", city: "Laval", source: "Door-to-door", repId: "rep4", status: "Reschedule requested", attempts: 1, lastContactDate: today, followUpDate: today, notes: "Veut un RDV en soirée", createdAt: today },
+  { id: "hc1", fullName: "Diane Simard", phone: "(438) 555-0112", address: "430 Rue Beaubien E", city: "Montréal", source: "Door-to-door", repId: "rep2", status: "No answer", attempts: 2, lastContactDate: yesterday, followUpDate: today, notes: "Absence, replanifier", createdAt: yesterday },
+  { id: "hc2", fullName: "Lucie Tremblay", phone: "(514) 555-0120", address: "890 Rue Wellington", city: "Verdun", source: "Referral", repId: "rep1", status: "Call back later", attempts: 1, lastContactDate: yesterday, followUpDate: today, notes: "Rappeler le matin", createdAt: yesterday },
+  { id: "hc3", fullName: "Yves Bouchard", phone: "(438) 555-0130", address: "1200 Avenue du Parc", city: "Montréal", source: "Door-to-door", repId: "rep3", status: "Follow-up 3 months", attempts: 3, lastContactDate: yesterday, followUpDate: "2026-05-19", notes: "Intéressé mais pas maintenant", createdAt: yesterday },
+  { id: "hc4", fullName: "Julie Roy", phone: "(514) 555-0140", address: "567 Boulevard Gouin O", city: "Laval", source: "Door-to-door", repId: "rep4", status: "Reschedule requested", attempts: 1, lastContactDate: today, followUpDate: today, notes: "Veut un RDV en soirée", createdAt: today },
 ];
 
 export const useCrm = create<CrmState>((set, get) => ({
@@ -53,8 +54,7 @@ export const useCrm = create<CrmState>((set, get) => ({
         {
           ...appt,
           id: `a${Date.now()}`,
-          status: "En attente",
-          smsScheduled: true,
+          smsScheduled: false,
           createdAt: new Date().toISOString().split("T")[0],
         },
       ],
@@ -99,10 +99,10 @@ export const useCrm = create<CrmState>((set, get) => ({
               ...state.appointments,
               {
                 id: `a${Date.now()}`,
-                clientFirstName: hc.clientFirstName,
-                clientLastName: hc.clientLastName,
+                fullName: hc.fullName,
                 phone: hc.phone,
                 address: hc.address,
+                city: hc.city,
                 date: todayStr,
                 time: "09:00",
                 repId: hc.repId,
@@ -111,7 +111,7 @@ export const useCrm = create<CrmState>((set, get) => ({
                 notes: hc.notes,
                 status: "En attente" as const,
                 source: hc.source,
-                smsScheduled: true,
+                smsScheduled: false,
                 createdAt: todayStr,
               },
             ],
@@ -139,18 +139,16 @@ export const useCrm = create<CrmState>((set, get) => ({
       const appt = state.appointments.find((a) => a.id === appointmentId);
       if (!appt) return state;
       const todayStr = new Date().toISOString().split("T")[0];
-      const city = appt.address.split(",").slice(-2, -1)[0]?.trim() || "Montréal";
       return {
         appointments: state.appointments.filter((a) => a.id !== appointmentId),
         hotCalls: [
           ...state.hotCalls,
           {
             id: `hc${Date.now()}`,
-            clientFirstName: appt.clientFirstName,
-            clientLastName: appt.clientLastName,
+            fullName: appt.fullName,
             phone: appt.phone,
             address: appt.address,
-            city,
+            city: appt.city || "Montréal",
             source: appt.source || "Door-to-door",
             repId: appt.repId,
             status,
@@ -164,6 +162,12 @@ export const useCrm = create<CrmState>((set, get) => ({
         ],
       };
     }),
+  convertBacklogToAppointment: (id, updates) =>
+    set((state) => ({
+      appointments: state.appointments.map((a) =>
+        a.id === id ? { ...a, ...updates, status: "En attente" as const } : a
+      ),
+    })),
 }));
 
 export const useAuth = create<AuthState>((set) => ({

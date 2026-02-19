@@ -62,7 +62,7 @@ const HotCallsPage = () => {
       if (search) {
         const q = search.toLowerCase();
         if (
-          !`${h.clientFirstName} ${h.clientLastName}`.toLowerCase().includes(q) &&
+          !h.fullName.toLowerCase().includes(q) &&
           !h.phone.includes(q) &&
           !h.address.toLowerCase().includes(q)
         )
@@ -207,7 +207,7 @@ const HotCallsPage = () => {
               {filtered.map((h) => (
                 <tr key={h.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
                   <td className="px-3 py-3 font-medium text-foreground whitespace-nowrap">
-                    {h.clientFirstName} {h.clientLastName}
+                    {h.fullName}
                   </td>
                   <td className="px-3 py-3">
                     <a href={`tel:${h.phone.replace(/\D/g, "")}`} className="flex items-center gap-1 text-primary hover:underline whitespace-nowrap">
