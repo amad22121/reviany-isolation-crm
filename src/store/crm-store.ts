@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { Appointment, AppointmentStatus, INITIAL_APPOINTMENTS, SALES_REPS, HotCall, HotCallStatus, CallLogEntry, StatusChangeLog } from "@/data/crm-data";
+import { Appointment, AppointmentStatus, INITIAL_APPOINTMENTS, SALES_REPS, HotCall, HotCallStatus, HotCallPhase, HotCallFeedback, CallLogEntry, StatusChangeLog } from "@/data/crm-data";
 
 export type AppRole = "proprietaire" | "gestionnaire" | "representant";
 
@@ -28,6 +28,8 @@ interface CrmState {
   setRepGoal: (repId: string, goal: number) => void;
   addHotCall: (hc: Omit<HotCall, "id" | "attempts" | "createdAt" | "tags" | "callHistory">) => void;
   updateHotCallStatus: (id: string, status: HotCallStatus) => void;
+  updateHotCallPhase: (id: string, phase: HotCallPhase) => void;
+  updateHotCallFeedback: (id: string, feedback: HotCallFeedback) => void;
   updateHotCallNotes: (id: string, notes: string) => void;
   deleteHotCall: (id: string) => void;
   moveAppointmentToHotCalls: (appointmentId: string, status?: HotCallStatus) => void;
@@ -37,6 +39,8 @@ interface CrmState {
   updateHotCallTags: (id: string, tags: string[]) => void;
   addHotCallLog: (id: string, entry: CallLogEntry) => void;
   logCallAndUpdate: (id: string, status: HotCallStatus, note: string, followUpDate: string, repId: string) => void;
+  reassignHotCall: (id: string, repId: string) => void;
+  rebookHotCall: (id: string, date: string, time: string) => void;
   autoTriggerHotCalls: () => void;
 }
 
@@ -44,10 +48,10 @@ const today = new Date().toISOString().split("T")[0];
 const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
 const INITIAL_HOT_CALLS: HotCall[] = [
-  { id: "hc1", fullName: "Diane Simard", phone: "(438) 555-0112", address: "430 Rue Beaubien E", city: "Montréal", source: "Door-to-door", repId: "rep2", status: "No answer", attempts: 2, lastContactDate: yesterday, followUpDate: today, notes: "Non confirmé, replanifier", createdAt: yesterday, tags: ["Callback"], callHistory: [{ date: yesterday, time: "10:30", repId: "rep2", note: "Pas de réponse" }] },
-  { id: "hc2", fullName: "Lucie Tremblay", phone: "(514) 555-0120", address: "890 Rue Wellington", city: "Verdun", source: "Referral", repId: "rep1", status: "Call back later", attempts: 1, lastContactDate: yesterday, followUpDate: today, notes: "Rappeler le matin", createdAt: yesterday, tags: ["À rappeler matin"], callHistory: [{ date: yesterday, time: "14:00", repId: "rep1", note: "Rappeler le matin" }] },
-  { id: "hc3", fullName: "Yves Bouchard", phone: "(438) 555-0130", address: "1200 Avenue du Parc", city: "Montréal", source: "Door-to-door", repId: "rep3", status: "Follow-up 3 months", attempts: 3, lastContactDate: yesterday, followUpDate: "2026-05-19", notes: "Intéressé mais pas maintenant", createdAt: yesterday, tags: ["Client chaud"], callHistory: [{ date: yesterday, time: "11:00", repId: "rep3", note: "Intéressé mais pas maintenant" }] },
-  { id: "hc4", fullName: "Julie Roy", phone: "(514) 555-0140", address: "567 Boulevard Gouin O", city: "Laval", source: "Door-to-door", repId: "rep4", status: "Reschedule requested", attempts: 1, lastContactDate: today, followUpDate: today, notes: "Veut un RDV en soirée", createdAt: today, tags: ["À rappeler soir"], callHistory: [{ date: today, time: "09:00", repId: "rep4", note: "Veut un RDV en soirée" }] },
+  { id: "hc1", fullName: "Diane Simard", phone: "(438) 555-0112", address: "430 Rue Beaubien E", city: "Montréal", source: "Door-to-door", repId: "rep2", status: "No answer", phase: "À rappeler", lastFeedback: "No answer", attempts: 2, lastContactDate: yesterday, followUpDate: today, notes: "Non confirmé, replanifier", createdAt: yesterday, tags: ["Callback"], callHistory: [{ date: yesterday, time: "10:30", repId: "rep2", note: "Pas de réponse" }] },
+  { id: "hc2", fullName: "Lucie Tremblay", phone: "(514) 555-0120", address: "890 Rue Wellington", city: "Verdun", source: "Referral", repId: "rep1", status: "Call back later", phase: "En cours", lastFeedback: "Call back later", attempts: 1, lastContactDate: yesterday, followUpDate: today, notes: "Rappeler le matin", createdAt: yesterday, tags: ["À rappeler matin"], callHistory: [{ date: yesterday, time: "14:00", repId: "rep1", note: "Rappeler le matin" }] },
+  { id: "hc3", fullName: "Yves Bouchard", phone: "(438) 555-0130", address: "1200 Avenue du Parc", city: "Montréal", source: "Door-to-door", repId: "rep3", status: "Follow-up 3 months", phase: "En cours", lastFeedback: "Follow-up 3 months", attempts: 3, lastContactDate: yesterday, followUpDate: "2026-05-19", notes: "Intéressé mais pas maintenant", createdAt: yesterday, tags: ["Client chaud"], callHistory: [{ date: yesterday, time: "11:00", repId: "rep3", note: "Intéressé mais pas maintenant" }] },
+  { id: "hc4", fullName: "Julie Roy", phone: "(514) 555-0140", address: "567 Boulevard Gouin O", city: "Laval", source: "Door-to-door", repId: "rep4", status: "Reschedule requested", phase: "À rappeler", lastFeedback: "Reschedule requested", attempts: 1, lastContactDate: today, followUpDate: today, notes: "Veut un RDV en soirée", createdAt: today, tags: ["À rappeler soir"], callHistory: [{ date: today, time: "09:00", repId: "rep4", note: "Veut un RDV en soirée" }] },
 ];
 
 const computeFollowUpDate = (status: HotCallStatus, fromDate: string): string => {
@@ -167,6 +171,28 @@ export const useCrm = create<CrmState>((set, get) => ({
         ),
       };
     }),
+  updateHotCallPhase: (id, phase) =>
+    set((state) => ({
+      hotCalls: state.hotCalls.map((h) =>
+        h.id === id ? { ...h, phase } : h
+      ),
+    })),
+  updateHotCallFeedback: (id, feedback) =>
+    set((state) => {
+      const todayStr = new Date().toISOString().split("T")[0];
+      const autoFollowUp = feedback.startsWith("Follow-up") ? computeFollowUpDate(feedback as HotCallStatus, todayStr) : undefined;
+      return {
+        hotCalls: state.hotCalls.map((h) =>
+          h.id === id ? {
+            ...h,
+            lastFeedback: feedback,
+            status: feedback as HotCallStatus,
+            lastContactDate: todayStr,
+            ...(autoFollowUp ? { followUpDate: autoFollowUp } : {}),
+          } : h
+        ),
+      };
+    }),
   updateHotCallNotes: (id, notes) =>
     set((state) => ({
       hotCalls: state.hotCalls.map((h) =>
@@ -244,6 +270,7 @@ export const useCrm = create<CrmState>((set, get) => ({
           h.id === id ? {
             ...h,
             status,
+            lastFeedback: (["No answer", "Call back later", "Reschedule requested", "Not interested", "Follow-up 3 months", "Follow-up 6 months", "Follow-up 9 months", "Follow-up 12 months"].includes(status) ? status : h.lastFeedback) as HotCallFeedback,
             attempts: h.attempts + 1,
             lastContactDate: todayStr,
             followUpDate: autoFollowUp || h.followUpDate,
@@ -251,6 +278,42 @@ export const useCrm = create<CrmState>((set, get) => ({
             callHistory: [...h.callHistory, { date: todayStr, time: timeStr, repId, note: note || "Appel effectué" }],
           } : h
         ),
+      };
+    }),
+  reassignHotCall: (id, repId) =>
+    set((state) => ({
+      hotCalls: state.hotCalls.map((h) =>
+        h.id === id ? { ...h, repId } : h
+      ),
+    })),
+  rebookHotCall: (id, date, time) =>
+    set((state) => {
+      const hc = state.hotCalls.find((h) => h.id === id);
+      if (!hc) return state;
+      return {
+        hotCalls: state.hotCalls.filter((h) => h.id !== id),
+        appointments: [
+          ...state.appointments,
+          {
+            id: `a${Date.now()}`,
+            fullName: hc.fullName,
+            phone: hc.phone,
+            address: hc.address,
+            city: hc.city,
+            origin: hc.origin,
+            date,
+            time: time || "09:00",
+            repId: hc.repId,
+            preQual1: "",
+            preQual2: "",
+            notes: hc.notes,
+            status: "En attente" as const,
+            source: hc.source,
+            smsScheduled: false,
+            createdAt: new Date().toISOString().split("T")[0],
+            statusLog: [],
+          },
+        ],
       };
     }),
   moveAppointmentToHotCalls: (appointmentId, status = "No answer") =>
@@ -272,6 +335,8 @@ export const useCrm = create<CrmState>((set, get) => ({
             source: appt.source || "Door-to-door",
             repId: appt.repId,
             status,
+            phase: "À rappeler" as HotCallPhase,
+            lastFeedback: "No answer" as HotCallFeedback,
             attempts: 1,
             lastContactDate: todayStr,
             followUpDate: new Date(Date.now() + 86400000).toISOString().split("T")[0],
