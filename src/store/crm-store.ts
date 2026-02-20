@@ -41,6 +41,8 @@ interface CrmState {
   logCallAndUpdate: (id: string, status: HotCallStatus, note: string, followUpDate: string, repId: string) => void;
   reassignHotCall: (id: string, repId: string) => void;
   rebookHotCall: (id: string, date: string, time: string) => void;
+  restoreHotCall: (hotCall: HotCall) => void;
+  removeLastAppointment: () => void;
   autoTriggerHotCalls: () => void;
 }
 
@@ -369,6 +371,14 @@ export const useCrm = create<CrmState>((set, get) => ({
       appointments: state.appointments.map((a) =>
         a.id === id ? { ...a, ...updates, status: "En attente" as const } : a
       ),
+    })),
+  restoreHotCall: (hotCall) =>
+    set((state) => ({
+      hotCalls: [...state.hotCalls, hotCall],
+    })),
+  removeLastAppointment: () =>
+    set((state) => ({
+      appointments: state.appointments.slice(0, -1),
     })),
 }));
 
