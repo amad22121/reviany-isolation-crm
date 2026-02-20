@@ -41,8 +41,8 @@ interface CrmState {
   logCallAndUpdate: (id: string, status: HotCallStatus, note: string, followUpDate: string, repId: string) => void;
   reassignHotCall: (id: string, repId: string) => void;
   rebookHotCall: (id: string, date: string, time: string) => void;
-  restoreHotCall: (hotCall: HotCall) => void;
-  removeLastAppointment: () => void;
+  decrementHotCallAttempts: (id: string) => void;
+  rescheduleHotCall: (id: string, date: string, time: string) => void;
   autoTriggerHotCalls: () => void;
 }
 
@@ -372,14 +372,54 @@ export const useCrm = create<CrmState>((set, get) => ({
         a.id === id ? { ...a, ...updates, status: "En attente" as const } : a
       ),
     })),
-  restoreHotCall: (hotCall) =>
+  decrementHotCallAttempts: (id) =>
     set((state) => ({
-      hotCalls: [...state.hotCalls, hotCall],
+      hotCalls: state.hotCalls.map((h) =>
+        h.id === id ? { ...h, attempts: Math.max(0, h.attempts - 1) } : h
+      ),
     })),
-  removeLastAppointment: () =>
-    set((state) => ({
-      appointments: state.appointments.slice(0, -1),
-    })),
+  rescheduleHotCall: (id, date, time) =>
+    set((state) => {
+      const hc = state.hotCalls.find((h) => h.id === id);
+      if (!hc) return state;
+      const appt = hc.originalAppointmentId
+        ? state.appointments.find((a) => a.id === hc.originalAppointmentId)
+        : null;
+      if (appt) {
+        return {
+          hotCalls: state.hotCalls.filter((h) => h.id !== id),
+          appointments: state.appointments.map((a) =>
+            a.id === appt.id ? { ...a, date, time: time || "09:00", status: "En attente" as const } : a
+          ),
+        };
+      }
+      // No original appointment found - create one as fallback
+      return {
+        hotCalls: state.hotCalls.filter((h) => h.id !== id),
+        appointments: [
+          ...state.appointments,
+          {
+            id: `a${Date.now()}`,
+            fullName: hc.fullName,
+            phone: hc.phone,
+            address: hc.address,
+            city: hc.city,
+            origin: hc.origin,
+            date,
+            time: time || "09:00",
+            repId: hc.repId,
+            preQual1: "",
+            preQual2: "",
+            notes: hc.notes,
+            status: "En attente" as const,
+            source: hc.source,
+            smsScheduled: false,
+            createdAt: new Date().toISOString().split("T")[0],
+            statusLog: [],
+          },
+        ],
+      };
+    }),
 }));
 
 export const useAuth = create<AuthState>((set) => ({
