@@ -1,7 +1,6 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
 import { SALES_REPS, HOT_CALL_PHASES, HOT_CALL_FEEDBACKS, HotCallStatus, HotCallPhase, HotCallFeedback, HotCall, Appointment } from "@/data/crm-data";
-import { useHotCallUndo } from "@/hooks/use-hot-call-undo";
 import { toast } from "sonner";
 import FicheClient from "@/components/FicheClient";
 import {
@@ -20,12 +19,12 @@ import {
   RotateCcw,
   Trash2,
   Plus,
+  Minus,
   X,
   Tag,
   MapPin,
   CalendarPlus,
   Pencil,
-  Undo2,
 } from "lucide-react";
 
 const DEFAULT_TAGS = ["Callback", "Client chaud", "Client froid", "Budget", "À rappeler matin", "À rappeler soir"];
@@ -34,14 +33,13 @@ const HotCallsPage = () => {
   const {
     hotCalls, appointments,
     updateHotCallPhase, updateHotCallFeedback,
-    deleteHotCall, incrementHotCallAttempts,
+    deleteHotCall, incrementHotCallAttempts, decrementHotCallAttempts,
     updateHotCallFollowUpDate, updateHotCallTags,
     logCallAndUpdate, reassignHotCall, rebookHotCall,
-    restoreHotCall, removeLastAppointment,
+    rescheduleHotCall,
     updateHotCallNotes,
   } = useCrm();
   const { role, currentRepId } = useAuth();
-  const { undoAvailable, undoLabel, captureSnapshot, performUndo, dismissUndo, remainingMs } = useHotCallUndo();
 
   const [view, setView] = useState<"all" | "today">("today");
   const [phaseFilter, setPhaseFilter] = useState("all");
@@ -58,6 +56,8 @@ const HotCallsPage = () => {
   const [postCallFeedback, setPostCallFeedback] = useState<HotCallFeedback>("No answer");
   const [postCallNote, setPostCallNote] = useState("");
   const [postCallDate, setPostCallDate] = useState("");
+  const [postCallRescheduleDate, setPostCallRescheduleDate] = useState("");
+  const [postCallRescheduleTime, setPostCallRescheduleTime] = useState("09:00");
 
   // Rebook popup
   const [rebookId, setRebookId] = useState<string | null>(null);
@@ -77,69 +77,7 @@ const HotCallsPage = () => {
 
   const canManage = role === "proprietaire" || role === "gestionnaire";
 
-  const handleUndo = useCallback(() => {
-    const snap = performUndo();
-    if (!snap) return;
-    if (snap.previousHotCall) {
-      // Restore previous hot call state (phase, feedback, attempts, followUp, repId, notes, tags)
-      const prev = snap.previousHotCall;
-      updateHotCallPhase(prev.id, prev.phase);
-      updateHotCallFeedback(prev.id, prev.lastFeedback);
-      // Restore attempts by setting full state - we patch via tags trick (store overwrites)
-      // Actually we need a direct restore. Let's delete and re-insert.
-      deleteHotCall(prev.id);
-      restoreHotCall(prev);
-    } else {
-      // Was a rebook: restore hot call and remove the created appointment
-      // We stored nothing for previousHotCall = null, but we need the HC data
-      // This case won't happen because we always capture the HC before rebook
-    }
-    toast.success("Action annulée");
-  }, [performUndo, updateHotCallPhase, updateHotCallFeedback, deleteHotCall, restoreHotCall]);
-
-  const withUndo = useCallback((label: string, hcId: string, action: () => void) => {
-    const hc = hotCalls.find((h) => h.id === hcId);
-    if (!hc) { action(); return; }
-    captureSnapshot(label, hcId, hc);
-    action();
-    toast("Action enregistrée", {
-      description: label,
-      action: {
-        label: "Annuler",
-        onClick: () => {
-          const snap = performUndo();
-          if (snap?.previousHotCall) {
-            deleteHotCall(snap.previousHotCall.id);
-            restoreHotCall(snap.previousHotCall);
-            toast.success("Action annulée");
-          }
-        },
-      },
-      duration: 10000,
-    });
-  }, [hotCalls, captureSnapshot, performUndo, deleteHotCall, restoreHotCall]);
-
-  const withUndoRebook = useCallback((label: string, hcId: string, action: () => void) => {
-    const hc = hotCalls.find((h) => h.id === hcId);
-    if (!hc) { action(); return; }
-    captureSnapshot(label, hcId, hc);
-    action();
-    toast("Action enregistrée", {
-      description: label,
-      action: {
-        label: "Annuler",
-        onClick: () => {
-          const snap = performUndo();
-          if (snap?.previousHotCall) {
-            removeLastAppointment();
-            restoreHotCall(snap.previousHotCall);
-            toast.success("Action annulée");
-          }
-        },
-      },
-      duration: 10000,
-    });
-  }, [hotCalls, captureSnapshot, performUndo, removeLastAppointment, restoreHotCall]);
+  const isRescheduleeFeedback = postCallFeedback === "Reschedule requested";
 
   const hotCallToAppointment = (hc: HotCall): Appointment => {
     const original = hc.originalAppointmentId
@@ -239,12 +177,22 @@ const HotCallsPage = () => {
     setPostCallFeedback(hc?.lastFeedback || "No answer");
     setPostCallNote("");
     setPostCallDate(hc?.followUpDate || today);
+    setPostCallRescheduleDate("");
+    setPostCallRescheduleTime("09:00");
   };
 
   const submitPostCall = () => {
     if (!postCallId) return;
     const repId = currentRepId || "rep1";
-    withUndo("Appel enregistré", postCallId, () => logCallAndUpdate(postCallId, postCallFeedback as HotCallStatus, postCallNote, postCallDate, repId));
+
+    if (isRescheduleeFeedback && postCallRescheduleDate) {
+      // Reschedule: update existing RDV date/time and remove from hot calls
+      rescheduleHotCall(postCallId, postCallRescheduleDate, postCallRescheduleTime);
+      toast.success("RDV replanifié avec succès");
+    } else {
+      logCallAndUpdate(postCallId, postCallFeedback as HotCallStatus, postCallNote, postCallDate, repId);
+      toast.success("Appel enregistré");
+    }
     setPostCallId(null);
   };
 
@@ -260,7 +208,8 @@ const HotCallsPage = () => {
 
   const handleRebook = () => {
     if (!rebookId || !rebookDate) return;
-    withUndoRebook("Rebook RDV", rebookId, () => rebookHotCall(rebookId, rebookDate, rebookTime));
+    rebookHotCall(rebookId, rebookDate, rebookTime);
+    toast.success("RDV créé avec succès");
     setRebookId(null);
     setRebookDate("");
     setRebookTime("09:00");
@@ -268,7 +217,8 @@ const HotCallsPage = () => {
 
   const handleEditDate = () => {
     if (!editDateId || !editDateValue) return;
-    withUndo("Date de relance modifiée", editDateId, () => updateHotCallFollowUpDate(editDateId, editDateValue));
+    updateHotCallFollowUpDate(editDateId, editDateValue);
+    toast.success("Date de relance modifiée");
     setEditDateId(null);
     setEditDateValue("");
   };
@@ -284,6 +234,8 @@ const HotCallsPage = () => {
     if (!hc) return;
     updateHotCallTags(hcId, hc.tags.filter((t) => t !== tag));
   };
+
+  const canSavePostCall = isRescheduleeFeedback ? !!postCallRescheduleDate : true;
 
   return (
     <>
@@ -400,7 +352,7 @@ const HotCallsPage = () => {
                       {canManage ? (
                         <select
                           value={h.phase}
-                          onChange={(e) => withUndo("Phase modifiée", h.id, () => updateHotCallPhase(h.id, e.target.value as HotCallPhase))}
+                          onChange={(e) => updateHotCallPhase(h.id, e.target.value as HotCallPhase)}
                           className={`px-2 py-1 rounded-full text-xs font-medium border-none outline-none cursor-pointer ${phaseColors[h.phase]}`}
                         >
                           {HOT_CALL_PHASES.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -416,7 +368,7 @@ const HotCallsPage = () => {
                     <td className="px-3 py-3">
                       <select
                         value={h.lastFeedback}
-                        onChange={(e) => withUndo("Feedback modifié", h.id, () => updateHotCallFeedback(h.id, e.target.value as HotCallFeedback))}
+                        onChange={(e) => updateHotCallFeedback(h.id, e.target.value as HotCallFeedback)}
                         className={`px-2 py-1 rounded-full text-xs font-medium border-none outline-none cursor-pointer ${feedbackColors[h.lastFeedback]}`}
                       >
                         {HOT_CALL_FEEDBACKS.map((f) => <option key={f} value={f}>{f}</option>)}
@@ -426,10 +378,19 @@ const HotCallsPage = () => {
                     {/* Tentatives */}
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-1">
-                        <span className="text-sm font-bold text-foreground">{h.attempts}</span>
+                        {canManage && h.attempts > 0 && (
+                          <button
+                            onClick={() => decrementHotCallAttempts(h.id)}
+                            className="w-5 h-5 rounded bg-secondary hover:bg-destructive/20 text-muted-foreground hover:text-destructive flex items-center justify-center transition-colors"
+                            title="-1 tentative"
+                          >
+                            <Minus className="h-3 w-3" />
+                          </button>
+                        )}
+                        <span className="text-sm font-bold text-foreground min-w-[16px] text-center">{h.attempts}</span>
                         <button
-                          onClick={() => withUndo("+1 tentative", h.id, () => incrementHotCallAttempts(h.id))}
-                          className="ml-1 w-5 h-5 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-primary flex items-center justify-center transition-colors"
+                          onClick={() => incrementHotCallAttempts(h.id)}
+                          className="w-5 h-5 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-primary flex items-center justify-center transition-colors"
                           title="+1 tentative"
                         >
                           <Plus className="h-3 w-3" />
@@ -447,7 +408,7 @@ const HotCallsPage = () => {
                       {canManage ? (
                         <select
                           value={h.repId}
-                          onChange={(e) => withUndo("Réassignation", h.id, () => reassignHotCall(h.id, e.target.value))}
+                          onChange={(e) => reassignHotCall(h.id, e.target.value)}
                           className="bg-transparent border-none text-foreground text-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary rounded px-1"
                         >
                           {SALES_REPS.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
@@ -597,6 +558,30 @@ const HotCallsPage = () => {
                 {HOT_CALL_FEEDBACKS.map((f) => <option key={f} value={f}>{f}</option>)}
               </select>
             </div>
+
+            {isRescheduleeFeedback && (
+              <>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Nouvelle date du rendez-vous <span className="text-destructive">*</span></label>
+                  <input
+                    type="date"
+                    value={postCallRescheduleDate}
+                    onChange={(e) => setPostCallRescheduleDate(e.target.value)}
+                    className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Heure du rendez-vous</label>
+                  <input
+                    type="time"
+                    value={postCallRescheduleTime}
+                    onChange={(e) => setPostCallRescheduleTime(e.target.value)}
+                    className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </>
+            )}
+
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Note</label>
               <textarea
@@ -606,17 +591,21 @@ const HotCallsPage = () => {
                 className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground min-h-[60px] resize-none focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Prochaine relance</label>
-              <input
-                type="date"
-                value={postCallDate}
-                onChange={(e) => setPostCallDate(e.target.value)}
-                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
+
+            {!isRescheduleeFeedback && (
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Prochaine relance</label>
+                <input
+                  type="date"
+                  value={postCallDate}
+                  onChange={(e) => setPostCallDate(e.target.value)}
+                  className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            )}
+
             <div className="flex gap-2 pt-2">
-              <Button onClick={submitPostCall} className="flex-1">
+              <Button onClick={submitPostCall} className="flex-1" disabled={!canSavePostCall}>
                 Enregistrer + 1 tentative
               </Button>
               <Button variant="outline" onClick={() => setPostCallId(null)}>
