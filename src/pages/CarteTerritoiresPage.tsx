@@ -1,12 +1,12 @@
-import { useState, useMemo } from "react";
-import { MapContainer, TileLayer, Polygon, useMap } from "react-leaflet";
+import { useEffect, useMemo, useRef, useState } from "react";
+import L, { Map as LeafletMap, LayerGroup as LeafletLayerGroup } from "leaflet";
 import { useAuth } from "@/store/crm-store";
 import { useTerritories, MapZone, TerritoryStatus, TERRITORY_STATUSES } from "@/store/territory-store";
 import { SALES_REPS } from "@/data/crm-data";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, X, History, ExternalLink, CalendarDays } from "lucide-react";
+import { X, History, ExternalLink, CalendarDays } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
 const STATUS_COLORS: Record<TerritoryStatus, string> = {
@@ -25,10 +25,10 @@ const STATUS_BADGE: Record<TerritoryStatus, string> = {
 
 const getRepName = (id: string) => SALES_REPS.find((r) => r.id === id)?.name || id;
 
-const FlyToZone = ({ center }: { center: [number, number] }) => {
-  const map = useMap();
-  map.flyTo(center, 14, { duration: 0.5 });
-  return null;
+const getPolygonCenter = (polygon: [number, number][]): [number, number] => {
+  const lat = polygon.reduce((s, p) => s + p[0], 0) / polygon.length;
+  const lng = polygon.reduce((s, p) => s + p[1], 0) / polygon.length;
+  return [lat, lng];
 };
 
 const CarteTerritoiresPage = () => {
@@ -43,6 +43,10 @@ const CarteTerritoiresPage = () => {
   const [flyTarget, setFlyTarget] = useState<[number, number] | null>(null);
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesInput, setNotesInput] = useState("");
+
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<LeafletMap | null>(null);
+  const zoneLayerRef = useRef<LeafletLayerGroup | null>(null);
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -59,12 +63,55 @@ const CarteTerritoiresPage = () => {
       });
   }, [mapZones, isRep, currentRepId, filterRep, filterToday, today]);
 
-  const handleZoneClick = (zone: MapZone) => {
-    setSelectedZone(zone);
-    setEditingNotes(false);
-    const center = getPolygonCenter(zone.polygon);
-    setFlyTarget(center);
-  };
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    const map = L.map(mapContainerRef.current, {
+      zoomControl: true,
+    }).setView([45.52, -73.58], 12);
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+    }).addTo(map);
+
+    mapRef.current = map;
+    zoneLayerRef.current = L.layerGroup().addTo(map);
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      zoneLayerRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!mapRef.current || !zoneLayerRef.current) return;
+
+    zoneLayerRef.current.clearLayers();
+
+    visibleZones.forEach((zone) => {
+      const selected = zone.id === selectedZone?.id;
+      const polygon = L.polygon(zone.polygon, {
+        color: STATUS_COLORS[zone.status],
+        fillColor: STATUS_COLORS[zone.status],
+        fillOpacity: selected ? 0.5 : 0.25,
+        weight: selected ? 3 : 2,
+      });
+
+      polygon.on("click", () => {
+        setSelectedZone(zone);
+        setEditingNotes(false);
+        setFlyTarget(getPolygonCenter(zone.polygon));
+      });
+
+      polygon.addTo(zoneLayerRef.current!);
+    });
+  }, [visibleZones, selectedZone?.id]);
+
+  useEffect(() => {
+    if (!mapRef.current || !flyTarget) return;
+    mapRef.current.flyTo(flyTarget, 14, { duration: 0.5 });
+  }, [flyTarget]);
 
   const handleStatusChange = (status: TerritoryStatus) => {
     if (!selectedZone) return;
@@ -91,24 +138,12 @@ const CarteTerritoiresPage = () => {
     window.open(`https://www.google.com/maps/search/?api=1&query=${center[0]},${center[1]}`, "_blank");
   };
 
-  const getPolygonCenter = (polygon: [number, number][]): [number, number] => {
-    const lat = polygon.reduce((s, p) => s + p[0], 0) / polygon.length;
-    const lng = polygon.reduce((s, p) => s + p[1], 0) / polygon.length;
-    return [lat, lng];
-  };
-
-  // Refresh selectedZone from store
   const liveZone = selectedZone ? mapZones.find((z) => z.id === selectedZone.id) || selectedZone : null;
 
   return (
     <div className="flex flex-col h-[calc(100vh-5rem)] gap-4">
-      {/* Controls */}
       <div className="flex flex-wrap items-center gap-3 shrink-0">
-        <Button
-          variant={filterToday ? "default" : "outline"}
-          size="sm"
-          onClick={() => setFilterToday(!filterToday)}
-        >
+        <Button variant={filterToday ? "default" : "outline"} size="sm" onClick={() => setFilterToday(!filterToday)}>
           <CalendarDays className="h-4 w-4 mr-1" /> Aujourd'hui
         </Button>
 
@@ -122,7 +157,6 @@ const CarteTerritoiresPage = () => {
           </Select>
         )}
 
-        {/* Legend */}
         <div className="flex items-center gap-3 ml-auto text-xs">
           {TERRITORY_STATUSES.map((s) => (
             <div key={s} className="flex items-center gap-1.5">
@@ -133,38 +167,11 @@ const CarteTerritoiresPage = () => {
         </div>
       </div>
 
-      {/* Map + Panel */}
       <div className="flex-1 flex gap-0 rounded-lg overflow-hidden border border-border relative">
-        {/* Map */}
         <div className={`flex-1 relative ${liveZone ? "sm:mr-[340px]" : ""}`}>
-          <MapContainer
-            center={[45.5200, -73.5800]}
-            zoom={12}
-            className="h-full w-full"
-            style={{ background: "hsl(220 20% 10%)" }}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            />
-            {visibleZones.map((zone) => (
-              <Polygon
-                key={zone.id}
-                positions={zone.polygon}
-                pathOptions={{
-                  color: STATUS_COLORS[zone.status],
-                  fillColor: STATUS_COLORS[zone.status],
-                  fillOpacity: zone.id === liveZone?.id ? 0.5 : 0.25,
-                  weight: zone.id === liveZone?.id ? 3 : 2,
-                }}
-                eventHandlers={{ click: () => handleZoneClick(zone) }}
-              />
-            ))}
-            {flyTarget && <FlyToZone center={flyTarget} />}
-          </MapContainer>
+          <div ref={mapContainerRef} className="h-full w-full" />
         </div>
 
-        {/* Side panel */}
         {liveZone && (
           <div className="absolute right-0 top-0 bottom-0 w-full sm:w-[340px] bg-card border-l border-border overflow-y-auto z-[1000]">
             <div className="p-4 space-y-5">
@@ -179,7 +186,6 @@ const CarteTerritoiresPage = () => {
                 {liveZone.status}
               </span>
 
-              {/* Info */}
               <div className="space-y-3">
                 <div className="text-sm">
                   <span className="text-muted-foreground text-xs">Ville</span>
@@ -202,7 +208,6 @@ const CarteTerritoiresPage = () => {
                 </div>
               </div>
 
-              {/* Status change */}
               <div>
                 <span className="text-muted-foreground text-xs">Modifier le statut</span>
                 <Select value={liveZone.status} onValueChange={(v) => handleStatusChange(v as TerritoryStatus)}>
@@ -211,7 +216,6 @@ const CarteTerritoiresPage = () => {
                 </Select>
               </div>
 
-              {/* Notes */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-muted-foreground text-xs">Notes terrain</span>
@@ -228,12 +232,10 @@ const CarteTerritoiresPage = () => {
                 )}
               </div>
 
-              {/* Google Maps */}
               <Button variant="outline" size="sm" className="w-full" onClick={() => openGoogleMaps(liveZone)}>
                 <ExternalLink className="h-4 w-4 mr-2" /> Ouvrir dans Google Maps
               </Button>
 
-              {/* History */}
               {liveZone.statusLog.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
@@ -261,3 +263,4 @@ const CarteTerritoiresPage = () => {
 };
 
 export default CarteTerritoiresPage;
+
