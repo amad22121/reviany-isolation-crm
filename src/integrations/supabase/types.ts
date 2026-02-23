@@ -14,7 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      map_zone_status_logs: {
+        Row: {
+          changed_at: string
+          changed_by: string
+          id: string
+          new_status: string
+          previous_status: string
+          zone_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by: string
+          id?: string
+          new_status: string
+          previous_status: string
+          zone_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string
+          id?: string
+          new_status?: string
+          previous_status?: string
+          zone_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "map_zone_status_logs_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "map_zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      map_zones: {
+        Row: {
+          city: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          notes: string | null
+          planned_date: string | null
+          polygon: Json
+          rep_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          city?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          planned_date?: string | null
+          polygon: Json
+          rep_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          planned_date?: string | null
+          polygon?: Json
+          rep_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
