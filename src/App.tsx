@@ -13,6 +13,7 @@ import RepViewPage from "./pages/RepViewPage";
 import UserManagementPage from "./pages/UserManagementPage";
 import HotCallsPage from "./pages/HotCallsPage";
 import CalendarPage from "./pages/CalendarPage";
+import RouteDuJourPage from "./pages/RouteDuJourPage";
 
 import BacklogPage from "./pages/BacklogPage";
 
@@ -56,6 +57,7 @@ const AppRoutes = () => {
       <Route path="/calendar" element={<AuthGuard><CalendarPage /></AuthGuard>} />
       
       <Route path="/backlog" element={<AuthGuard><BacklogPage /></AuthGuard>} />
+      <Route path="/route-du-jour" element={<AuthGuard><RouteDuJourPage /></AuthGuard>} />
       <Route path="/users" element={<AuthGuard><UserManagementPage /></AuthGuard>} />
       
       <Route path="*" element={<NotFound />} />
