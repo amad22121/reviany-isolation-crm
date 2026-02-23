@@ -20,6 +20,7 @@ import CarteTerritoiresPage from "./pages/CarteTerritoiresPage";
 import BacklogPage from "./pages/BacklogPage";
 
 import AppLayout from "./components/AppLayout";
+import QuickClientSearch from "./components/QuickClientSearch";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,7 +28,7 @@ const queryClient = new QueryClient();
 const AuthGuard = ({ children }: { children: React.ReactNode }) => {
   const { isLoggedIn, role } = useAuth();
   if (!isLoggedIn || !role) return <Navigate to="/" replace />;
-  return <AppLayout>{children}</AppLayout>;
+  return <AppLayout>{children}<QuickClientSearch /></AppLayout>;
 };
 
 const AppRoutes = () => {
