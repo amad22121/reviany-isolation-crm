@@ -17,7 +17,6 @@ import {
   UserCheck,
   Archive,
   Route,
-  Map,
   MapPinned,
 } from "lucide-react";
 import { useState } from "react";
@@ -33,7 +32,6 @@ const ROUTE_LABELS: Record<string, string> = {
   calendar: "Calendrier",
   "route-du-jour": "Route du jour",
   territoires: "Territoires",
-  "carte-territoires": "Carte Territoires",
   backlog: "Backlog",
 };
 
@@ -46,8 +44,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
     { to: "/calendar", label: "Calendrier", icon: CalendarDays },
     { to: "/route-du-jour", label: "Route du jour", icon: Route },
-    { to: "/territoires", label: "Territoires", icon: Map },
-    { to: "/carte-territoires", label: "Carte Territoires", icon: MapPinned },
+    { to: "/territoires", label: "Territoires", icon: MapPinned },
     { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
     { to: "/hot-calls", label: "Hot Calls", icon: Flame },
     { to: "/backlog", label: "Backlog", icon: Archive },
@@ -60,8 +57,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
     { to: "/calendar", label: "Calendrier", icon: CalendarDays },
     { to: "/route-du-jour", label: "Route du jour", icon: Route },
-    { to: "/territoires", label: "Territoires", icon: Map },
-    { to: "/carte-territoires", label: "Carte Territoires", icon: MapPinned },
+    { to: "/territoires", label: "Territoires", icon: MapPinned },
     { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
     { to: "/hot-calls", label: "Hot Calls", icon: Flame },
     { to: "/backlog", label: "Backlog", icon: Archive },
@@ -73,8 +69,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     { to: "/rep", label: "Ma vue", icon: User },
     { to: "/calendar", label: "Calendrier", icon: CalendarDays },
     { to: "/route-du-jour", label: "Route du jour", icon: Route },
-    { to: "/territoires", label: "Territoires", icon: Map },
-    { to: "/carte-territoires", label: "Carte Territoires", icon: MapPinned },
+    { to: "/territoires", label: "Territoires", icon: MapPinned },
     { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
     { to: "/hot-calls", label: "Hot Calls", icon: Flame },
     { to: "/backlog", label: "Backlog", icon: Archive },

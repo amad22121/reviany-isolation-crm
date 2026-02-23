@@ -1,317 +1,443 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import L, { Map as LeafletMap, LayerGroup as LeafletLayerGroup, FeatureGroup as LeafletFeatureGroup } from "leaflet";
+import "leaflet/dist/leaflet.css";
+import "leaflet-draw";
+import "leaflet-draw/dist/leaflet.draw.css";
 import { useAuth } from "@/store/crm-store";
-import { useTerritories, Territory, TerritoryStatus, TERRITORY_STATUSES } from "@/store/territory-store";
+import { TerritoryStatus, TERRITORY_STATUSES } from "@/store/territory-store";
 import { SALES_REPS } from "@/data/crm-data";
-import { Badge } from "@/components/ui/badge";
+import { useMapZonesQuery, useZoneLogsQuery, useCreateZone, useUpdateZone, useDeleteZone, DbMapZone } from "@/hooks/useMapZones";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { MapPin, Pencil, Eye, Plus, History, Trash2 } from "lucide-react";
+import { CalendarDays, Loader2, Search, Crosshair, Trash2, Eye } from "lucide-react";
+import { toast } from "sonner";
+import ZoneFormPanel from "@/components/carte/ZoneFormPanel";
+import ZoneDetailPanel from "@/components/carte/ZoneDetailPanel";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-const statusColors: Record<TerritoryStatus, string> = {
-  "À faire": "bg-warning/20 text-warning border-warning/30",
-  "Planifié aujourd'hui": "bg-info/20 text-info border-info/30",
-  "En cours": "bg-primary/20 text-primary border-primary/30",
-  "Fait": "bg-green-500/20 text-green-400 border-green-500/30",
+const STATUS_COLORS: Record<TerritoryStatus, string> = {
+  "À faire": "#9ca3af",
+  "Planifié aujourd'hui": "#3b82f6",
+  "En cours": "#f97316",
+  "Fait": "#22c55e",
 };
 
-const statusOrder: Record<TerritoryStatus, number> = {
-  "Planifié aujourd'hui": 0,
-  "À faire": 1,
-  "En cours": 2,
-  "Fait": 3,
+const STATUS_BADGE: Record<TerritoryStatus, string> = {
+  "À faire": "bg-muted text-muted-foreground",
+  "Planifié aujourd'hui": "bg-info/20 text-info",
+  "En cours": "bg-warning/20 text-warning",
+  "Fait": "bg-green-500/20 text-green-400",
+};
+
+const getPolygonCenter = (polygon: [number, number][]): [number, number] => {
+  const lat = polygon.reduce((s, p) => s + p[0], 0) / polygon.length;
+  const lng = polygon.reduce((s, p) => s + p[1], 0) / polygon.length;
+  return [lat, lng];
 };
 
 const getRepName = (id: string) => SALES_REPS.find((r) => r.id === id)?.name || id;
 
 const TerritoiresPage = () => {
   const { role, currentRepId } = useAuth();
-  const { territories, addTerritory, updateTerritoryStatus, updateTerritory, deleteTerritory } = useTerritories();
   const isRep = role === "representant";
   const canManage = role === "proprietaire" || role === "gestionnaire";
 
-  const [filterCity, setFilterCity] = useState("all");
-  const [filterRep, setFilterRep] = useState("all");
+  const { data: zones = [], isLoading } = useMapZonesQuery();
+  const createZone = useCreateZone();
+  const updateZone = useUpdateZone();
+  const deleteZone = useDeleteZone();
+
+  const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterRep, setFilterRep] = useState("all");
+  const [filterDate, setFilterDate] = useState("all");
 
-  const [addOpen, setAddOpen] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [selectedTerritory, setSelectedTerritory] = useState<Territory | null>(null);
+  const [drawnPolygon, setDrawnPolygon] = useState<[number, number][] | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
-  // Add form state
-  const [form, setForm] = useState({ city: "", sector: "", street: "", repId: SALES_REPS[0]?.id || "", estimatedDoors: "", notes: "", status: "À faire" as TerritoryStatus });
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<LeafletMap | null>(null);
+  const zoneLayerRef = useRef<LeafletLayerGroup | null>(null);
+  const drawLayerRef = useRef<LeafletFeatureGroup | null>(null);
 
-  const cities = [...new Set(territories.map((t) => t.city))].sort();
+  const today = new Date().toISOString().split("T")[0];
+  const weekEnd = new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
 
-  const filtered = territories
-    .filter((t) => {
-      if (isRep) return t.repId === currentRepId;
-      if (filterRep !== "all" && t.repId !== filterRep) return false;
-      return true;
-    })
-    .filter((t) => filterCity === "all" || t.city === filterCity)
-    .filter((t) => filterStatus === "all" || t.status === filterStatus)
-    .sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
+  const selectedZone = useMemo(() => zones.find((z) => z.id === selectedZoneId) ?? null, [zones, selectedZoneId]);
+  const { data: logs = [] } = useZoneLogsQuery(selectedZoneId);
 
-  const stats = {
-    total: filtered.length,
-    aFaire: filtered.filter((t) => t.status === "À faire").length,
-    enCours: filtered.filter((t) => t.status === "En cours").length,
-    fait: filtered.filter((t) => t.status === "Fait").length,
-    planifie: filtered.filter((t) => t.status === "Planifié aujourd'hui").length,
-  };
+  // Unified filter logic — applies to BOTH map and list
+  const visibleZones = useMemo(() => {
+    return zones
+      .filter((z) => {
+        if (isRep) return z.rep_id === currentRepId;
+        if (filterRep === "unassigned") return !z.rep_id || z.rep_id === "";
+        if (filterRep !== "all") return z.rep_id === filterRep;
+        return true;
+      })
+      .filter((z) => {
+        if (filterStatus !== "all") return z.status === filterStatus;
+        return true;
+      })
+      .filter((z) => {
+        if (filterDate === "today") return z.planned_date === today;
+        if (filterDate === "week") return z.planned_date && z.planned_date >= today && z.planned_date <= weekEnd;
+        return true;
+      })
+      .filter((z) => {
+        if (!search.trim()) return true;
+        const q = search.toLowerCase();
+        return (
+          z.name.toLowerCase().includes(q) ||
+          z.city.toLowerCase().includes(q) ||
+          (z.notes || "").toLowerCase().includes(q)
+        );
+      });
+  }, [zones, isRep, currentRepId, filterRep, filterStatus, filterDate, today, weekEnd, search]);
 
-  const handleAdd = () => {
-    if (!form.city || !form.sector || !form.street) return;
-    addTerritory({
-      city: form.city,
-      sector: form.sector,
-      street: form.street,
-      status: form.status,
-      repId: isRep ? (currentRepId || "") : form.repId,
-      lastVisitDate: "",
-      estimatedDoors: form.estimatedDoors ? parseInt(form.estimatedDoors) : null,
-      notes: form.notes,
+  // Stats
+  const stats = useMemo(() => {
+    const s = { total: visibleZones.length, "À faire": 0, "Planifié aujourd'hui": 0, "En cours": 0, "Fait": 0 };
+    visibleZones.forEach((z) => { s[z.status]++; });
+    return s;
+  }, [visibleZones]);
+
+  // Init map
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    const map = L.map(mapContainerRef.current, { zoomControl: true }).setView([45.52, -73.58], 12);
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+    }).addTo(map);
+
+    const zoneLayer = L.layerGroup().addTo(map);
+    const drawLayer = new L.FeatureGroup().addTo(map);
+
+    mapRef.current = map;
+    zoneLayerRef.current = zoneLayer;
+    drawLayerRef.current = drawLayer;
+
+    if (canManage) {
+      const drawControl = new L.Control.Draw({
+        draw: {
+          polygon: { allowIntersection: false, shapeOptions: { color: "#3b82f6", weight: 2 } },
+          rectangle: { shapeOptions: { color: "#3b82f6", weight: 2 } },
+          polyline: false,
+          circle: false,
+          circlemarker: false,
+          marker: false,
+        },
+        edit: { featureGroup: drawLayer, remove: true, edit: false as any },
+      });
+      map.addControl(drawControl);
+
+      map.on(L.Draw.Event.CREATED, (e: any) => {
+        const layer = e.layer;
+        const latlngs = (layer.getLatLngs()[0] as L.LatLng[]);
+        const polygon: [number, number][] = latlngs.map((ll) => [ll.lat, ll.lng]);
+        drawLayer.addLayer(layer);
+        setDrawnPolygon(polygon);
+        setShowCreateForm(true);
+        setSelectedZoneId(null);
+      });
+    }
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      zoneLayerRef.current = null;
+      drawLayerRef.current = null;
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Render zones on map (synced with filters)
+  useEffect(() => {
+    if (!mapRef.current || !zoneLayerRef.current) return;
+    zoneLayerRef.current.clearLayers();
+
+    visibleZones.forEach((zone) => {
+      const selected = zone.id === selectedZoneId;
+      const polygon = L.polygon(zone.polygon, {
+        color: STATUS_COLORS[zone.status],
+        fillColor: STATUS_COLORS[zone.status],
+        fillOpacity: selected ? 0.5 : 0.25,
+        weight: selected ? 3 : 2,
+      });
+
+      polygon.on("click", () => {
+        setSelectedZoneId(zone.id);
+        setShowCreateForm(false);
+        setDrawnPolygon(null);
+        drawLayerRef.current?.clearLayers();
+        const center = getPolygonCenter(zone.polygon);
+        mapRef.current?.flyTo(center, 14, { duration: 0.5 });
+      });
+
+      polygon.addTo(zoneLayerRef.current!);
     });
-    setForm({ city: "", sector: "", street: "", repId: SALES_REPS[0]?.id || "", estimatedDoors: "", notes: "", status: "À faire" });
-    setAddOpen(false);
-  };
+  }, [visibleZones, selectedZoneId]);
 
-  const handleStatusChange = (id: string, status: TerritoryStatus) => {
-    updateTerritoryStatus(id, status, role || "system");
-  };
+  const selectAndCenter = useCallback((zone: DbMapZone) => {
+    setSelectedZoneId(zone.id);
+    setShowCreateForm(false);
+    setDrawnPolygon(null);
+    drawLayerRef.current?.clearLayers();
+    const center = getPolygonCenter(zone.polygon);
+    mapRef.current?.flyTo(center, 14, { duration: 0.5 });
+  }, []);
 
-  const openMaps = (t: Territory) => {
-    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${t.street}, ${t.sector}, ${t.city}`)}`, "_blank");
-  };
+  // CRUD handlers
+  const handleCreateZone = useCallback(async (data: {
+    name: string; city: string; status: TerritoryStatus; repId: string; plannedDate: string; notes: string;
+  }) => {
+    if (!drawnPolygon) return;
+    try {
+      await createZone.mutateAsync({
+        name: data.name, city: data.city, status: data.status, rep_id: data.repId,
+        planned_date: data.plannedDate, notes: data.notes, polygon: drawnPolygon, created_by: role || "system",
+      });
+      toast.success("Zone créée avec succès");
+      setShowCreateForm(false);
+      setDrawnPolygon(null);
+      drawLayerRef.current?.clearLayers();
+    } catch {
+      toast.error("Erreur lors de la création");
+    }
+  }, [drawnPolygon, createZone, role]);
+
+  const handleCancelCreate = useCallback(() => {
+    setShowCreateForm(false);
+    setDrawnPolygon(null);
+    drawLayerRef.current?.clearLayers();
+  }, []);
+
+  const handleUpdateStatus = useCallback(async (status: TerritoryStatus) => {
+    if (!selectedZone) return;
+    if (isRep && selectedZone.rep_id !== currentRepId) return;
+    try {
+      await updateZone.mutateAsync({
+        id: selectedZone.id,
+        updates: { status },
+        statusChange: { previous: selectedZone.status, next: status, changedBy: role || "system" },
+      });
+      toast.success("Statut mis à jour");
+    } catch { toast.error("Erreur lors de la mise à jour"); }
+  }, [selectedZone, isRep, currentRepId, updateZone, role]);
+
+  const handleInlineStatus = useCallback(async (zone: DbMapZone, status: TerritoryStatus) => {
+    if (isRep && zone.rep_id !== currentRepId) return;
+    try {
+      await updateZone.mutateAsync({
+        id: zone.id, updates: { status },
+        statusChange: { previous: zone.status, next: status, changedBy: role || "system" },
+      });
+    } catch { toast.error("Erreur"); }
+  }, [isRep, currentRepId, updateZone, role]);
+
+  const handleInlineRep = useCallback(async (zone: DbMapZone, repId: string) => {
+    if (!canManage) return;
+    await updateZone.mutateAsync({ id: zone.id, updates: { rep_id: repId } });
+  }, [canManage, updateZone]);
+
+  const handleInlineDate = useCallback(async (zone: DbMapZone, date: string) => {
+    await updateZone.mutateAsync({ id: zone.id, updates: { planned_date: date } });
+  }, [updateZone]);
+
+  const handleUpdateRep = useCallback(async (repId: string) => {
+    if (!selectedZone || !canManage) return;
+    await updateZone.mutateAsync({ id: selectedZone.id, updates: { rep_id: repId } });
+  }, [selectedZone, canManage, updateZone]);
+
+  const handleUpdateNotes = useCallback(async (notes: string) => {
+    if (!selectedZone) return;
+    await updateZone.mutateAsync({ id: selectedZone.id, updates: { notes } });
+    toast.success("Notes sauvegardées");
+  }, [selectedZone, updateZone]);
+
+  const handleUpdateDate = useCallback(async (date: string) => {
+    if (!selectedZone) return;
+    await updateZone.mutateAsync({ id: selectedZone.id, updates: { planned_date: date } });
+  }, [selectedZone, updateZone]);
+
+  const handleDelete = useCallback(async (id?: string) => {
+    const targetId = id || selectedZone?.id;
+    if (!targetId || !canManage) return;
+    try {
+      await deleteZone.mutateAsync(targetId);
+      if (selectedZoneId === targetId) setSelectedZoneId(null);
+      toast.success("Zone supprimée");
+    } catch { toast.error("Erreur lors de la suppression"); }
+  }, [selectedZone, selectedZoneId, canManage, deleteZone]);
+
+  const showPanel = showCreateForm || selectedZone;
 
   return (
-    <div className="space-y-6">
-      {/* Controls */}
-      <div className="flex flex-wrap items-center gap-3">
-        <Select value={filterCity} onValueChange={setFilterCity}>
-          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Ville" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Toutes les villes</SelectItem>
-            {cities.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-          </SelectContent>
-        </Select>
-
-        {!isRep && (
-          <Select value={filterRep} onValueChange={setFilterRep}>
-            <SelectTrigger className="w-[170px]"><SelectValue placeholder="Représentant" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les reps</SelectItem>
-              {SALES_REPS.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        )}
+    <div className="flex flex-col h-[calc(100vh-5rem)] gap-3">
+      {/* Toolbar: Search + Filters */}
+      <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher nom, ville, notes…"
+            className="pl-9 w-[220px] h-9"
+          />
+        </div>
 
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Statut" /></SelectTrigger>
+          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Statut" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tous les statuts</SelectItem>
             {TERRITORY_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
           </SelectContent>
         </Select>
 
-        <Button size="sm" onClick={() => setAddOpen(true)} className="ml-auto">
-          <Plus className="h-4 w-4 mr-1" /> Ajouter un territoire
-        </Button>
-      </div>
+        {!isRep && (
+          <Select value={filterRep} onValueChange={setFilterRep}>
+            <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Représentant" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les reps</SelectItem>
+              <SelectItem value="unassigned">Non assigné</SelectItem>
+              {SALES_REPS.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        {[
-          { label: "Total", value: stats.total, color: "text-foreground" },
-          { label: "Planifiés aujourd'hui", value: stats.planifie, color: "text-info" },
-          { label: "À faire", value: stats.aFaire, color: "text-warning" },
-          { label: "En cours", value: stats.enCours, color: "text-primary" },
-          { label: "Faits", value: stats.fait, color: "text-green-400" },
-        ].map((s) => (
-          <div key={s.label} className="glass-card p-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">{s.label}</p>
-            <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-          </div>
-        ))}
-      </div>
+        <Select value={filterDate} onValueChange={setFilterDate}>
+          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Date" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toutes dates</SelectItem>
+            <SelectItem value="today">Aujourd'hui</SelectItem>
+            <SelectItem value="week">Cette semaine</SelectItem>
+          </SelectContent>
+        </Select>
 
-      {/* List */}
-      {filtered.length === 0 ? (
-        <div className="glass-card p-8 text-center text-muted-foreground">Aucun territoire trouvé.</div>
-      ) : (
-        <div className="space-y-2">
-          {/* Header - desktop */}
-          <div className="hidden sm:grid grid-cols-[1fr_1fr_1.5fr_140px_100px_110px_100px] gap-3 px-4 py-2 text-xs text-muted-foreground uppercase tracking-wide">
-            <span>Ville</span>
-            <span>Secteur</span>
-            <span>Rue</span>
-            <span>Statut</span>
-            <span>Rep</span>
-            <span>Dernière visite</span>
-            <span>Actions</span>
-          </div>
-
-          {filtered.map((t) => (
-            <div key={t.id} className="glass-card p-4">
-              {/* Desktop */}
-              <div className="hidden sm:grid grid-cols-[1fr_1fr_1.5fr_140px_100px_110px_100px] gap-3 items-center">
-                <span className="text-sm text-foreground truncate">{t.city}</span>
-                <span className="text-sm text-foreground truncate">{t.sector}</span>
-                <span className="text-sm text-foreground truncate">{t.street}</span>
-                <Select value={t.status} onValueChange={(v) => handleStatusChange(t.id, v as TerritoryStatus)}>
-                  <SelectTrigger className="h-7 text-xs border-0 p-0 focus:ring-0">
-                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium border ${statusColors[t.status]}`}>
-                      {t.status}
-                    </span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TERRITORY_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <span className="text-xs text-muted-foreground">{getRepName(t.repId)}</span>
-                <span className="text-xs text-muted-foreground">{t.lastVisitDate || "—"}</span>
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openMaps(t)} title="Google Maps">
-                    <MapPin className="h-3.5 w-3.5 text-primary" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedTerritory(t); setDetailOpen(true); }} title="Détails">
-                    <Eye className="h-3.5 w-3.5 text-primary" />
-                  </Button>
-                  {canManage && (
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteTerritory(t.id)} title="Supprimer">
-                      <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {/* Mobile */}
-              <div className="sm:hidden space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-foreground">{t.sector}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium border ${statusColors[t.status]}`}>{t.status}</span>
-                </div>
-                <p className="text-xs text-muted-foreground">{t.street}</p>
-                <p className="text-xs text-muted-foreground">{t.city} · {getRepName(t.repId)} · {t.lastVisitDate || "Pas encore visité"}</p>
-                <div className="flex items-center gap-2 pt-1">
-                  <Button variant="outline" size="sm" className="flex-1 h-9" onClick={() => openMaps(t)}>
-                    <MapPin className="h-3.5 w-3.5 mr-1" /> Maps
-                  </Button>
-                  <Select value={t.status} onValueChange={(v) => handleStatusChange(t.id, v as TerritoryStatus)}>
-                    <SelectTrigger className="flex-1 h-9 text-xs">
-                      <Pencil className="h-3 w-3 mr-1" /> Statut
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TERRITORY_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Button variant="outline" size="sm" className="flex-1 h-9" onClick={() => { setSelectedTerritory(t); setDetailOpen(true); }}>
-                    <Eye className="h-3.5 w-3.5 mr-1" /> Détails
-                  </Button>
-                </div>
-              </div>
+        <div className="ml-auto flex items-center gap-3 text-xs">
+          <span className="text-muted-foreground font-medium">{stats.total} territoire{stats.total !== 1 ? "s" : ""}</span>
+          {TERRITORY_STATUSES.map((s) => (
+            <div key={s} className="flex items-center gap-1">
+              <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: STATUS_COLORS[s] }} />
+              <span className="text-muted-foreground">{stats[s]}</span>
             </div>
           ))}
         </div>
-      )}
+      </div>
 
-      {/* Add Territory Dialog */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="sm:max-w-[480px] bg-card border-border">
-          <DialogHeader><DialogTitle>Ajouter un territoire</DialogTitle></DialogHeader>
-          <div className="space-y-4 mt-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs">Ville *</Label><Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="Montréal" /></div>
-              <div><Label className="text-xs">Secteur *</Label><Input value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })} placeholder="Plateau" /></div>
-            </div>
-            <div><Label className="text-xs">Rue / Zone *</Label><Input value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} placeholder="Rue Saint-Denis (entre X et Y)" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              {!isRep && (
-                <div>
-                  <Label className="text-xs">Représentant</Label>
-                  <Select value={form.repId} onValueChange={(v) => setForm({ ...form, repId: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{SALES_REPS.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-              )}
-              <div>
-                <Label className="text-xs">Statut</Label>
-                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as TerritoryStatus })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{TERRITORY_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div><Label className="text-xs">Portes estimées</Label><Input type="number" value={form.estimatedDoors} onChange={(e) => setForm({ ...form, estimatedDoors: e.target.value })} placeholder="Ex: 40" /></div>
-            <div><Label className="text-xs">Notes terrain</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Observations..." rows={3} /></div>
-            <Button onClick={handleAdd} disabled={!form.city || !form.sector || !form.street} className="w-full">Ajouter</Button>
+      {/* Main content: Map + List */}
+      <div className="flex-1 flex gap-0 rounded-lg overflow-hidden border border-border relative min-h-0">
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-[1001]">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-        </DialogContent>
-      </Dialog>
+        )}
 
-      {/* Detail Dialog */}
-      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="sm:max-w-[520px] bg-card border-border max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Fiche Territoire</DialogTitle></DialogHeader>
-          {selectedTerritory && (
-            <div className="space-y-5 mt-2">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-foreground">{selectedTerritory.sector}</h2>
-                <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[selectedTerritory.status]}`}>{selectedTerritory.status}</span>
-              </div>
+        {/* LEFT: Map */}
+        <div className={`flex-1 relative min-w-0 ${showPanel ? "hidden sm:block" : ""}`}>
+          <div ref={mapContainerRef} className="h-full w-full" />
+        </div>
 
-              <div className="glass-card p-4 space-y-3">
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div><span className="text-muted-foreground text-xs">Ville</span><p className="text-foreground">{selectedTerritory.city}</p></div>
-                  <div><span className="text-muted-foreground text-xs">Représentant</span><p className="text-foreground">{getRepName(selectedTerritory.repId)}</p></div>
-                  <div><span className="text-muted-foreground text-xs">Dernière visite</span><p className="text-foreground">{selectedTerritory.lastVisitDate || "—"}</p></div>
-                  <div><span className="text-muted-foreground text-xs">Portes estimées</span><p className="text-foreground">{selectedTerritory.estimatedDoors ?? "—"}</p></div>
-                </div>
-                <div>
-                  <span className="text-muted-foreground text-xs">Rue / Zone</span>
-                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedTerritory.street}, ${selectedTerritory.sector}, ${selectedTerritory.city}`)}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-primary hover:underline mt-0.5">
-                    <MapPin className="h-3.5 w-3.5" /> {selectedTerritory.street}
-                  </a>
-                </div>
-              </div>
-
-              {selectedTerritory.notes && (
-                <div className="glass-card p-4">
-                  <p className="text-xs text-muted-foreground mb-1">Notes terrain</p>
-                  <p className="text-sm text-foreground">{selectedTerritory.notes}</p>
-                </div>
-              )}
-
-              {selectedTerritory.statusLog.length > 0 && (
-                <div className="glass-card p-4 space-y-3">
-                  <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-                    <History className="h-4 w-4" /> Historique
-                  </h3>
-                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                    {[...selectedTerritory.statusLog].reverse().map((log, i) => (
-                      <div key={i} className="bg-secondary/50 rounded-lg p-3 flex items-start gap-3">
-                        <div className="shrink-0 text-xs text-muted-foreground w-20">
-                          <div>{log.date}</div>
-                          <div>{log.time}</div>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-foreground">{log.previousValue} → {log.newValue}</p>
-                          <p className="text-[10px] text-muted-foreground">par {log.userId}</p>
-                        </div>
+        {/* RIGHT: List */}
+        <div className={`w-full sm:w-[420px] lg:w-[480px] border-l border-border overflow-y-auto bg-card/50 ${showPanel ? "hidden" : ""}`}>
+          {visibleZones.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground text-sm">Aucun territoire trouvé.</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Nom</TableHead>
+                  <TableHead className="text-xs">Statut</TableHead>
+                  <TableHead className="text-xs hidden lg:table-cell">Rep</TableHead>
+                  <TableHead className="text-xs hidden lg:table-cell">Date</TableHead>
+                  <TableHead className="text-xs w-[80px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visibleZones.map((z) => (
+                  <TableRow
+                    key={z.id}
+                    className={`cursor-pointer ${z.id === selectedZoneId ? "bg-primary/10" : ""}`}
+                    onClick={() => selectAndCenter(z)}
+                  >
+                    <TableCell className="py-2">
+                      <div className="text-sm font-medium text-foreground truncate max-w-[140px]">{z.name}</div>
+                      <div className="text-[11px] text-muted-foreground truncate">{z.city}</div>
+                    </TableCell>
+                    <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
+                      <Select value={z.status} onValueChange={(v) => handleInlineStatus(z, v as TerritoryStatus)}>
+                        <SelectTrigger className="h-7 text-[11px] border-0 p-0 w-auto focus:ring-0">
+                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${STATUS_BADGE[z.status]}`}>{z.status}</span>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TERRITORY_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell className="py-2 hidden lg:table-cell" onClick={(e) => e.stopPropagation()}>
+                      {canManage ? (
+                        <Select value={z.rep_id} onValueChange={(v) => handleInlineRep(z, v)}>
+                          <SelectTrigger className="h-7 text-[11px] border-0 p-0 w-auto focus:ring-0">
+                            <span className="text-xs text-muted-foreground">{getRepName(z.rep_id)}</span>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SALES_REPS.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">{getRepName(z.rep_id)}</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-2 hidden lg:table-cell" onClick={(e) => e.stopPropagation()}>
+                      <Input
+                        type="date"
+                        value={z.planned_date || ""}
+                        onChange={(e) => handleInlineDate(z, e.target.value)}
+                        className="h-7 text-[11px] border-0 p-0 w-[110px] bg-transparent focus-visible:ring-0"
+                      />
+                    </TableCell>
+                    <TableCell className="py-2">
+                      <div className="flex items-center gap-0.5">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); selectAndCenter(z); }} title="Centrer sur la carte">
+                          <Crosshair className="h-3.5 w-3.5 text-primary" />
+                        </Button>
+                        {canManage && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleDelete(z.id); }} title="Supprimer">
+                            <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                          </Button>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
-        </DialogContent>
-      </Dialog>
+        </div>
+
+        {/* Detail / Create panels */}
+        {showCreateForm && drawnPolygon && (
+          <ZoneFormPanel onSubmit={handleCreateZone} onCancel={handleCancelCreate} />
+        )}
+
+        {selectedZone && !showCreateForm && (
+          <ZoneDetailPanel
+            zone={selectedZone}
+            logs={logs}
+            canManage={canManage}
+            isRep={isRep}
+            currentRepId={currentRepId}
+            onClose={() => setSelectedZoneId(null)}
+            onUpdateStatus={handleUpdateStatus}
+            onUpdateRep={handleUpdateRep}
+            onUpdateNotes={handleUpdateNotes}
+            onUpdateDate={handleUpdateDate}
+            onDelete={() => handleDelete()}
+          />
+        )}
+      </div>
     </div>
   );
 };
