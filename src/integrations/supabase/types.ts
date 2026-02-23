@@ -91,6 +91,66 @@ export type Database = {
         }
         Relationships: []
       }
+      marketing_leads: {
+        Row: {
+          address: string | null
+          assigned_rep_id: string | null
+          attempts_count: number
+          city: string | null
+          converted_appointment_id: string | null
+          created_at: string
+          created_by_user_id: string
+          full_name: string
+          has_attic: string | null
+          id: string
+          last_contact_date: string | null
+          next_followup_date: string | null
+          notes: string | null
+          phone: string
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          assigned_rep_id?: string | null
+          attempts_count?: number
+          city?: string | null
+          converted_appointment_id?: string | null
+          created_at?: string
+          created_by_user_id?: string
+          full_name: string
+          has_attic?: string | null
+          id?: string
+          last_contact_date?: string | null
+          next_followup_date?: string | null
+          notes?: string | null
+          phone: string
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          assigned_rep_id?: string | null
+          attempts_count?: number
+          city?: string | null
+          converted_appointment_id?: string | null
+          created_at?: string
+          created_by_user_id?: string
+          full_name?: string
+          has_attic?: string | null
+          id?: string
+          last_contact_date?: string | null
+          next_followup_date?: string | null
+          notes?: string | null
+          phone?: string
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -18,6 +18,7 @@ import {
   Archive,
   Route,
   MapPinned,
+  Megaphone,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -33,6 +34,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "route-du-jour": "Route du jour",
   territoires: "Territoires",
   backlog: "Backlog",
+  "marketing-leads": "Marketing Leads",
 };
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
@@ -47,6 +49,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     { to: "/territoires", label: "Territoires", icon: MapPinned },
     { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
     { to: "/hot-calls", label: "Hot Calls", icon: Flame },
+    { to: "/marketing-leads", label: "Marketing Leads", icon: Megaphone },
     { to: "/backlog", label: "Backlog", icon: Archive },
     { to: "/leaderboard", label: "Classement", icon: Trophy },
     { to: "/appointments", label: "Rendez-vous", icon: List },
@@ -60,6 +63,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     { to: "/territoires", label: "Territoires", icon: MapPinned },
     { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
     { to: "/hot-calls", label: "Hot Calls", icon: Flame },
+    { to: "/marketing-leads", label: "Marketing Leads", icon: Megaphone },
     { to: "/backlog", label: "Backlog", icon: Archive },
     { to: "/leaderboard", label: "Classement", icon: Trophy },
     { to: "/appointments", label: "Rendez-vous", icon: List },
@@ -72,6 +76,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     { to: "/territoires", label: "Territoires", icon: MapPinned },
     { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
     { to: "/hot-calls", label: "Hot Calls", icon: Flame },
+    { to: "/marketing-leads", label: "Marketing Leads", icon: Megaphone },
     { to: "/backlog", label: "Backlog", icon: Archive },
     { to: "/leaderboard", label: "Classement", icon: Trophy },
     { to: "/appointments", label: "Rendez-vous", icon: List },

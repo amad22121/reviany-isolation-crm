@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Search, X, Phone, User, Calendar, Flame } from "lucide-react";
+import { Search, X, Phone, User, Calendar, Flame, Megaphone } from "lucide-react";
 import { useCrm } from "@/store/crm-store";
 import { SALES_REPS } from "@/data/crm-data";
 import { useNavigate } from "react-router-dom";
+import { useMarketingLeadsQuery } from "@/hooks/useMarketingLeads";
 
 interface ClientResult {
   id: string;
-  type: "appointment" | "hotcall";
+  type: "appointment" | "hotcall" | "lead";
   fullName: string;
   phone: string;
   address: string;
@@ -23,6 +24,7 @@ const QuickClientSearch = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { appointments, hotCalls } = useCrm();
+  const { data: marketingLeads = [] } = useMarketingLeadsQuery();
 
   useEffect(() => {
     if (open && inputRef.current) {
@@ -63,8 +65,19 @@ const QuickClientSearch = () => {
       nextDate: h.followUpDate,
       repId: h.repId,
     }));
-    return [...fromAppts, ...fromHC];
-  }, [appointments, hotCalls]);
+    const fromLeads: ClientResult[] = marketingLeads.map((l) => ({
+      id: l.id,
+      type: "lead",
+      fullName: l.full_name,
+      phone: l.phone,
+      address: l.address || "",
+      city: l.city || "",
+      status: l.status,
+      nextDate: l.next_followup_date || undefined,
+      repId: l.assigned_rep_id || "",
+    }));
+    return [...fromAppts, ...fromHC, ...fromLeads];
+  }, [appointments, hotCalls, marketingLeads]);
 
   const results = useMemo(() => {
     if (!query.trim()) return [];
@@ -112,6 +125,8 @@ const QuickClientSearch = () => {
     handleClose();
     if (client.type === "appointment") {
       navigate("/appointments");
+    } else if (client.type === "lead") {
+      navigate("/marketing-leads");
     } else {
       navigate("/hot-calls");
     }
@@ -177,6 +192,8 @@ const QuickClientSearch = () => {
                 <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center shrink-0">
                   {client.type === "hotcall" ? (
                     <Flame className="h-4 w-4 text-warning" />
+                  ) : client.type === "lead" ? (
+                    <Megaphone className="h-4 w-4 text-primary" />
                   ) : (
                     <User className="h-4 w-4 text-muted-foreground" />
                   )}
