@@ -1,13 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import L, { Map as LeafletMap, LayerGroup as LeafletLayerGroup } from "leaflet";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import L, { Map as LeafletMap, LayerGroup as LeafletLayerGroup, FeatureGroup as LeafletFeatureGroup } from "leaflet";
+import "leaflet/dist/leaflet.css";
+import "leaflet-draw";
+import "leaflet-draw/dist/leaflet.draw.css";
 import { useAuth } from "@/store/crm-store";
-import { useTerritories, MapZone, TerritoryStatus, TERRITORY_STATUSES } from "@/store/territory-store";
+import { TerritoryStatus, TERRITORY_STATUSES } from "@/store/territory-store";
 import { SALES_REPS } from "@/data/crm-data";
+import { useMapZonesQuery, useZoneLogsQuery, useCreateZone, useUpdateZone, useDeleteZone, DbMapZone } from "@/hooks/useMapZones";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { X, History, ExternalLink, CalendarDays } from "lucide-react";
-import "leaflet/dist/leaflet.css";
+import { CalendarDays, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import ZoneFormPanel from "@/components/carte/ZoneFormPanel";
+import ZoneDetailPanel from "@/components/carte/ZoneDetailPanel";
 
 const STATUS_COLORS: Record<TerritoryStatus, string> = {
   "À faire": "#9ca3af",
@@ -15,15 +20,6 @@ const STATUS_COLORS: Record<TerritoryStatus, string> = {
   "En cours": "#f97316",
   "Fait": "#22c55e",
 };
-
-const STATUS_BADGE: Record<TerritoryStatus, string> = {
-  "À faire": "bg-muted text-muted-foreground border-border",
-  "Planifié aujourd'hui": "bg-info/20 text-info border-info/30",
-  "En cours": "bg-warning/20 text-warning border-warning/30",
-  "Fait": "bg-green-500/20 text-green-400 border-green-500/30",
-};
-
-const getRepName = (id: string) => SALES_REPS.find((r) => r.id === id)?.name || id;
 
 const getPolygonCenter = (polygon: [number, number][]): [number, number] => {
   const lat = polygon.reduce((s, p) => s + p[0], 0) / polygon.length;
@@ -33,64 +29,108 @@ const getPolygonCenter = (polygon: [number, number][]): [number, number] => {
 
 const CarteTerritoiresPage = () => {
   const { role, currentRepId } = useAuth();
-  const { mapZones, updateMapZoneStatus, updateMapZone } = useTerritories();
   const isRep = role === "representant";
   const canManage = role === "proprietaire" || role === "gestionnaire";
 
-  const [selectedZone, setSelectedZone] = useState<MapZone | null>(null);
+  const { data: zones = [], isLoading } = useMapZonesQuery();
+  const createZone = useCreateZone();
+  const updateZone = useUpdateZone();
+  const deleteZone = useDeleteZone();
+
+  const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [filterToday, setFilterToday] = useState(false);
   const [filterRep, setFilterRep] = useState("all");
-  const [flyTarget, setFlyTarget] = useState<[number, number] | null>(null);
-  const [editingNotes, setEditingNotes] = useState(false);
-  const [notesInput, setNotesInput] = useState("");
+
+  // Drawing state
+  const [drawnPolygon, setDrawnPolygon] = useState<[number, number][] | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const zoneLayerRef = useRef<LeafletLayerGroup | null>(null);
+  const drawLayerRef = useRef<LeafletFeatureGroup | null>(null);
+  const drawControlRef = useRef<L.Control.Draw | null>(null);
 
   const today = new Date().toISOString().split("T")[0];
 
+  const selectedZone = useMemo(() => zones.find((z) => z.id === selectedZoneId) ?? null, [zones, selectedZoneId]);
+  const { data: logs = [] } = useZoneLogsQuery(selectedZoneId);
+
   const visibleZones = useMemo(() => {
-    return mapZones
+    return zones
       .filter((z) => {
-        if (isRep) return z.repId === currentRepId;
-        if (filterRep !== "all") return z.repId === filterRep;
+        if (isRep) return z.rep_id === currentRepId;
+        if (filterRep !== "all") return z.rep_id === filterRep;
         return true;
       })
       .filter((z) => {
-        if (filterToday) return z.plannedDate === today;
+        if (filterToday) return z.planned_date === today;
         return true;
       });
-  }, [mapZones, isRep, currentRepId, filterRep, filterToday, today]);
+  }, [zones, isRep, currentRepId, filterRep, filterToday, today]);
 
+  // Init map
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
-    const map = L.map(mapContainerRef.current, {
-      zoomControl: true,
-    }).setView([45.52, -73.58], 12);
-
+    const map = L.map(mapContainerRef.current, { zoomControl: true }).setView([45.52, -73.58], 12);
     L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
     }).addTo(map);
 
+    const zoneLayer = L.layerGroup().addTo(map);
+    const drawLayer = new L.FeatureGroup().addTo(map);
+
     mapRef.current = map;
-    zoneLayerRef.current = L.layerGroup().addTo(map);
+    zoneLayerRef.current = zoneLayer;
+    drawLayerRef.current = drawLayer;
+
+    // Add draw control only for users who can manage
+    if (canManage) {
+      const drawControl = new L.Control.Draw({
+        draw: {
+          polygon: {
+            allowIntersection: false,
+            shapeOptions: { color: "#3b82f6", weight: 2 },
+          },
+          polyline: false,
+          rectangle: false,
+          circle: false,
+          circlemarker: false,
+          marker: false,
+        },
+        edit: { featureGroup: drawLayer, remove: false, edit: false },
+      });
+      map.addControl(drawControl);
+      drawControlRef.current = drawControl;
+
+      map.on(L.Draw.Event.CREATED, (e: any) => {
+        const layer = e.layer;
+        const latlngs = layer.getLatLngs()[0] as L.LatLng[];
+        const polygon: [number, number][] = latlngs.map((ll) => [ll.lat, ll.lng]);
+        drawLayer.addLayer(layer);
+        setDrawnPolygon(polygon);
+        setShowCreateForm(true);
+        setSelectedZoneId(null);
+      });
+    }
 
     return () => {
       map.remove();
       mapRef.current = null;
       zoneLayerRef.current = null;
+      drawLayerRef.current = null;
+      drawControlRef.current = null;
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Render zones
   useEffect(() => {
     if (!mapRef.current || !zoneLayerRef.current) return;
-
     zoneLayerRef.current.clearLayers();
 
     visibleZones.forEach((zone) => {
-      const selected = zone.id === selectedZone?.id;
+      const selected = zone.id === selectedZoneId;
       const polygon = L.polygon(zone.polygon, {
         color: STATUS_COLORS[zone.status],
         fillColor: STATUS_COLORS[zone.status],
@@ -99,46 +139,96 @@ const CarteTerritoiresPage = () => {
       });
 
       polygon.on("click", () => {
-        setSelectedZone(zone);
-        setEditingNotes(false);
-        setFlyTarget(getPolygonCenter(zone.polygon));
+        setSelectedZoneId(zone.id);
+        setShowCreateForm(false);
+        setDrawnPolygon(null);
+        drawLayerRef.current?.clearLayers();
+        const center = getPolygonCenter(zone.polygon);
+        mapRef.current?.flyTo(center, 14, { duration: 0.5 });
       });
 
       polygon.addTo(zoneLayerRef.current!);
     });
-  }, [visibleZones, selectedZone?.id]);
+  }, [visibleZones, selectedZoneId]);
 
-  useEffect(() => {
-    if (!mapRef.current || !flyTarget) return;
-    mapRef.current.flyTo(flyTarget, 14, { duration: 0.5 });
-  }, [flyTarget]);
+  const handleCreateZone = useCallback(async (data: {
+    name: string;
+    city: string;
+    status: TerritoryStatus;
+    repId: string;
+    plannedDate: string;
+    notes: string;
+  }) => {
+    if (!drawnPolygon) return;
+    try {
+      await createZone.mutateAsync({
+        name: data.name,
+        city: data.city,
+        status: data.status,
+        rep_id: data.repId,
+        planned_date: data.plannedDate,
+        notes: data.notes,
+        polygon: drawnPolygon,
+        created_by: role || "system",
+      });
+      toast.success("Zone créée avec succès");
+      setShowCreateForm(false);
+      setDrawnPolygon(null);
+      drawLayerRef.current?.clearLayers();
+    } catch {
+      toast.error("Erreur lors de la création");
+    }
+  }, [drawnPolygon, createZone, role]);
 
-  const handleStatusChange = (status: TerritoryStatus) => {
+  const handleCancelCreate = useCallback(() => {
+    setShowCreateForm(false);
+    setDrawnPolygon(null);
+    drawLayerRef.current?.clearLayers();
+  }, []);
+
+  const handleUpdateStatus = useCallback(async (status: TerritoryStatus) => {
     if (!selectedZone) return;
-    if (isRep && selectedZone.repId !== currentRepId) return;
-    updateMapZoneStatus(selectedZone.id, status, role || "system");
-    setSelectedZone({ ...selectedZone, status });
-  };
+    if (isRep && selectedZone.rep_id !== currentRepId) return;
+    try {
+      await updateZone.mutateAsync({
+        id: selectedZone.id,
+        updates: { status },
+        statusChange: { previous: selectedZone.status, next: status, changedBy: role || "system" },
+      });
+      toast.success("Statut mis à jour");
+    } catch {
+      toast.error("Erreur lors de la mise à jour");
+    }
+  }, [selectedZone, isRep, currentRepId, updateZone, role]);
 
-  const handleRepChange = (repId: string) => {
+  const handleUpdateRep = useCallback(async (repId: string) => {
     if (!selectedZone || !canManage) return;
-    updateMapZone(selectedZone.id, { repId });
-    setSelectedZone({ ...selectedZone, repId });
-  };
+    await updateZone.mutateAsync({ id: selectedZone.id, updates: { rep_id: repId } });
+  }, [selectedZone, canManage, updateZone]);
 
-  const handleSaveNotes = () => {
+  const handleUpdateNotes = useCallback(async (notes: string) => {
     if (!selectedZone) return;
-    updateMapZone(selectedZone.id, { notes: notesInput });
-    setSelectedZone({ ...selectedZone, notes: notesInput });
-    setEditingNotes(false);
-  };
+    await updateZone.mutateAsync({ id: selectedZone.id, updates: { notes } });
+    toast.success("Notes sauvegardées");
+  }, [selectedZone, updateZone]);
 
-  const openGoogleMaps = (zone: MapZone) => {
-    const center = getPolygonCenter(zone.polygon);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${center[0]},${center[1]}`, "_blank");
-  };
+  const handleUpdateDate = useCallback(async (date: string) => {
+    if (!selectedZone) return;
+    await updateZone.mutateAsync({ id: selectedZone.id, updates: { planned_date: date } });
+  }, [selectedZone, updateZone]);
 
-  const liveZone = selectedZone ? mapZones.find((z) => z.id === selectedZone.id) || selectedZone : null;
+  const handleDelete = useCallback(async () => {
+    if (!selectedZone || !canManage) return;
+    try {
+      await deleteZone.mutateAsync(selectedZone.id);
+      setSelectedZoneId(null);
+      toast.success("Zone supprimée");
+    } catch {
+      toast.error("Erreur lors de la suppression");
+    }
+  }, [selectedZone, canManage, deleteZone]);
+
+  const showPanel = showCreateForm || selectedZone;
 
   return (
     <div className="flex flex-col h-[calc(100vh-5rem)] gap-4">
@@ -168,94 +258,34 @@ const CarteTerritoiresPage = () => {
       </div>
 
       <div className="flex-1 flex gap-0 rounded-lg overflow-hidden border border-border relative">
-        <div className={`flex-1 relative ${liveZone ? "sm:mr-[340px]" : ""}`}>
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-[1001]">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        )}
+
+        <div className={`flex-1 relative ${showPanel ? "sm:mr-[340px]" : ""}`}>
           <div ref={mapContainerRef} className="h-full w-full" />
         </div>
 
-        {liveZone && (
-          <div className="absolute right-0 top-0 bottom-0 w-full sm:w-[340px] bg-card border-l border-border overflow-y-auto z-[1000]">
-            <div className="p-4 space-y-5">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-foreground">{liveZone.name}</h3>
-                <button onClick={() => { setSelectedZone(null); setFlyTarget(null); }} className="text-muted-foreground hover:text-foreground">
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
+        {showCreateForm && drawnPolygon && (
+          <ZoneFormPanel onSubmit={handleCreateZone} onCancel={handleCancelCreate} />
+        )}
 
-              <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${STATUS_BADGE[liveZone.status]}`}>
-                {liveZone.status}
-              </span>
-
-              <div className="space-y-3">
-                <div className="text-sm">
-                  <span className="text-muted-foreground text-xs">Ville</span>
-                  <p className="text-foreground">{liveZone.city}</p>
-                </div>
-                <div className="text-sm">
-                  <span className="text-muted-foreground text-xs">Représentant</span>
-                  {canManage ? (
-                    <Select value={liveZone.repId} onValueChange={handleRepChange}>
-                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                      <SelectContent>{SALES_REPS.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>
-                    </Select>
-                  ) : (
-                    <p className="text-foreground">{getRepName(liveZone.repId)}</p>
-                  )}
-                </div>
-                <div className="text-sm">
-                  <span className="text-muted-foreground text-xs">Date planifiée</span>
-                  <p className="text-foreground">{liveZone.plannedDate || "—"}</p>
-                </div>
-              </div>
-
-              <div>
-                <span className="text-muted-foreground text-xs">Modifier le statut</span>
-                <Select value={liveZone.status} onValueChange={(v) => handleStatusChange(v as TerritoryStatus)}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>{TERRITORY_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-muted-foreground text-xs">Notes terrain</span>
-                  {editingNotes ? (
-                    <button onClick={handleSaveNotes} className="text-xs text-primary hover:opacity-80">Sauvegarder</button>
-                  ) : (
-                    <button onClick={() => { setNotesInput(liveZone.notes); setEditingNotes(true); }} className="text-xs text-muted-foreground hover:text-primary">Modifier</button>
-                  )}
-                </div>
-                {editingNotes ? (
-                  <Textarea value={notesInput} onChange={(e) => setNotesInput(e.target.value)} rows={3} className="bg-secondary/50" autoFocus />
-                ) : (
-                  <p className="text-sm text-foreground bg-secondary/50 rounded-lg p-3">{liveZone.notes || <span className="text-muted-foreground italic">Aucune note</span>}</p>
-                )}
-              </div>
-
-              <Button variant="outline" size="sm" className="w-full" onClick={() => openGoogleMaps(liveZone)}>
-                <ExternalLink className="h-4 w-4 mr-2" /> Ouvrir dans Google Maps
-              </Button>
-
-              {liveZone.statusLog.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                    <History className="h-3.5 w-3.5" /> Historique
-                  </h4>
-                  <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
-                    {[...liveZone.statusLog].reverse().map((log, i) => (
-                      <div key={i} className="bg-secondary/50 rounded-lg p-2.5 text-xs">
-                        <div className="flex justify-between text-muted-foreground">
-                          <span>{log.date} {log.time}</span>
-                          <span>par {log.userId}</span>
-                        </div>
-                        <p className="text-foreground mt-0.5">{log.previousValue} → {log.newValue}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+        {selectedZone && !showCreateForm && (
+          <ZoneDetailPanel
+            zone={selectedZone}
+            logs={logs}
+            canManage={canManage}
+            isRep={isRep}
+            currentRepId={currentRepId}
+            onClose={() => setSelectedZoneId(null)}
+            onUpdateStatus={handleUpdateStatus}
+            onUpdateRep={handleUpdateRep}
+            onUpdateNotes={handleUpdateNotes}
+            onUpdateDate={handleUpdateDate}
+            onDelete={handleDelete}
+          />
         )}
       </div>
     </div>
@@ -263,4 +293,3 @@ const CarteTerritoiresPage = () => {
 };
 
 export default CarteTerritoiresPage;
-
