@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      client_photos: {
+        Row: {
+          client_name: string
+          client_phone: string
+          created_at: string
+          file_path: string
+          file_type: string
+          id: string
+          uploaded_by: string
+        }
+        Insert: {
+          client_name?: string
+          client_phone: string
+          created_at?: string
+          file_path: string
+          file_type?: string
+          id?: string
+          uploaded_by?: string
+        }
+        Update: {
+          client_name?: string
+          client_phone?: string
+          created_at?: string
+          file_path?: string
+          file_type?: string
+          id?: string
+          uploaded_by?: string
+        }
+        Relationships: []
+      }
       map_zone_status_logs: {
         Row: {
           changed_at: string

@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useAuth } from "@/store/crm-store";
 import { useCrm } from "@/store/crm-store";
 import { SALES_REPS } from "@/data/crm-data";
+import ClientPhotosSection from "@/components/ClientPhotosSection";
 import {
   useMarketingLeadsQuery,
   useCreateLead,
@@ -726,6 +727,9 @@ const LeadDetailPanel = ({
           </p>
         </div>
       )}
+
+      {/* Photos */}
+      <ClientPhotosSection clientPhone={lead.phone} clientName={lead.full_name} />
 
       {/* Delete */}
       {canDelete && (
