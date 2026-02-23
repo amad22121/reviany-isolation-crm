@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Appointment, AppointmentStatus, SALES_REPS, HotCall, CallLogEntry } from "@/data/crm-data";
+import ClientPhotosSection from "@/components/ClientPhotosSection";
 import { useCrm } from "@/store/crm-store";
 import { useAuth } from "@/store/crm-store";
 import {
@@ -309,6 +310,9 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
               </p>
               )}
             </div>
+
+            {/* Photos section */}
+            <ClientPhotosSection clientPhone={appointment.phone} clientName={appointment.fullName} />
 
             {/* Delete button */}
             {canDelete && !hotCall && (
