@@ -16,7 +16,6 @@ import {
   Users,
   UserCheck,
   Archive,
-  Route,
   MapPinned,
   Megaphone,
 } from "lucide-react";
@@ -31,7 +30,7 @@ const ROUTE_LABELS: Record<string, string> = {
   users: "Gestion utilisateurs",
   "hot-calls": "Hot Calls",
   calendar: "Calendrier",
-  "route-du-jour": "Route du jour",
+  
   territoires: "Territoires",
   backlog: "Backlog",
   "marketing-leads": "Marketing Leads",
@@ -45,7 +44,6 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const ownerLinks = [
     { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
     { to: "/calendar", label: "Calendrier", icon: CalendarDays },
-    { to: "/route-du-jour", label: "Route du jour", icon: Route },
     { to: "/territoires", label: "Territoires", icon: MapPinned },
     { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
     { to: "/hot-calls", label: "Hot Calls", icon: Flame },
@@ -59,7 +57,6 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const managerLinks = [
     { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
     { to: "/calendar", label: "Calendrier", icon: CalendarDays },
-    { to: "/route-du-jour", label: "Route du jour", icon: Route },
     { to: "/territoires", label: "Territoires", icon: MapPinned },
     { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
     { to: "/hot-calls", label: "Hot Calls", icon: Flame },
@@ -72,7 +69,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const repLinks = [
     { to: "/rep", label: "Ma vue", icon: User },
     { to: "/calendar", label: "Calendrier", icon: CalendarDays },
-    { to: "/route-du-jour", label: "Route du jour", icon: Route },
+    
     { to: "/territoires", label: "Territoires", icon: MapPinned },
     { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
     { to: "/hot-calls", label: "Hot Calls", icon: Flame },
