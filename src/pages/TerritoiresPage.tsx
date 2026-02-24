@@ -135,7 +135,7 @@ const TerritoiresPage = () => {
           circlemarker: false,
           marker: false,
         },
-        edit: { featureGroup: drawLayer, remove: true, edit: (true as any) },
+        edit: { featureGroup: drawLayer, remove: true },
       });
       map.addControl(drawControl);
       drawControlRef.current = drawControl;
