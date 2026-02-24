@@ -44,6 +44,116 @@ export type Database = {
         }
         Relationships: []
       }
+      hot_call_notes: {
+        Row: {
+          call_feedback: string | null
+          created_at: string
+          hot_call_id: string
+          id: string
+          note: string
+          user_id: string
+        }
+        Insert: {
+          call_feedback?: string | null
+          created_at?: string
+          hot_call_id: string
+          id?: string
+          note?: string
+          user_id?: string
+        }
+        Update: {
+          call_feedback?: string | null
+          created_at?: string
+          hot_call_id?: string
+          id?: string
+          note?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hot_call_notes_hot_call_id_fkey"
+            columns: ["hot_call_id"]
+            isOneToOne: false
+            referencedRelation: "hot_calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hot_calls: {
+        Row: {
+          address: string
+          assigned_to_user_id: string | null
+          attempts: number
+          city: string
+          created_at: string
+          follow_up_date: string | null
+          full_name: string
+          id: string
+          last_action_at: string | null
+          last_contact_date: string | null
+          last_feedback: string
+          lock_expires_at: string | null
+          locked_at: string | null
+          notes: string | null
+          origin: string | null
+          original_appointment_id: string | null
+          phase: string
+          phone: string
+          source: string
+          status: string
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string
+          assigned_to_user_id?: string | null
+          attempts?: number
+          city?: string
+          created_at?: string
+          follow_up_date?: string | null
+          full_name: string
+          id?: string
+          last_action_at?: string | null
+          last_contact_date?: string | null
+          last_feedback?: string
+          lock_expires_at?: string | null
+          locked_at?: string | null
+          notes?: string | null
+          origin?: string | null
+          original_appointment_id?: string | null
+          phase?: string
+          phone: string
+          source?: string
+          status?: string
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          assigned_to_user_id?: string | null
+          attempts?: number
+          city?: string
+          created_at?: string
+          follow_up_date?: string | null
+          full_name?: string
+          id?: string
+          last_action_at?: string | null
+          last_contact_date?: string | null
+          last_feedback?: string
+          lock_expires_at?: string | null
+          locked_at?: string | null
+          notes?: string | null
+          origin?: string | null
+          original_appointment_id?: string | null
+          phase?: string
+          phone?: string
+          source?: string
+          status?: string
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       map_zone_status_logs: {
         Row: {
           changed_at: string
