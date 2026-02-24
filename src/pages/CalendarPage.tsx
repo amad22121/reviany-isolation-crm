@@ -131,15 +131,32 @@ const CalendarPage = () => {
     return `${MONTHS[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
   }, [view, currentDate]);
 
+  // Only confirmed appointments for route
+  const confirmedDailyAppts = useMemo(() => {
+    return dailyAppts.filter((a) => a.status === "Confirmé");
+  }, [dailyAppts]);
+
+  const canGenerateRoute = useMemo(() => {
+    if (isRep) return confirmedDailyAppts.length >= 2;
+    if (selectedRepId === "all") return false; // must select a rep
+    return confirmedDailyAppts.length >= 2;
+  }, [isRep, selectedRepId, confirmedDailyAppts]);
+
+  const routeButtonLabel = useMemo(() => {
+    if (!isRep && selectedRepId === "all") return "Sélectionne un rep pour l'itinéraire";
+    if (confirmedDailyAppts.length < 2) return "Pas assez de RDV confirmés";
+    return "Itinéraire Google Maps";
+  }, [isRep, selectedRepId, confirmedDailyAppts]);
+
   const generateRoute = useCallback(() => {
-    const stops = dailyAppts.slice(0, 10).map((a) => `${a.address}, ${a.city}`);
-    if (stops.length === 0) return;
+    if (!canGenerateRoute) return;
+    const stops = confirmedDailyAppts.map((a) => `${a.address}, ${a.city}`);
     const origin = encodeURIComponent(stops[0]);
     const destination = encodeURIComponent(stops[stops.length - 1]);
     const waypoints = stops.slice(1, -1).map(encodeURIComponent).join("|");
     const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}${waypoints ? `&waypoints=${waypoints}` : ""}`;
     window.open(url, "_blank");
-  }, [dailyAppts]);
+  }, [canGenerateRoute, confirmedDailyAppts]);
 
   const handleUpdateStatus = useCallback((id: string, status: AppointmentStatus) => {
     updateStatus(id, status, role || "system");
@@ -170,7 +187,9 @@ const CalendarPage = () => {
           onNavigate={navigate}
           onToday={goToday}
           onTomorrow={goTomorrow}
-          showRouteButton={dailyAppts.length > 1}
+          showRouteButton={view === "day"}
+          routeButtonDisabled={!canGenerateRoute}
+          routeButtonLabel={routeButtonLabel}
           onGenerateRoute={generateRoute}
         />
 

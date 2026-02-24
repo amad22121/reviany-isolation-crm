@@ -25,6 +25,8 @@ interface CalendarFiltersProps {
   onToday: () => void;
   onTomorrow: () => void;
   showRouteButton: boolean;
+  routeButtonDisabled?: boolean;
+  routeButtonLabel?: string;
   onGenerateRoute: () => void;
 }
 
@@ -41,6 +43,8 @@ const CalendarFilters = ({
   onToday,
   onTomorrow,
   showRouteButton,
+  routeButtonDisabled,
+  routeButtonLabel,
   onGenerateRoute,
 }: CalendarFiltersProps) => {
   const displayStatuses = APPOINTMENT_STATUSES;
@@ -118,10 +122,17 @@ const CalendarFilters = ({
           })}
         </div>
 
-        {showRouteButton && view === "day" && (
-          <Button variant="outline" size="sm" onClick={onGenerateRoute} className="ml-auto h-9 text-xs">
+        {showRouteButton && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onGenerateRoute}
+            disabled={routeButtonDisabled}
+            className="ml-auto h-9 text-xs"
+            title={routeButtonDisabled ? routeButtonLabel : undefined}
+          >
             <Navigation className="h-3.5 w-3.5 mr-1.5" />
-            Itinéraire Google Maps
+            {routeButtonLabel || "Itinéraire Google Maps"}
           </Button>
         )}
       </div>
