@@ -10,7 +10,7 @@ import { useMapZonesQuery, useZoneLogsQuery, useCreateZone, useUpdateZone, useDe
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Crosshair, Trash2, Loader2, ChevronDown, ChevronUp, X as XIcon } from "lucide-react";
+import { Search, Crosshair, Trash2, Loader2, ChevronDown, ChevronUp, X as XIcon, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import ZoneFormPanel from "@/components/carte/ZoneFormPanel";
 import ZoneDetailPanel from "@/components/carte/ZoneDetailPanel";
@@ -69,6 +69,9 @@ const TerritoiresPage = () => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [addressSearch, setAddressSearch] = useState("");
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const addressMarkerRef = useRef<L.Marker | null>(null);
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
@@ -225,7 +228,44 @@ const TerritoiresPage = () => {
     drawLayerRef.current?.clearLayers();
   }, []);
 
-  // CRUD handlers
+  const handleAddressSearch = useCallback(async () => {
+    if (!addressSearch.trim() || !mapRef.current) return;
+    setIsGeocoding(true);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addressSearch)}&limit=1`
+      );
+      const data = await res.json();
+      if (data.length === 0) {
+        toast.error("Adresse non trouvée");
+        return;
+      }
+      const { lat, lon } = data[0];
+      const pos: [number, number] = [parseFloat(lat), parseFloat(lon)];
+      // Remove previous marker
+      if (addressMarkerRef.current) {
+        addressMarkerRef.current.remove();
+      }
+      // Add temporary marker
+      const marker = L.marker(pos, {
+        icon: L.divIcon({
+          className: "",
+          html: `<div style="background:#3b82f6;width:12px;height:12px;border-radius:50%;border:2px solid white;box-shadow:0 0 6px rgba(0,0,0,0.4);"></div>`,
+          iconSize: [12, 12],
+          iconAnchor: [6, 6],
+        }),
+      }).addTo(mapRef.current);
+      addressMarkerRef.current = marker;
+      mapRef.current.flyTo(pos, 16, { duration: 0.8 });
+      // Auto-remove marker after 15s
+      setTimeout(() => { marker.remove(); }, 15000);
+    } catch {
+      toast.error("Erreur de géocodage");
+    } finally {
+      setIsGeocoding(false);
+    }
+  }, [addressSearch]);
+
   const handleCreateZone = useCallback(async (data: {
     name: string; city: string; status: TerritoryStatus; repId: string; plannedDate: string; notes: string;
   }) => {
@@ -367,14 +407,28 @@ const TerritoiresPage = () => {
             </SelectContent>
           </Select>
 
-          {/* Cancel drawing button */}
-          {(isDrawing || showCreateForm) && (
-            <Button variant="destructive" size="sm" className="h-8 text-xs" onClick={handleCancelDraw}>
-              <XIcon className="h-3.5 w-3.5 mr-1" /> Annuler dessin
-            </Button>
-          )}
 
-          {/* Stats — desktop */}
+          {/* Address geocoding search */}
+          <div className="relative flex items-center gap-1">
+            <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
+            <Input
+              value={addressSearch}
+              onChange={(e) => setAddressSearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleAddressSearch(); }}
+              placeholder="Rechercher une adresse…"
+              className="pl-9 w-[200px] h-8 text-sm"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={handleAddressSearch}
+              disabled={isGeocoding || !addressSearch.trim()}
+            >
+              {isGeocoding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crosshair className="h-4 w-4 text-primary" />}
+            </Button>
+          </div>
+
           <div className="ml-auto hidden sm:flex items-center gap-3 text-xs">
             <span className="text-muted-foreground font-medium">{stats.total} territoire{stats.total !== 1 ? "s" : ""}</span>
             {TERRITORY_STATUSES.map((s) => (
