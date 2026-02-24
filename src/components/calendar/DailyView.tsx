@@ -1,24 +1,27 @@
-import { Appointment, AppointmentStatus, SALES_REPS, APPOINTMENT_STATUSES } from "@/data/crm-data";
+import { Appointment, AppointmentStatus, SALES_REPS } from "@/data/crm-data";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MapPin, Phone, Eye, MoreVertical, Check, XCircle, CalendarClock, Lock } from "lucide-react";
 import { AppRole } from "@/store/crm-store";
+import { useRef, useMemo } from "react";
 
 const STATUS_COLORS: Record<string, string> = {
-  "Confirmé": "border-l-green-500 bg-green-500/10",
-  "En attente": "border-l-warning bg-warning/10",
-  "À risque": "border-l-orange-400 bg-orange-400/10",
-  "Closed": "border-l-info bg-info/10",
-  "Annulé": "border-l-muted-foreground bg-muted/30",
+  "Confirmé": "bg-green-500/20 border-green-500/40 text-green-300",
+  "En attente": "bg-warning/20 border-warning/40 text-warning",
+  "À risque": "bg-orange-400/20 border-orange-400/40 text-orange-300",
+  "Closed": "bg-info/20 border-info/40 text-info",
+  "Annulé": "bg-muted/40 border-muted-foreground/30 text-muted-foreground",
 };
 
-const STATUS_BADGE: Record<string, string> = {
-  "Confirmé": "bg-green-500/20 text-green-400",
-  "En attente": "bg-warning/20 text-warning",
-  "À risque": "bg-orange-400/20 text-orange-400",
-  "Closed": "bg-info/20 text-info",
-  "Annulé": "bg-muted text-muted-foreground",
-};
+const HOUR_HEIGHT = 72; // px per hour
+const START_HOUR = 7;
+const END_HOUR = 20;
+const HOURS = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i);
+
+function timeToMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + (m || 0);
+}
 
 interface DailyViewProps {
   appointments: Appointment[];
@@ -32,6 +35,7 @@ const getRepName = (id: string) => SALES_REPS.find((r) => r.id === id)?.name || 
 
 const DailyView = ({ appointments, role, currentRepId, onOpenFiche, onUpdateStatus }: DailyViewProps) => {
   const isRep = role === "representant";
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const canChangeStatus = (appt: Appointment) => {
     if (role === "proprietaire" || role === "gestionnaire") return true;
@@ -42,6 +46,53 @@ const DailyView = ({ appointments, role, currentRepId, onOpenFiche, onUpdateStat
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${address}, ${city}`)}`, "_blank");
   };
 
+  // Group overlapping appointments into columns
+  const positionedAppts = useMemo(() => {
+    const sorted = [...appointments].sort((a, b) => a.time.localeCompare(b.time));
+    const result: { appt: Appointment; top: number; height: number; col: number; totalCols: number }[] = [];
+    const columns: { end: number; idx: number }[][] = [];
+
+    sorted.forEach((appt) => {
+      const startMin = timeToMinutes(appt.time);
+      const duration = 60; // default 1h block
+      const endMin = startMin + duration;
+      const top = ((startMin - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+      const height = (duration / 60) * HOUR_HEIGHT;
+
+      // Find a column where this doesn't overlap
+      let placed = false;
+      for (let c = 0; c < columns.length; c++) {
+        const col = columns[c];
+        if (col.every((item) => result[item.idx].appt.time !== appt.time || timeToMinutes(result[item.idx].appt.time) + 60 <= startMin)) {
+          const canFit = col.every((item) => {
+            const itemStart = timeToMinutes(result[item.idx].appt.time);
+            const itemEnd = itemStart + 60;
+            return endMin <= itemStart || startMin >= itemEnd;
+          });
+          if (canFit) {
+            const idx = result.length;
+            result.push({ appt, top, height, col: c, totalCols: columns.length });
+            col.push({ end: endMin, idx });
+            placed = true;
+            break;
+          }
+        }
+      }
+      if (!placed) {
+        const idx = result.length;
+        const c = columns.length;
+        columns.push([{ end: endMin, idx }]);
+        result.push({ appt, top, height, col: c, totalCols: columns.length });
+      }
+    });
+
+    // Update totalCols for all items
+    const totalCols = columns.length || 1;
+    result.forEach((r) => (r.totalCols = totalCols));
+
+    return result;
+  }, [appointments]);
+
   if (appointments.length === 0) {
     return (
       <div className="glass-card p-8 text-center text-muted-foreground">
@@ -50,79 +101,145 @@ const DailyView = ({ appointments, role, currentRepId, onOpenFiche, onUpdateStat
     );
   }
 
+  const gridHeight = HOURS.length * HOUR_HEIGHT;
+
   return (
-    <div className="space-y-2">
-      {appointments.map((appt) => (
-        <div
-          key={appt.id}
-          className={`border-l-4 rounded-lg p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 transition-colors ${STATUS_COLORS[appt.status] || "border-l-muted bg-card/50"}`}
-        >
-          {/* Time + Status */}
-          <div className="flex items-center gap-3 sm:w-[130px] shrink-0">
-            <span className="text-lg font-bold text-foreground w-14">{appt.time}</span>
-            <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${STATUS_BADGE[appt.status] || "bg-secondary text-secondary-foreground"}`}>
-              {appt.status}
-            </span>
+    <div className="bg-card/50 rounded-xl border border-border overflow-hidden">
+      <div className="overflow-x-auto">
+        <div ref={containerRef} className="relative flex min-w-[600px]" style={{ height: gridHeight }}>
+          {/* Hour labels */}
+          <div className="w-16 shrink-0 border-r border-border relative">
+            {HOURS.map((hour, i) => (
+              <div
+                key={hour}
+                className="absolute left-0 w-full pr-2 text-right text-xs text-muted-foreground"
+                style={{ top: i * HOUR_HEIGHT - 8 }}
+              >
+                {String(hour).padStart(2, "0")}:00
+              </div>
+            ))}
           </div>
 
-          {/* Info */}
-          <div className="flex-1 min-w-0 space-y-0.5">
-            <p className="text-sm font-semibold text-foreground truncate">{appt.fullName}</p>
-            <p className="text-xs text-muted-foreground truncate">{appt.address}, {appt.city}</p>
-            {!isRep && (
-              <p className="text-[11px] text-muted-foreground">{getRepName(appt.repId)}</p>
-            )}
-          </div>
+          {/* Grid + Events */}
+          <div className="flex-1 relative">
+            {/* Hour lines */}
+            {HOURS.map((hour, i) => (
+              <div
+                key={hour}
+                className="absolute left-0 right-0 border-t border-border/50"
+                style={{ top: i * HOUR_HEIGHT }}
+              />
+            ))}
+            {/* Half-hour lines */}
+            {HOURS.map((hour, i) => (
+              <div
+                key={`half-${hour}`}
+                className="absolute left-0 right-0 border-t border-border/20"
+                style={{ top: i * HOUR_HEIGHT + HOUR_HEIGHT / 2 }}
+              />
+            ))}
 
-          {/* Actions */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => openGoogleMaps(appt.address, appt.city)} title="Google Maps">
-              <MapPin className="h-4 w-4 text-primary" />
-            </Button>
-            <a href={`tel:${appt.phone.replace(/[^\d+]/g, "")}`}>
-              <Button variant="ghost" size="icon" className="h-9 w-9" title="Appeler">
-                <Phone className="h-4 w-4 text-primary" />
-              </Button>
-            </a>
-            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => onOpenFiche(appt)} title="Fiche client">
-              <Eye className="h-4 w-4 text-primary" />
-            </Button>
+            {/* Now indicator */}
+            {(() => {
+              const now = new Date();
+              const nowMin = now.getHours() * 60 + now.getMinutes();
+              if (nowMin >= START_HOUR * 60 && nowMin <= END_HOUR * 60) {
+                const top = ((nowMin - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+                return (
+                  <div className="absolute left-0 right-0 z-20 pointer-events-none" style={{ top }}>
+                    <div className="h-0.5 bg-destructive/70 relative">
+                      <div className="absolute -left-1 -top-1.5 w-3 h-3 rounded-full bg-destructive" />
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
-            {/* Quick actions dropdown */}
-            {canChangeStatus(appt) && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-9 w-9" title="Actions">
-                    <MoreVertical className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  {appt.status !== "Confirmé" && (
-                    <DropdownMenuItem onClick={() => onUpdateStatus(appt.id, "Confirmé")}>
-                      <Check className="h-3.5 w-3.5 mr-2 text-green-400" /> Confirmer
-                    </DropdownMenuItem>
-                  )}
-                  {appt.status !== "Closed" && (role === "proprietaire" || role === "gestionnaire") && (
-                    <DropdownMenuItem onClick={() => onUpdateStatus(appt.id, "Closed")}>
-                      <Lock className="h-3.5 w-3.5 mr-2 text-info" /> Closed
-                    </DropdownMenuItem>
-                  )}
-                  {appt.status !== "En attente" && (
-                    <DropdownMenuItem onClick={() => onUpdateStatus(appt.id, "En attente")}>
-                      <CalendarClock className="h-3.5 w-3.5 mr-2 text-warning" /> Replanifier
-                    </DropdownMenuItem>
-                  )}
-                  {appt.status !== "Annulé" && (role === "proprietaire" || role === "gestionnaire") && (
-                    <DropdownMenuItem onClick={() => onUpdateStatus(appt.id, "Annulé")}>
-                      <XCircle className="h-3.5 w-3.5 mr-2 text-muted-foreground" /> Annuler
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+            {/* Appointment blocks */}
+            {positionedAppts.map(({ appt, top, height, col, totalCols }) => {
+              const colWidth = 100 / totalCols;
+              const left = col * colWidth;
+              const colorClass = STATUS_COLORS[appt.status] || "bg-card border-border text-foreground";
+
+              return (
+                <div
+                  key={appt.id}
+                  className={`absolute rounded-lg border px-2 py-1.5 overflow-hidden cursor-pointer transition-shadow hover:shadow-lg z-10 ${colorClass}`}
+                  style={{
+                    top: top + 1,
+                    height: height - 2,
+                    left: `calc(${left}% + 4px)`,
+                    width: `calc(${colWidth}% - 8px)`,
+                  }}
+                  onClick={() => onOpenFiche(appt)}
+                >
+                  <div className="flex items-start justify-between gap-1 h-full">
+                    <div className="min-w-0 flex-1 overflow-hidden">
+                      <p className="text-xs font-bold truncate">{appt.time} — {appt.fullName}</p>
+                      <p className="text-[10px] opacity-80 truncate">{appt.address}, {appt.city}</p>
+                      {!isRep && (
+                        <p className="text-[10px] opacity-60 truncate">{getRepName(appt.repId)}</p>
+                      )}
+                    </div>
+
+                    {/* Quick actions - stop propagation */}
+                    <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        className="p-1 rounded hover:bg-black/20 transition-colors"
+                        onClick={() => openGoogleMaps(appt.address, appt.city)}
+                        title="Google Maps"
+                      >
+                        <MapPin className="h-3 w-3" />
+                      </button>
+                      <a href={`tel:${appt.phone.replace(/[^\d+]/g, "")}`}>
+                        <button className="p-1 rounded hover:bg-black/20 transition-colors" title="Appeler">
+                          <Phone className="h-3 w-3" />
+                        </button>
+                      </a>
+
+                      {canChangeStatus(appt) && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="p-1 rounded hover:bg-black/20 transition-colors" title="Actions">
+                              <MoreVertical className="h-3 w-3" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            <DropdownMenuItem onClick={() => onOpenFiche(appt)}>
+                              <Eye className="h-3.5 w-3.5 mr-2" /> Fiche client
+                            </DropdownMenuItem>
+                            {appt.status !== "Confirmé" && (
+                              <DropdownMenuItem onClick={() => onUpdateStatus(appt.id, "Confirmé")}>
+                                <Check className="h-3.5 w-3.5 mr-2 text-green-400" /> Confirmer
+                              </DropdownMenuItem>
+                            )}
+                            {appt.status !== "Closed" && (role === "proprietaire" || role === "gestionnaire") && (
+                              <DropdownMenuItem onClick={() => onUpdateStatus(appt.id, "Closed")}>
+                                <Lock className="h-3.5 w-3.5 mr-2 text-info" /> Closed
+                              </DropdownMenuItem>
+                            )}
+                            {appt.status !== "En attente" && (
+                              <DropdownMenuItem onClick={() => onUpdateStatus(appt.id, "En attente")}>
+                                <CalendarClock className="h-3.5 w-3.5 mr-2 text-warning" /> Replanifier
+                              </DropdownMenuItem>
+                            )}
+                            {appt.status !== "Annulé" && (role === "proprietaire" || role === "gestionnaire") && (
+                              <DropdownMenuItem onClick={() => onUpdateStatus(appt.id, "Annulé")}>
+                                <XCircle className="h-3.5 w-3.5 mr-2 text-muted-foreground" /> Annuler
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
-      ))}
+      </div>
     </div>
   );
 };
