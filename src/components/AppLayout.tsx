@@ -18,6 +18,7 @@ import {
   Archive,
   MapPinned,
   Megaphone,
+  BarChart3,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -34,6 +35,7 @@ const ROUTE_LABELS: Record<string, string> = {
   territoires: "Territoires",
   backlog: "Backlog",
   "marketing-leads": "Marketing Leads",
+  statistics: "Statistiques",
 };
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
@@ -51,6 +53,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     { to: "/backlog", label: "Backlog", icon: Archive },
     { to: "/leaderboard", label: "Classement", icon: Trophy },
     { to: "/appointments", label: "Rendez-vous", icon: List },
+    { to: "/statistics", label: "Statistiques", icon: BarChart3 },
     { to: "/users", label: "Gestion utilisateurs", icon: Users },
   ];
 
@@ -64,6 +67,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     { to: "/backlog", label: "Backlog", icon: Archive },
     { to: "/leaderboard", label: "Classement", icon: Trophy },
     { to: "/appointments", label: "Rendez-vous", icon: List },
+    { to: "/statistics", label: "Statistiques", icon: BarChart3 },
   ];
 
   const repLinks = [
@@ -77,6 +81,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     { to: "/backlog", label: "Backlog", icon: Archive },
     { to: "/leaderboard", label: "Classement", icon: Trophy },
     { to: "/appointments", label: "Rendez-vous", icon: List },
+    { to: "/statistics", label: "Statistiques", icon: BarChart3 },
   ];
 
   const links = role === "proprietaire" ? ownerLinks : role === "gestionnaire" ? managerLinks : repLinks;
