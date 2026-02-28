@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapPin, ArrowLeft } from "lucide-react";
 
-const CITY_CHIPS = ["Montréal", "Laval", "Longueuil", "Terrebonne", "Mascouche"];
+const CITY_CHIPS = ["Laval", "Montréal", "Repentigny", "Terrebonne", "Mascouche"];
 const LEAD_SOURCE_OPTIONS = ["Door-to-door", "Référence", "Facebook", "Autre"];
 const WORK_DONE_OPTIONS = ["Oui", "Non", "Je ne sais pas"];
 const INSPECTION_OPTIONS = ["Oui", "Non", "Je ne sais pas"];
@@ -226,7 +226,7 @@ const AddAppointmentPage = () => {
               <Input
                 value={city}
                 onChange={(e) => { setCity(e.target.value); clearError("city"); }}
-                placeholder="Ex: Montréal"
+                placeholder="Ex: Laval"
                 className={errors.city ? "border-destructive" : ""}
               />
               <div className="flex flex-wrap gap-1 mt-1">
