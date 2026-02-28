@@ -449,9 +449,9 @@ const TerritoiresPage = () => {
           </div>
         )}
 
-        {/* LEFT: Map */}
-        <div className={`flex-1 relative min-w-0 ${showPanel ? "hidden sm:block" : ""}`}>
-          <div ref={mapContainerRef} className="h-full w-full" />
+        {/* LEFT: Map — lower z-index, disable pointer events when panel open to let dropdowns work */}
+        <div className={`flex-1 relative min-w-0 z-0 ${showPanel ? "hidden sm:block" : ""}`}>
+          <div ref={mapContainerRef} className={`h-full w-full ${showPanel ? "pointer-events-none" : ""}`} />
         </div>
 
         {/* RIGHT: List */}
