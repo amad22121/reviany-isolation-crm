@@ -3,7 +3,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useAuth } from "@/store/crm-store";
+import { AuthProvider, useAuthContext } from "@/lib/auth/AuthProvider";
+import { WorkspaceProvider, useWorkspaceContext } from "@/lib/workspace/WorkspaceProvider";
+import { ProtectedRoute } from "@/lib/auth/ProtectedRoute";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import AddAppointmentPage from "./pages/AddAppointmentPage";
@@ -14,61 +16,54 @@ import UserManagementPage from "./pages/UserManagementPage";
 import HotCallsPage from "./pages/HotCallsPage";
 import CalendarPage from "./pages/CalendarPage";
 import StatisticsPage from "./pages/StatisticsPage";
-
 import TerritoiresPage from "./pages/TerritoiresPage";
 import CarteTerritoiresPage from "./pages/CarteTerritoiresPage";
 import MarketingLeadsPage from "./pages/MarketingLeadsPage";
-
 import BacklogPage from "./pages/BacklogPage";
-
 import AppLayout from "./components/AppLayout";
 import QuickClientSearch from "./components/QuickClientSearch";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const AuthGuard = ({ children }: { children: React.ReactNode }) => {
-  const { isLoggedIn, role } = useAuth();
-  if (!isLoggedIn || !role) return <Navigate to="/" replace />;
-  return <AppLayout>{children}<QuickClientSearch /></AppLayout>;
+const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => (
+  <ProtectedRoute>
+    <AppLayout>{children}<QuickClientSearch /></AppLayout>
+  </ProtectedRoute>
+);
+
+const LoginRoute = () => {
+  const { user, loading } = useAuthContext();
+  if (loading) return null;
+  if (user) return <Navigate to="/dashboard" replace />;
+  return <LoginPage />;
+};
+
+const HomeRedirect = () => {
+  const { role } = useWorkspaceContext();
+  if (role === "representant") return <Navigate to="/rep" replace />;
+  return <Navigate to="/dashboard" replace />;
 };
 
 const AppRoutes = () => {
-  const { isLoggedIn, role } = useAuth();
-
-  const getDefaultRoute = () => {
-    if (role === "representant") return "/rep";
-    return "/dashboard";
-  };
-
   return (
     <Routes>
-      <Route
-        path="/"
-        element={
-          isLoggedIn && role ? (
-            <Navigate to={getDefaultRoute()} replace />
-          ) : (
-            <LoginPage />
-          )
-        }
-      />
-      <Route path="/dashboard" element={<AuthGuard><DashboardPage /></AuthGuard>} />
-      <Route path="/add-appointment" element={<AuthGuard><AddAppointmentPage /></AuthGuard>} />
-      <Route path="/leaderboard" element={<AuthGuard><LeaderboardPage /></AuthGuard>} />
-      <Route path="/appointments" element={<AuthGuard><AppointmentsPage /></AuthGuard>} />
-      <Route path="/rep" element={<AuthGuard><RepViewPage /></AuthGuard>} />
-      <Route path="/hot-calls" element={<AuthGuard><HotCallsPage /></AuthGuard>} />
-      <Route path="/calendar" element={<AuthGuard><CalendarPage /></AuthGuard>} />
-      <Route path="/statistics" element={<AuthGuard><StatisticsPage /></AuthGuard>} />
-
-      <Route path="/backlog" element={<AuthGuard><BacklogPage /></AuthGuard>} />
+      <Route path="/login" element={<LoginRoute />} />
+      <Route path="/" element={<ProtectedRoute><HomeRedirect /></ProtectedRoute>} />
+      <Route path="/dashboard" element={<AuthenticatedLayout><DashboardPage /></AuthenticatedLayout>} />
+      <Route path="/add-appointment" element={<AuthenticatedLayout><AddAppointmentPage /></AuthenticatedLayout>} />
+      <Route path="/leaderboard" element={<AuthenticatedLayout><LeaderboardPage /></AuthenticatedLayout>} />
+      <Route path="/appointments" element={<AuthenticatedLayout><AppointmentsPage /></AuthenticatedLayout>} />
+      <Route path="/rep" element={<AuthenticatedLayout><RepViewPage /></AuthenticatedLayout>} />
+      <Route path="/hot-calls" element={<AuthenticatedLayout><HotCallsPage /></AuthenticatedLayout>} />
+      <Route path="/calendar" element={<AuthenticatedLayout><CalendarPage /></AuthenticatedLayout>} />
+      <Route path="/statistics" element={<AuthenticatedLayout><StatisticsPage /></AuthenticatedLayout>} />
+      <Route path="/backlog" element={<AuthenticatedLayout><BacklogPage /></AuthenticatedLayout>} />
       <Route path="/route-du-jour" element={<Navigate to="/calendar" replace />} />
-      <Route path="/territoires" element={<AuthGuard><TerritoiresPage /></AuthGuard>} />
-      <Route path="/carte-territoires" element={<AuthGuard><CarteTerritoiresPage /></AuthGuard>} />
-      <Route path="/marketing-leads" element={<AuthGuard><MarketingLeadsPage /></AuthGuard>} />
-      <Route path="/users" element={<AuthGuard><UserManagementPage /></AuthGuard>} />
-      
+      <Route path="/territoires" element={<AuthenticatedLayout><TerritoiresPage /></AuthenticatedLayout>} />
+      <Route path="/carte-territoires" element={<AuthenticatedLayout><CarteTerritoiresPage /></AuthenticatedLayout>} />
+      <Route path="/marketing-leads" element={<AuthenticatedLayout><MarketingLeadsPage /></AuthenticatedLayout>} />
+      <Route path="/users" element={<AuthenticatedLayout><UserManagementPage /></AuthenticatedLayout>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
@@ -79,9 +74,13 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
+      <AuthProvider>
+        <WorkspaceProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </WorkspaceProvider>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

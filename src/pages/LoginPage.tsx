@@ -1,61 +1,108 @@
 import { useState } from "react";
-import { useAuth } from "@/store/crm-store";
-import { SALES_REPS, MANAGERS } from "@/data/crm-data";
-import { Building2, Lock, User, Crown, Users, UserCheck } from "lucide-react";
+import { useAuthContext } from "@/lib/auth/AuthProvider";
+import { resetPassword } from "@/lib/auth/authClient";
+import { Building2, Lock, User, Loader2, ArrowLeft } from "lucide-react";
 
 const LoginPage = () => {
-  const { isLoggedIn, login, setRole, role } = useAuth();
-  const [email, setEmail] = useState("demo@growthsales.ca");
-  const [password, setPassword] = useState("demo1234");
+  const { signIn } = useAuthContext();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  if (isLoggedIn && !role) {
+  // Forgot password state
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotError, setForgotError] = useState<string | null>(null);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!email.trim()) { setError("Veuillez entrer votre courriel."); return; }
+    if (!password) { setError("Veuillez entrer votre mot de passe."); return; }
+    if (password.length < 6) { setError("Le mot de passe doit contenir au moins 6 caractères."); return; }
+
+    setLoading(true);
+    const result = await signIn(email.trim(), password);
+    setLoading(false);
+    if (result.error) setError(result.error);
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError(null);
+    if (!forgotEmail.trim()) { setForgotError("Veuillez entrer votre courriel."); return; }
+    setForgotLoading(true);
+    const result = await resetPassword(forgotEmail.trim());
+    setForgotLoading(false);
+    if (result.error) { setForgotError(result.error); return; }
+    setForgotSent(true);
+  };
+
+  if (showForgot) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="glass-card p-8 w-full max-w-md glow-green">
+        <div className="glass-card p-8 w-full max-w-sm glow-green">
           <div className="flex items-center gap-3 mb-8 justify-center">
             <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center">
               <Building2 className="h-5 w-5 text-primary-foreground" />
             </div>
             <h1 className="text-xl font-bold text-foreground">Growth Sales CRM</h1>
           </div>
-          <h2 className="text-lg font-semibold text-foreground mb-6 text-center">Sélectionnez votre rôle</h2>
-          <div className="space-y-3">
-            <button
-              onClick={() => setRole("proprietaire")}
-              className="w-full p-4 rounded-lg bg-secondary hover:bg-secondary/80 border border-border text-foreground text-left transition-colors"
-            >
-              <div className="flex items-center gap-2 font-medium">
-                <Crown className="h-4 w-4 text-warning" /> Bryan — Propriétaire
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Accès complet, statistiques globales, objectifs et zones
-              </div>
-            </button>
-            {MANAGERS.map((mgr) => (
+
+          {forgotSent ? (
+            <div className="space-y-4 text-center">
+              <p className="text-sm text-foreground">
+                Si un compte existe pour <span className="font-medium">{forgotEmail}</span>, un courriel de réinitialisation a été envoyé.
+              </p>
               <button
-                key={mgr.id}
-                onClick={() => setRole("gestionnaire", undefined, mgr.id)}
-                className="w-full p-4 rounded-lg bg-secondary hover:bg-secondary/80 border border-border text-foreground text-left transition-colors"
+                onClick={() => { setShowForgot(false); setForgotSent(false); setForgotEmail(""); }}
+                className="flex items-center gap-2 mx-auto text-sm text-primary hover:underline"
               >
-                <div className="flex items-center gap-2 font-medium">
-                  <Users className="h-4 w-4 text-info" /> Gestionnaire — {mgr.name}
-                </div>
-                <div className="text-sm text-muted-foreground">Statistiques d'équipe, zones terrain, classement</div>
+                <ArrowLeft className="h-4 w-4" /> Retour à la connexion
               </button>
-            ))}
-            {SALES_REPS.map((rep) => (
+            </div>
+          ) : (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <h2 className="text-lg font-semibold text-foreground text-center">Mot de passe oublié</h2>
+              <p className="text-sm text-muted-foreground text-center">
+                Entrez votre courriel pour recevoir un lien de réinitialisation.
+              </p>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block">Courriel</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    placeholder="nom@exemple.com"
+                    className="w-full bg-secondary border border-border rounded-lg pl-10 pr-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
+              {forgotError && (
+                <p className="text-sm text-destructive text-center">{forgotError}</p>
+              )}
               <button
-                key={rep.id}
-                onClick={() => setRole("representant", rep.id)}
-                className="w-full p-4 rounded-lg bg-secondary hover:bg-secondary/80 border border-border text-foreground text-left transition-colors"
+                type="submit"
+                disabled={forgotLoading}
+                className="w-full bg-primary text-primary-foreground font-medium py-2.5 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                <div className="flex items-center gap-2 font-medium">
-                  <UserCheck className="h-4 w-4 text-primary" /> Représentant — {rep.name}
-                </div>
-                <div className="text-sm text-muted-foreground">Rendez-vous personnels, objectifs et classement</div>
+                {forgotLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                Envoyer le lien
               </button>
-            ))}
-          </div>
+              <button
+                type="button"
+                onClick={() => { setShowForgot(false); setForgotError(null); }}
+                className="flex items-center gap-2 mx-auto text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4" /> Retour à la connexion
+              </button>
+            </form>
+          )}
         </div>
       </div>
     );
@@ -70,7 +117,7 @@ const LoginPage = () => {
           </div>
           <h1 className="text-xl font-bold text-foreground">Growth Sales CRM</h1>
         </div>
-        <div className="space-y-4">
+        <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Courriel</label>
             <div className="relative">
@@ -78,7 +125,8 @@ const LoginPage = () => {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); setError(null); }}
+                placeholder="nom@exemple.com"
                 className="w-full bg-secondary border border-border rounded-lg pl-10 pr-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
@@ -90,19 +138,31 @@ const LoginPage = () => {
               <input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => { setPassword(e.target.value); setError(null); }}
+                placeholder="••••••••"
                 className="w-full bg-secondary border border-border rounded-lg pl-10 pr-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
           </div>
+          {error && (
+            <p className="text-sm text-destructive text-center">{error}</p>
+          )}
           <button
-            onClick={login}
-            className="w-full bg-primary text-primary-foreground font-medium py-2.5 rounded-lg hover:opacity-90 transition-opacity"
+            type="submit"
+            disabled={loading}
+            className="w-full bg-primary text-primary-foreground font-medium py-2.5 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
           >
+            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
             Se connecter
           </button>
-          <p className="text-xs text-muted-foreground text-center">Identifiants de démo pré-remplis</p>
-        </div>
+          <button
+            type="button"
+            onClick={() => setShowForgot(true)}
+            className="w-full text-sm text-muted-foreground hover:text-primary transition-colors text-center"
+          >
+            Mot de passe oublié ?
+          </button>
+        </form>
       </div>
     </div>
   );
