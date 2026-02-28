@@ -1,17 +1,13 @@
 import { create } from "zustand";
 import { Appointment, AppointmentStatus, INITIAL_APPOINTMENTS, SALES_REPS, HotCall, HotCallStatus, HotCallPhase, HotCallFeedback, CallLogEntry, StatusChangeLog } from "@/data/crm-data";
 
-export type AppRole = "proprietaire" | "gestionnaire" | "representant";
+// Re-export AppRole from new workspace system
+export type { AppRole } from "@/lib/workspace/WorkspaceProvider";
 
-interface AuthState {
-  isLoggedIn: boolean;
-  role: AppRole | null;
-  currentRepId: string | null;
-  currentManagerId: string | null;
-  login: () => void;
-  setRole: (role: AppRole, repId?: string, managerId?: string) => void;
-  logout: () => void;
-}
+// Re-export useAuth as backward-compatible shim
+export { useAuthCompat as useAuth } from "@/lib/auth/useAuthCompat";
+
+// Legacy AuthState interface removed — now provided by useAuthCompat
 
 interface CrmState {
   appointments: Appointment[];
@@ -422,17 +418,4 @@ export const useCrm = create<CrmState>((set, get) => ({
     }),
 }));
 
-export const useAuth = create<AuthState>((set) => ({
-  isLoggedIn: false,
-  role: null,
-  currentRepId: null,
-  currentManagerId: null,
-  login: () => set({ isLoggedIn: true }),
-  setRole: (role, repId, managerId) =>
-    set({
-      role,
-      currentRepId: repId || (role === "representant" ? SALES_REPS[0].id : null),
-      currentManagerId: managerId || null,
-    }),
-  logout: () => set({ isLoggedIn: false, role: null, currentRepId: null, currentManagerId: null }),
-}));
+// Old useAuth zustand store removed — now re-exported from useAuthCompat above

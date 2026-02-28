@@ -1,5 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { useAuth } from "@/store/crm-store";
+import { useWorkspaceContext } from "@/lib/workspace/WorkspaceProvider";
+import { useAuthContext } from "@/lib/auth/AuthProvider";
+import { SALES_REPS, MANAGERS } from "@/data/crm-data";
 import {
   LayoutDashboard,
   CalendarPlus,
@@ -19,6 +21,7 @@ import {
   MapPinned,
   Megaphone,
   BarChart3,
+  Settings,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -31,7 +34,6 @@ const ROUTE_LABELS: Record<string, string> = {
   users: "Gestion utilisateurs",
   "hot-calls": "Hot Calls",
   calendar: "Calendrier",
-  
   territoires: "Territoires",
   backlog: "Backlog",
   "marketing-leads": "Marketing Leads",
@@ -39,9 +41,11 @@ const ROUTE_LABELS: Record<string, string> = {
 };
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
-  const { role, logout } = useAuth();
+  const { role, setDevRole, currentRepId, currentManagerId } = useWorkspaceContext();
+  const { signOut } = useAuthContext();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showDevPanel, setShowDevPanel] = useState(false);
 
   const ownerLinks = [
     { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
@@ -73,7 +77,6 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const repLinks = [
     { to: "/rep", label: "Ma vue", icon: User },
     { to: "/calendar", label: "Calendrier", icon: CalendarDays },
-    
     { to: "/territoires", label: "Territoires", icon: MapPinned },
     { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
     { to: "/hot-calls", label: "Hot Calls", icon: Flame },
@@ -124,9 +127,17 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
             </NavLink>
           ))}
         </nav>
-        <div className="p-3 border-t border-sidebar-border">
+        <div className="p-3 border-t border-sidebar-border space-y-1">
+          {/* Dev role toggle */}
           <button
-            onClick={logout}
+            onClick={() => setShowDevPanel(!showDevPanel)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50 w-full transition-colors"
+          >
+            <Settings className="h-4 w-4" />
+            <span>Dev: Changer rôle</span>
+          </button>
+          <button
+            onClick={signOut}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50 w-full transition-colors"
           >
             <LogOut className="h-4 w-4" />
@@ -149,6 +160,46 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
             {roleLabel}
           </div>
         </header>
+
+        {/* Dev role panel */}
+        {showDevPanel && (
+          <div className="border-b border-border bg-card/80 p-3">
+            <p className="text-xs text-muted-foreground mb-2 font-medium">🔧 Dev: Changer de rôle (placeholder)</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setDevRole("proprietaire")}
+                className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                  role === "proprietaire" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                }`}
+              >
+                <Crown className="h-3 w-3 inline mr-1" /> Propriétaire
+              </button>
+              {MANAGERS.map((mgr) => (
+                <button
+                  key={mgr.id}
+                  onClick={() => setDevRole("gestionnaire", null, mgr.id)}
+                  className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                    role === "gestionnaire" && currentManagerId === mgr.id ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                  }`}
+                >
+                  <Users className="h-3 w-3 inline mr-1" /> Gestionnaire — {mgr.name}
+                </button>
+              ))}
+              {SALES_REPS.map((rep) => (
+                <button
+                  key={rep.id}
+                  onClick={() => setDevRole("representant", rep.id)}
+                  className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                    role === "representant" && currentRepId === rep.id ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                  }`}
+                >
+                  <UserCheck className="h-3 w-3 inline mr-1" /> {rep.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <main className="flex-1 p-6 overflow-auto">{children}</main>
       </div>
     </div>
