@@ -12,32 +12,28 @@ import { MapPin, ArrowLeft } from "lucide-react";
 
 const CITY_CHIPS = ["Montréal", "Laval", "Longueuil", "Terrebonne", "Mascouche"];
 const ORIGIN_OPTIONS = ["Door-to-door", "Référence", "Facebook", "Autre"];
-const OWNER_OPTIONS = ["Les deux", "Un seul", "Je ne sais pas"];
 const WORK_DONE_OPTIONS = ["Oui", "Non", "Je ne sais pas"];
-const YEARS_OPTIONS = ["0–2", "3–5", "6–10", "10+", "Je ne sais pas"];
 const INSPECTION_OPTIONS = ["Oui", "Non", "Je ne sais pas"];
 const DECISION_DELAY_OPTIONS = ["0–7 jours", "1–2 semaines", "2–4 semaines", "1 mois+", "Je ne sais pas"];
 
 interface PreQualState {
-  q1_owners: string;
-  q2_work_done: string;
-  q3_sector: string;
-  q4_years: string;
-  q5_renovations: string;
-  q6_inspection: string;
-  q6a_inspector: string;
-  q6b_decision_delay: string;
+  prior_work_done: string;
+  job_sector: string;
+  years_at_address: string;
+  recent_or_future_work: string;
+  inspection_report: string;
+  inspection_by: string;
+  decision_timeline: string;
 }
 
 const INITIAL_PREQUAL: PreQualState = {
-  q1_owners: "",
-  q2_work_done: "",
-  q3_sector: "",
-  q4_years: "",
-  q5_renovations: "",
-  q6_inspection: "",
-  q6a_inspector: "",
-  q6b_decision_delay: "",
+  prior_work_done: "",
+  job_sector: "",
+  years_at_address: "",
+  recent_or_future_work: "",
+  inspection_report: "",
+  inspection_by: "",
+  decision_timeline: "",
 };
 
 const AddAppointmentPage = () => {
@@ -81,13 +77,16 @@ const AddAppointmentPage = () => {
     if (!isBacklog && !date) e.date = "Requis";
     if (!isBacklog && !time) e.time = "Requis";
     // Prequalification
-    if (!preQual.q1_owners) e.q1_owners = "Requis";
-    if (!preQual.q2_work_done) e.q2_work_done = "Requis";
-    if (!preQual.q4_years) e.q4_years = "Requis";
-    if (!preQual.q6_inspection) e.q6_inspection = "Requis";
-    if (preQual.q6_inspection === "Oui") {
-      if (!preQual.q6a_inspector.trim()) e.q6a_inspector = "Requis";
-      if (!preQual.q6b_decision_delay) e.q6b_decision_delay = "Requis";
+    if (!preQual.prior_work_done) e.prior_work_done = "Requis";
+    if (!preQual.years_at_address) e.years_at_address = "Requis";
+    else {
+      const y = Number(preQual.years_at_address);
+      if (isNaN(y) || y < 0 || y > 60) e.years_at_address = "Entre 0 et 60";
+    }
+    if (!preQual.inspection_report) e.inspection_report = "Requis";
+    if (preQual.inspection_report === "Oui") {
+      if (!preQual.inspection_by.trim()) e.inspection_by = "Requis";
+      if (!preQual.decision_timeline) e.decision_timeline = "Requis";
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -95,14 +94,13 @@ const AddAppointmentPage = () => {
 
   const buildPreQualString = () => {
     const parts = [
-      `Propriétaires: ${preQual.q1_owners}`,
-      `Travail réalisé: ${preQual.q2_work_done}`,
-      preQual.q3_sector ? `Secteur: ${preQual.q3_sector}` : null,
-      `Années propriétaire: ${preQual.q4_years}`,
-      preQual.q5_renovations ? `Travaux: ${preQual.q5_renovations}` : null,
-      `Inspection: ${preQual.q6_inspection}`,
-      preQual.q6_inspection === "Oui" ? `Inspecteur: ${preQual.q6a_inspector}` : null,
-      preQual.q6_inspection === "Oui" ? `Délai décision: ${preQual.q6b_decision_delay}` : null,
+      `Travail réalisé: ${preQual.prior_work_done}`,
+      preQual.job_sector ? `Secteur: ${preQual.job_sector}` : null,
+      `Années propriétaire: ${preQual.years_at_address}`,
+      preQual.recent_or_future_work ? `Travaux: ${preQual.recent_or_future_work}` : null,
+      `Inspection: ${preQual.inspection_report}`,
+      preQual.inspection_report === "Oui" ? `Inspecteur: ${preQual.inspection_by}` : null,
+      preQual.inspection_report === "Oui" ? `Délai décision: ${preQual.decision_timeline}` : null,
     ];
     return parts.filter(Boolean).join(" | ");
   };
@@ -331,100 +329,92 @@ const AddAppointmentPage = () => {
         <div className="glass-card p-4 space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Préqualification</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* Q1 */}
+            {/* 1) Investissement antérieur */}
             <div className="space-y-1">
-              <Label className="text-xs">Qui sont les propriétaires ? *</Label>
-              <Select value={preQual.q1_owners} onValueChange={(v) => updatePreQual("q1_owners", v)}>
-                <SelectTrigger className={errors.q1_owners ? "border-destructive" : ""}>
-                  <SelectValue placeholder="Sélectionner" />
-                </SelectTrigger>
-                <SelectContent>
-                  {OWNER_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              {fieldError("q1_owners")}
-            </div>
-            {/* Q2 */}
-            <div className="space-y-1">
-              <Label className="text-xs">Ce travail a-t-il déjà été réalisé ? *</Label>
-              <Select value={preQual.q2_work_done} onValueChange={(v) => updatePreQual("q2_work_done", v)}>
-                <SelectTrigger className={errors.q2_work_done ? "border-destructive" : ""}>
+              <Label className="text-xs">Est-ce que ce travail a déjà été réalisé ? *</Label>
+              <Select value={preQual.prior_work_done} onValueChange={(v) => updatePreQual("prior_work_done", v)}>
+                <SelectTrigger className={errors.prior_work_done ? "border-destructive" : ""}>
                   <SelectValue placeholder="Sélectionner" />
                 </SelectTrigger>
                 <SelectContent>
                   {WORK_DONE_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                 </SelectContent>
               </Select>
-              {fieldError("q2_work_done")}
+              {fieldError("prior_work_done")}
             </div>
-            {/* Q3 */}
+            {/* 2) Secteur d'activité */}
             <div className="space-y-1">
-              <Label className="text-xs">Secteur d'activité</Label>
+              <Label className="text-xs">Dans quel domaine travaillent-ils ?</Label>
               <Input
-                value={preQual.q3_sector}
-                onChange={(e) => updatePreQual("q3_sector", e.target.value)}
-                placeholder="Ex: Construction, Santé, Bureau..."
+                value={preQual.job_sector}
+                onChange={(e) => updatePreQual("job_sector", e.target.value)}
+                placeholder="Ex: Construction, Santé, Bureau, etc."
               />
             </div>
-            {/* Q4 */}
+            {/* 3) Ancienneté */}
             <div className="space-y-1">
-              <Label className="text-xs">Années propriétaire à cette adresse ? *</Label>
-              <Select value={preQual.q4_years} onValueChange={(v) => updatePreQual("q4_years", v)}>
-                <SelectTrigger className={errors.q4_years ? "border-destructive" : ""}>
-                  <SelectValue placeholder="Sélectionner" />
-                </SelectTrigger>
-                <SelectContent>
-                  {YEARS_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              {fieldError("q4_years")}
+              <Label className="text-xs">Depuis combien de temps sont-ils propriétaires à cette adresse ? *</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={0}
+                  max={60}
+                  value={preQual.years_at_address}
+                  onChange={(e) => updatePreQual("years_at_address", e.target.value)}
+                  placeholder="Ex: 8"
+                  className={`flex-1 ${errors.years_at_address ? "border-destructive" : ""}`}
+                />
+                <span className="text-xs text-muted-foreground shrink-0">années</span>
+              </div>
+              {fieldError("years_at_address")}
             </div>
-            {/* Q5 */}
+            {/* 4) Travaux récents ou futurs */}
             <div className="space-y-1 md:col-span-2">
-              <Label className="text-xs">Travaux récents ou futurs</Label>
-              <Input
-                value={preQual.q5_renovations}
-                onChange={(e) => updatePreQual("q5_renovations", e.target.value)}
-                placeholder="Ex: toiture 2024, fenêtres bientôt..."
+              <Label className="text-xs">Ont-ils effectué des travaux dans les dernières années ou prévoient-ils des investissements futurs ?</Label>
+              <Textarea
+                value={preQual.recent_or_future_work}
+                onChange={(e) => updatePreQual("recent_or_future_work", e.target.value)}
+                placeholder="Ex: toiture 2024, fenêtres bientôt, etc."
+                className="min-h-[50px]"
               />
             </div>
-            {/* Q6 */}
+            {/* 5) Rapport d'inspection */}
             <div className="space-y-1">
-              <Label className="text-xs">Rapport d'inspection existant ? *</Label>
-              <Select value={preQual.q6_inspection} onValueChange={(v) => updatePreQual("q6_inspection", v)}>
-                <SelectTrigger className={errors.q6_inspection ? "border-destructive" : ""}>
+              <Label className="text-xs">Ont-ils déjà eu un rapport d'inspection ? *</Label>
+              <Select value={preQual.inspection_report} onValueChange={(v) => updatePreQual("inspection_report", v)}>
+                <SelectTrigger className={errors.inspection_report ? "border-destructive" : ""}>
                   <SelectValue placeholder="Sélectionner" />
                 </SelectTrigger>
                 <SelectContent>
                   {INSPECTION_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                 </SelectContent>
               </Select>
-              {fieldError("q6_inspection")}
+              {fieldError("inspection_report")}
             </div>
-            {/* Q6A & Q6B — conditional */}
-            {preQual.q6_inspection === "Oui" && (
+            {/* 5A & 5B — conditional */}
+            {preQual.inspection_report === "Oui" && (
               <>
                 <div className="space-y-1">
                   <Label className="text-xs">Par qui a-t-il été fait ? *</Label>
                   <Input
-                    value={preQual.q6a_inspector}
-                    onChange={(e) => updatePreQual("q6a_inspector", e.target.value)}
-                    placeholder="Nom de l'inspecteur"
-                    className={errors.q6a_inspector ? "border-destructive" : ""}
+                    value={preQual.inspection_by}
+                    onChange={(e) => updatePreQual("inspection_by", e.target.value)}
+                    placeholder="Ex: Inspecteur X / firme Y"
+                    className={errors.inspection_by ? "border-destructive" : ""}
                   />
-                  {fieldError("q6a_inspector")}
+                  {fieldError("inspection_by")}
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Délais de décision ? *</Label>
-                  <Select value={preQual.q6b_decision_delay} onValueChange={(v) => updatePreQual("q6b_decision_delay", v)}>
-                    <SelectTrigger className={errors.q6b_decision_delay ? "border-destructive" : ""}>
+                  <Label className="text-xs">Quels sont les délais de décision ? *</Label>
+                  <Select value={preQual.decision_timeline} onValueChange={(v) => updatePreQual("decision_timeline", v)}>
+                    <SelectTrigger className={errors.decision_timeline ? "border-destructive" : ""}>
                       <SelectValue placeholder="Sélectionner" />
                     </SelectTrigger>
                     <SelectContent>
                       {DECISION_DELAY_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  {fieldError("q6b_decision_delay")}
+                  {fieldError("decision_timeline")}
                 </div>
               </>
             )}
