@@ -328,8 +328,8 @@ const AddAppointmentPage = () => {
         {/* ── Section 3: Préqualification ── */}
         <div className="glass-card p-4 space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Préqualification</h2>
+          {/* BLOCK 1 – Primary triggers */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* 1) Investissement antérieur */}
             <div className="space-y-1">
               <Label className="text-xs">Est-ce que ce travail a déjà été réalisé ? *</Label>
               <Select value={preQual.prior_work_done} onValueChange={(v) => updatePreQual("prior_work_done", v)}>
@@ -342,16 +342,50 @@ const AddAppointmentPage = () => {
               </Select>
               {fieldError("prior_work_done")}
             </div>
-            {/* 2) Secteur d'activité */}
             <div className="space-y-1">
-              <Label className="text-xs">Dans quel domaine travaillent-ils ?</Label>
-              <Input
-                value={preQual.job_sector}
-                onChange={(e) => updatePreQual("job_sector", e.target.value)}
-                placeholder="Ex: Construction, Santé, Bureau, etc."
-              />
+              <Label className="text-xs">Ont-ils déjà eu un rapport d'inspection ? *</Label>
+              <Select value={preQual.inspection_report} onValueChange={(v) => updatePreQual("inspection_report", v)}>
+                <SelectTrigger className={errors.inspection_report ? "border-destructive" : ""}>
+                  <SelectValue placeholder="Sélectionner" />
+                </SelectTrigger>
+                <SelectContent>
+                  {INSPECTION_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {fieldError("inspection_report")}
             </div>
-            {/* 3) Ancienneté */}
+          </div>
+
+          {/* BLOCK 2 – Conditional inspection details */}
+          {preQual.inspection_report === "Oui" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Par qui a-t-il été fait ? *</Label>
+                <Input
+                  value={preQual.inspection_by}
+                  onChange={(e) => updatePreQual("inspection_by", e.target.value)}
+                  placeholder="Ex: Inspecteur X / firme Y"
+                  className={errors.inspection_by ? "border-destructive" : ""}
+                />
+                {fieldError("inspection_by")}
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Quels sont les délais de décision ? *</Label>
+                <Select value={preQual.decision_timeline} onValueChange={(v) => updatePreQual("decision_timeline", v)}>
+                  <SelectTrigger className={errors.decision_timeline ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Sélectionner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DECISION_DELAY_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {fieldError("decision_timeline")}
+              </div>
+            </div>
+          )}
+
+          {/* BLOCK 3 – Owner profile */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Depuis combien de temps sont-ils propriétaires à cette adresse ? *</Label>
               <div className="flex items-center gap-2">
@@ -368,56 +402,25 @@ const AddAppointmentPage = () => {
               </div>
               {fieldError("years_at_address")}
             </div>
-            {/* 4) Travaux récents ou futurs */}
-            <div className="space-y-1 md:col-span-2">
-              <Label className="text-xs">Ont-ils effectué des travaux dans les dernières années ou prévoient-ils des investissements futurs ?</Label>
-              <Textarea
-                value={preQual.recent_or_future_work}
-                onChange={(e) => updatePreQual("recent_or_future_work", e.target.value)}
-                placeholder="Ex: toiture 2024, fenêtres bientôt, etc."
-                className="min-h-[50px]"
+            <div className="space-y-1">
+              <Label className="text-xs">Dans quel domaine travaillent-ils ?</Label>
+              <Input
+                value={preQual.job_sector}
+                onChange={(e) => updatePreQual("job_sector", e.target.value)}
+                placeholder="Ex: Construction, Santé, Bureau, etc."
               />
             </div>
-            {/* 5) Rapport d'inspection */}
-            <div className="space-y-1">
-              <Label className="text-xs">Ont-ils déjà eu un rapport d'inspection ? *</Label>
-              <Select value={preQual.inspection_report} onValueChange={(v) => updatePreQual("inspection_report", v)}>
-                <SelectTrigger className={errors.inspection_report ? "border-destructive" : ""}>
-                  <SelectValue placeholder="Sélectionner" />
-                </SelectTrigger>
-                <SelectContent>
-                  {INSPECTION_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              {fieldError("inspection_report")}
-            </div>
-            {/* 5A & 5B — conditional */}
-            {preQual.inspection_report === "Oui" && (
-              <>
-                <div className="space-y-1">
-                  <Label className="text-xs">Par qui a-t-il été fait ? *</Label>
-                  <Input
-                    value={preQual.inspection_by}
-                    onChange={(e) => updatePreQual("inspection_by", e.target.value)}
-                    placeholder="Ex: Inspecteur X / firme Y"
-                    className={errors.inspection_by ? "border-destructive" : ""}
-                  />
-                  {fieldError("inspection_by")}
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Quels sont les délais de décision ? *</Label>
-                  <Select value={preQual.decision_timeline} onValueChange={(v) => updatePreQual("decision_timeline", v)}>
-                    <SelectTrigger className={errors.decision_timeline ? "border-destructive" : ""}>
-                      <SelectValue placeholder="Sélectionner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DECISION_DELAY_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  {fieldError("decision_timeline")}
-                </div>
-              </>
-            )}
+          </div>
+
+          {/* BLOCK 4 – Context */}
+          <div className="space-y-1">
+            <Label className="text-xs">Ont-ils effectué des travaux dans les dernières années ou prévoient-ils des investissements futurs ?</Label>
+            <Textarea
+              value={preQual.recent_or_future_work}
+              onChange={(e) => updatePreQual("recent_or_future_work", e.target.value)}
+              placeholder="Ex: toiture 2024, fenêtres bientôt, etc."
+              className="min-h-[50px]"
+            />
           </div>
         </div>
 
