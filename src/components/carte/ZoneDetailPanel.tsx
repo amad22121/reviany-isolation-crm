@@ -64,7 +64,7 @@ const ZoneDetailPanel = ({
   };
 
   return (
-    <div className="absolute right-0 top-0 bottom-0 w-full sm:w-[340px] bg-card border-l border-border overflow-y-auto z-[1000]">
+    <div className="absolute right-0 top-0 bottom-0 w-full sm:w-[340px] bg-card border-l border-border overflow-y-auto z-[1100]">
       <div className="p-4 space-y-5">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-foreground">{zone.name}</h3>
@@ -87,7 +87,7 @@ const ZoneDetailPanel = ({
             {canManage ? (
               <Select value={zone.rep_id} onValueChange={onUpdateRep}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>{SALES_REPS.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>
+                <SelectContent className="z-[9999]">{SALES_REPS.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>
               </Select>
             ) : (
               <p className="text-foreground">{getRepName(zone.rep_id)}</p>
@@ -108,7 +108,7 @@ const ZoneDetailPanel = ({
             <span className="text-muted-foreground text-xs">Modifier le statut</span>
             <Select value={zone.status} onValueChange={(v) => onUpdateStatus(v as TerritoryStatus)}>
               <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>{TERRITORY_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              <SelectContent className="z-[9999]">{TERRITORY_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
             </Select>
           </div>
         )}
@@ -139,11 +139,32 @@ const ZoneDetailPanel = ({
           </Button>
         )}
 
-        {logs.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-              <History className="h-3.5 w-3.5" /> Historique
-            </h4>
+        {/* Historique section — shows logs or placeholder */}
+        <div className="space-y-2">
+          <h4 className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+            <History className="h-3.5 w-3.5" /> Historique
+          </h4>
+
+          {/* Meta: created + last change */}
+          <div className="bg-secondary/50 rounded-lg p-2.5 text-xs space-y-1">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Créé le</span>
+              <span className="text-foreground">
+                {new Date(zone.created_at).toLocaleDateString("fr-CA")}{" "}
+                {new Date(zone.created_at).toLocaleTimeString("fr-CA", { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Dernier changement</span>
+              <span className="text-foreground">
+                {logs.length > 0
+                  ? `${new Date(logs[0].changed_at).toLocaleDateString("fr-CA")} ${new Date(logs[0].changed_at).toLocaleTimeString("fr-CA", { hour: "2-digit", minute: "2-digit" })}`
+                  : "—"}
+              </span>
+            </div>
+          </div>
+
+          {logs.length > 0 && (
             <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
               {logs.map((log) => (
                 <div key={log.id} className="bg-secondary/50 rounded-lg p-2.5 text-xs">
@@ -155,8 +176,8 @@ const ZoneDetailPanel = ({
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

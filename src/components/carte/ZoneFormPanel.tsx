@@ -8,6 +8,8 @@ import { SALES_REPS } from "@/data/crm-data";
 import { TerritoryStatus, TERRITORY_STATUSES } from "@/store/territory-store";
 import { X } from "lucide-react";
 
+const todayStr = () => new Date().toISOString().split("T")[0];
+
 interface ZoneFormPanelProps {
   onSubmit: (data: {
     name: string;
@@ -27,7 +29,21 @@ const ZoneFormPanel = ({ onSubmit, onCancel }: ZoneFormPanelProps) => {
   const [repId, setRepId] = useState(SALES_REPS[0]?.id ?? "");
   const [plannedDate, setPlannedDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [dateFait, setDateFait] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const handleStatusChange = (v: TerritoryStatus) => {
+    setStatus(v);
+    if (v === "Planifié aujourd'hui" && !plannedDate) {
+      setPlannedDate(todayStr());
+    }
+    if (v === "Fait") {
+      if (!plannedDate) setPlannedDate(todayStr());
+      setDateFait(todayStr());
+    } else {
+      setDateFait("");
+    }
+  };
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -44,7 +60,7 @@ const ZoneFormPanel = ({ onSubmit, onCancel }: ZoneFormPanelProps) => {
   };
 
   return (
-    <div className="absolute right-0 top-0 bottom-0 w-full sm:w-[360px] bg-card border-l border-border overflow-y-auto z-[1000]">
+    <div className="absolute right-0 top-0 bottom-0 w-full sm:w-[360px] bg-card border-l border-border overflow-y-auto z-[1100]">
       <div className="p-4 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-foreground">Nouvelle zone</h3>
@@ -68,7 +84,7 @@ const ZoneFormPanel = ({ onSubmit, onCancel }: ZoneFormPanelProps) => {
           <Label>Représentant assigné</Label>
           <Select value={repId} onValueChange={setRepId}>
             <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
+            <SelectContent className="z-[9999]">
               {SALES_REPS.map((r) => (
                 <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
               ))}
@@ -78,9 +94,9 @@ const ZoneFormPanel = ({ onSubmit, onCancel }: ZoneFormPanelProps) => {
 
         <div className="space-y-1.5">
           <Label>Statut initial *</Label>
-          <Select value={status} onValueChange={(v) => setStatus(v as TerritoryStatus)}>
+          <Select value={status} onValueChange={(v) => handleStatusChange(v as TerritoryStatus)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
+            <SelectContent className="z-[9999]">
               {TERRITORY_STATUSES.map((s) => (
                 <SelectItem key={s} value={s}>{s}</SelectItem>
               ))}
@@ -99,6 +115,13 @@ const ZoneFormPanel = ({ onSubmit, onCancel }: ZoneFormPanelProps) => {
           <Label htmlFor="zone-notes">Notes terrain</Label>
           <Textarea id="zone-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Observations, remarques..." className="bg-secondary/50" />
         </div>
+
+        {status === "Fait" && (
+          <div className="space-y-1.5">
+            <Label htmlFor="zone-date-fait">Date complété</Label>
+            <Input id="zone-date-fait" type="date" value={dateFait} onChange={(e) => setDateFait(e.target.value)} />
+          </div>
+        )}
 
         <Button onClick={handleSubmit} className="w-full">Créer la zone</Button>
       </div>
