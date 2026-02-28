@@ -387,7 +387,7 @@ const AddAppointmentPage = () => {
           {/* BLOCK 3 – Owner profile */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">Durée de propriété (années, décimal accepté) *</Label>
+              <Label className="text-xs">Durée de propriété à cette adresse (années) *</Label>
               <Input
                 type="number"
                 min={0}
