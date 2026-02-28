@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
 import { SALES_REPS, Appointment, APPOINTMENT_STATUSES, AppointmentStatus } from "@/data/crm-data";
-import { Search, MapPin, Bell, Check } from "lucide-react";
+import { Search, MapPin, Bell, Check, Plus, CalendarPlus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import FicheClient from "@/components/FicheClient";
 
 const STATUS_PERMISSIONS: Record<string, AppointmentStatus[]> = {
@@ -11,6 +13,7 @@ const STATUS_PERMISSIONS: Record<string, AppointmentStatus[]> = {
 };
 
 const AppointmentsPage = () => {
+  const navigate = useNavigate();
   const { appointments, updateStatus, updateNotes } = useCrm();
   const { role, currentManagerId } = useAuth();
   const [search, setSearch] = useState("");
@@ -67,7 +70,12 @@ const AppointmentsPage = () => {
 
   return (
     <><div className="space-y-6">
-      <h1 className="text-xl font-bold text-foreground">Tous les rendez-vous</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-foreground">Tous les rendez-vous</h1>
+        <Button onClick={() => navigate("/add-appointment")} size="sm">
+          <Plus className="h-4 w-4" /> Nouveau rendez-vous
+        </Button>
+      </div>
 
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
@@ -188,7 +196,16 @@ const AppointmentsPage = () => {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Aucun rendez-vous trouvé</td></tr>
+                <tr><td colSpan={7} className="px-4 py-12 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <CalendarPlus className="h-10 w-10 text-muted-foreground/50" />
+                    <p className="text-muted-foreground font-medium">Aucun rendez-vous pour le moment</p>
+                    <p className="text-muted-foreground text-xs">Commencez par créer votre premier rendez-vous.</p>
+                    <Button variant="secondary" size="sm" onClick={() => navigate("/add-appointment")}>
+                      Créer un rendez-vous
+                    </Button>
+                  </div>
+                </td></tr>
               )}
             </tbody>
           </table>
