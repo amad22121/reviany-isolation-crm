@@ -279,6 +279,8 @@ const TerritoiresPage = () => {
       setShowCreateForm(false);
       setDrawnPolygon(null);
       drawLayerRef.current?.clearLayers();
+      // Keep map stable — force resize recalc
+      setTimeout(() => { mapRef.current?.invalidateSize(); }, 100);
     } catch {
       toast.error("Erreur lors de la création");
     }
@@ -347,6 +349,11 @@ const TerritoiresPage = () => {
   }, [selectedZone, selectedZoneId, canManage, deleteZone]);
 
   const showPanel = showCreateForm || selectedZone;
+
+  // Invalidate map size when panel visibility changes
+  useEffect(() => {
+    setTimeout(() => { mapRef.current?.invalidateSize(); }, 100);
+  }, [showPanel]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-5rem)]">
@@ -441,7 +448,7 @@ const TerritoiresPage = () => {
         </div>
       </div>
 
-      {/* Main content: Map + List */}
+      {/* Main content: Map + List + Panel overlay */}
       <div className="flex-1 flex gap-0 overflow-hidden relative min-h-0">
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-[1001]">
@@ -449,12 +456,12 @@ const TerritoiresPage = () => {
           </div>
         )}
 
-        {/* LEFT: Map — lower z-index, disable pointer events when panel open to let dropdowns work */}
-        <div className={`flex-1 relative min-w-0 z-0 ${showPanel ? "hidden sm:block" : ""}`}>
-          <div ref={mapContainerRef} className={`h-full w-full ${showPanel ? "pointer-events-none" : ""}`} />
+        {/* LEFT: Map — always mounted, never hidden */}
+        <div className="flex-1 relative min-w-0 z-0">
+          <div ref={mapContainerRef} className="h-full w-full" />
         </div>
 
-        {/* RIGHT: List */}
+        {/* RIGHT: List — hidden when panel is open */}
         <div className={`w-full sm:w-[420px] lg:w-[480px] border-l border-border overflow-y-auto bg-card/50 ${showPanel ? "hidden" : ""}`}>
           {visibleZones.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground text-sm">Aucun territoire trouvé.</div>
@@ -531,7 +538,7 @@ const TerritoiresPage = () => {
           )}
         </div>
 
-        {/* Detail / Create panels */}
+        {/* Overlay panels — above map with high z-index */}
         {showCreateForm && drawnPolygon && (
           <ZoneFormPanel onSubmit={handleCreateZone} onCancel={handleCancelCreate} />
         )}
