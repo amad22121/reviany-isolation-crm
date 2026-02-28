@@ -49,11 +49,15 @@ const RepViewPage = () => {
   const teamPct = dailyTarget > 0 ? Math.min(100, (teamProgress / dailyTarget) * 100) : 0;
 
   const statusColors: Record<string, string> = {
-    "En attente": "bg-warning/20 text-warning",
+    "Planifié": "bg-warning/20 text-warning",
     "Confirmé": "bg-green-500/20 text-green-400",
+    "Non confirmé": "bg-orange-300/20 text-orange-300",
     "À risque": "bg-destructive/20 text-destructive",
-    "Closed": "bg-info/20 text-info",
-    "Annulé": "bg-muted text-muted-foreground",
+    "Reporté": "bg-blue-400/20 text-blue-400",
+    "Annulé (à rappeler)": "bg-amber-500/20 text-amber-400",
+    "Annulé (définitif)": "bg-muted text-muted-foreground",
+    "No-show": "bg-red-400/20 text-red-400",
+    "Closé": "bg-info/20 text-info",
   };
 
   return (

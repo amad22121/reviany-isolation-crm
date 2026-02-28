@@ -43,7 +43,7 @@ const RouteDuJourPage = () => {
 
   const confirmed = filtered.filter((a) => a.status === "Confirmé").length;
   const atRisk = filtered.filter((a) => a.status === "À risque").length;
-  const closed = filtered.filter((a) => a.status === "Closed").length;
+  const closed = filtered.filter((a) => a.status === "Closé").length;
 
   const openGoogleMaps = (address: string, city: string) => {
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${address}, ${city}`)}`, "_blank");

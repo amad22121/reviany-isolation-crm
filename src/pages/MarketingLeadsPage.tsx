@@ -203,7 +203,7 @@ const MarketingLeadsPage = () => {
       preQual1: "",
       preQual2: "",
       notes: bookingLead.notes || "",
-      status: "En attente",
+      status: "Planifié",
       source: "Referral",
     });
     await updateLead.mutateAsync({

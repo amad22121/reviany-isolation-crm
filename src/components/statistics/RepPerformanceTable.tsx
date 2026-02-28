@@ -31,8 +31,8 @@ const RepPerformanceTable = ({ appointments, hotCalls, startDate, endDate }: Pro
       const repAppts = appointments.filter((a) => a.repId === rep.id);
       const total = repAppts.length;
       const confirmed = repAppts.filter((a) => a.status === "Confirmé").length;
-      const closed = repAppts.filter((a) => a.status === "Closed").length;
-      const cancelled = repAppts.filter((a) => a.status === "Annulé").length;
+      const closed = repAppts.filter((a) => a.status === "Closé").length;
+      const cancelled = repAppts.filter((a) => a.status === "Annulé (à rappeler)" || a.status === "Annulé (définitif)").length;
       const closingRate = total > 0 ? Math.round((closed / total) * 100) : 0;
 
       const repHC = hotCalls.filter((h) => h.repId === rep.id);
