@@ -265,7 +265,7 @@ const AddAppointmentPage = () => {
             </div>
           )}
 
-          {/* Origine culturelle */}
+          {/* Origine culturelle + Source du lead */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Origine / profil culturel</Label>
@@ -275,13 +275,6 @@ const AddAppointmentPage = () => {
                 placeholder="Ex: Arabe, Haïtienne, Québécoise, etc."
               />
             </div>
-          </div>
-        </div>
-
-        {/* ── Section 1b: Source du lead ── */}
-        <div className="glass-card p-4 space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Source du lead</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Source du lead *</Label>
               <Select value={leadSource} onValueChange={(v) => { setLeadSource(v); clearError("leadSource"); }}>
@@ -296,8 +289,10 @@ const AddAppointmentPage = () => {
               </Select>
               {fieldError("leadSource")}
             </div>
-            {leadSource === "Autre" && (
-              <div className="space-y-1">
+          </div>
+          {leadSource === "Autre" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="md:col-start-2 space-y-1">
                 <Label className="text-xs">Préciser la source *</Label>
                 <Input
                   value={leadSourceOther}
@@ -307,8 +302,8 @@ const AddAppointmentPage = () => {
                 />
                 {fieldError("leadSourceOther")}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* ── Section 2: RDV info ── */}
