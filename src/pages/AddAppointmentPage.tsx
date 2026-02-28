@@ -387,19 +387,17 @@ const AddAppointmentPage = () => {
           {/* BLOCK 3 – Owner profile */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">Depuis combien de temps sont-ils propriétaires à cette adresse ? *</Label>
-              <div className={`flex items-center h-10 w-full rounded-md border bg-background ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${errors.years_at_address ? "border-destructive" : "border-input"}`}>
-                <input
-                  type="number"
-                  min={0}
-                  max={60}
-                  value={preQual.years_at_address}
-                  onChange={(e) => updatePreQual("years_at_address", e.target.value)}
-                  placeholder="Ex: 8"
-                  className="flex-1 h-full bg-transparent px-3 py-2 text-sm md:text-sm outline-none placeholder:text-muted-foreground [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
-                <span className="px-3 text-xs text-muted-foreground select-none border-l border-input bg-muted/50 h-full flex items-center rounded-r-md">années</span>
-              </div>
+              <Label className="text-xs">Durée de propriété (années, décimal accepté) *</Label>
+              <Input
+                type="number"
+                min={0}
+                max={60}
+                step="0.1"
+                value={preQual.years_at_address}
+                onChange={(e) => updatePreQual("years_at_address", e.target.value)}
+                placeholder="Ex: 1.5"
+                className={errors.years_at_address ? "border-destructive" : ""}
+              />
               {fieldError("years_at_address")}
             </div>
             <div className="space-y-1">
