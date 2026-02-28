@@ -21,8 +21,8 @@ const KpiCards = ({ appointments, leads }: Props) => {
   const total = appointments.length;
   const confirmed = appointments.filter((a) => a.status === "Confirmé").length;
   const atRisk = appointments.filter((a) => a.status === "À risque").length;
-  const closed = appointments.filter((a) => a.status === "Closed").length;
-  const cancelled = appointments.filter((a) => a.status === "Annulé").length;
+  const closed = appointments.filter((a) => a.status === "Closé").length;
+  const cancelled = appointments.filter((a) => a.status === "Annulé (à rappeler)" || a.status === "Annulé (définitif)").length;
   const closingRate = total > 0 ? Math.round((closed / total) * 100) : 0;
   const confirmRate = total > 0 ? Math.round((confirmed / total) * 100) : 0;
 

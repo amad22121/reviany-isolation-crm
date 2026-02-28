@@ -46,14 +46,26 @@ const CalendarPage = () => {
   }, []);
 
   // All visible appointments (role-filtered, no status/rep filter yet for stats)
+  // Also apply "À risque" auto-detection: Non confirmé + within 12h → À risque (UI mock)
   const roleFilteredAppointments = useMemo(() => {
     let appts = appointments.filter((a) => a.status !== "Backlog");
-    if (isRep) return appts.filter((a) => a.repId === currentRepId);
-    if (role === "gestionnaire" && currentManagerId) {
+    if (isRep) appts = appts.filter((a) => a.repId === currentRepId);
+    else if (role === "gestionnaire" && currentManagerId) {
       const managerReps = new Set(SALES_REPS.filter((r) => r.managerId === currentManagerId).map((r) => r.id));
-      return appts.filter((a) => managerReps.has(a.repId));
+      appts = appts.filter((a) => managerReps.has(a.repId));
     }
-    return appts;
+    // Auto-detect À risque: Non confirmé + appointment within 12 hours
+    const now = Date.now();
+    return appts.map((a) => {
+      if (a.status === "Non confirmé") {
+        const apptTime = new Date(`${a.date}T${a.time || "00:00"}`).getTime();
+        const hoursUntil = (apptTime - now) / (1000 * 60 * 60);
+        if (hoursUntil <= 12 && hoursUntil > -2) {
+          return { ...a, status: "À risque" as const };
+        }
+      }
+      return a;
+    });
   }, [appointments, role, currentRepId, currentManagerId, isRep]);
 
   // Fully filtered appointments (rep + status)
@@ -71,13 +83,13 @@ const CalendarPage = () => {
   const stats = useMemo(() => {
     const todayAppts = roleFilteredAppointments.filter((a) => a.date === todayKey);
     const confirmed = todayAppts.filter((a) => a.status === "Confirmé").length;
-    const atRisk = todayAppts.filter((a) => a.status === "À risque" || a.status === "Annulé").length;
+    const atRisk = todayAppts.filter((a) => a.status === "À risque" || a.status === "Annulé (à rappeler)").length;
 
     const weekStart = getMonday(today);
     const weekStartKey = formatDateKey(weekStart);
     const weekEndKey = formatDateKey(addDays(weekStart, 6));
     const weekAppts = roleFilteredAppointments.filter((a) => a.date >= weekStartKey && a.date <= weekEndKey);
-    const weekClosed = weekAppts.filter((a) => a.status === "Closed" || a.status === "Confirmé").length;
+    const weekClosed = weekAppts.filter((a) => a.status === "Closé" || a.status === "Confirmé").length;
     const closingRate = weekAppts.length > 0 ? Math.round((weekClosed / weekAppts.length) * 100) : 0;
 
     return { total: todayAppts.length, confirmed, atRisk, closingRate };

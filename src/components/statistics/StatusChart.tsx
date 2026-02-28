@@ -3,11 +3,15 @@ import { Appointment } from "@/data/crm-data";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
 const COLORS: Record<string, string> = {
+  "Planifié": "#facc15",
   "Confirmé": "#4ade80",
-  "En attente": "#facc15",
+  "Non confirmé": "#fdba74",
   "À risque": "#fb923c",
-  "Closed": "#60a5fa",
-  "Annulé": "#6b7280",
+  "Reporté": "#60a5fa",
+  "Annulé (à rappeler)": "#f59e0b",
+  "Annulé (définitif)": "#6b7280",
+  "No-show": "#f87171",
+  "Closé": "#60a5fa",
 };
 
 interface Props {

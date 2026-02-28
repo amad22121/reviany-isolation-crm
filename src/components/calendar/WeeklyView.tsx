@@ -1,19 +1,27 @@
 import { Appointment } from "@/data/crm-data";
 
 const STATUS_COLORS: Record<string, string> = {
+  "Planifié": "border-l-warning bg-warning/10",
   "Confirmé": "border-l-green-500 bg-green-500/10",
-  "En attente": "border-l-warning bg-warning/10",
+  "Non confirmé": "border-l-orange-300 bg-orange-300/10",
   "À risque": "border-l-orange-400 bg-orange-400/10",
-  "Closed": "border-l-info bg-info/10",
-  "Annulé": "border-l-muted-foreground bg-muted/30",
+  "Reporté": "border-l-blue-400 bg-blue-400/10",
+  "Annulé (à rappeler)": "border-l-amber-500 bg-amber-500/10",
+  "Annulé (définitif)": "border-l-muted-foreground bg-muted/30",
+  "No-show": "border-l-red-400 bg-red-400/10",
+  "Closé": "border-l-info bg-info/10",
 };
 
 const STATUS_BADGE: Record<string, string> = {
+  "Planifié": "bg-warning/20 text-warning",
   "Confirmé": "bg-green-500/20 text-green-400",
-  "En attente": "bg-warning/20 text-warning",
+  "Non confirmé": "bg-orange-300/20 text-orange-300",
   "À risque": "bg-orange-400/20 text-orange-400",
-  "Closed": "bg-info/20 text-info",
-  "Annulé": "bg-muted text-muted-foreground",
+  "Reporté": "bg-blue-400/20 text-blue-400",
+  "Annulé (à rappeler)": "bg-amber-500/20 text-amber-400",
+  "Annulé (définitif)": "bg-muted text-muted-foreground",
+  "No-show": "bg-red-400/20 text-red-400",
+  "Closé": "bg-info/20 text-info",
 };
 
 const WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];

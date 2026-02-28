@@ -5,11 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { Navigation, ChevronLeft, ChevronRight } from "lucide-react";
 
 const STATUS_BADGE_COLORS: Record<string, string> = {
+  "Planifié": "bg-warning/20 text-warning hover:bg-warning/30",
   "Confirmé": "bg-green-500/20 text-green-400 hover:bg-green-500/30",
+  "Non confirmé": "bg-orange-300/20 text-orange-300 hover:bg-orange-300/30",
   "À risque": "bg-orange-400/20 text-orange-400 hover:bg-orange-400/30",
-  "En attente": "bg-warning/20 text-warning hover:bg-warning/30",
-  "Closed": "bg-info/20 text-info hover:bg-info/30",
-  "Annulé": "bg-muted text-muted-foreground hover:bg-muted/80",
+  "Reporté": "bg-blue-400/20 text-blue-400 hover:bg-blue-400/30",
+  "Annulé (à rappeler)": "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30",
+  "Annulé (définitif)": "bg-muted text-muted-foreground hover:bg-muted/80",
+  "No-show": "bg-red-400/20 text-red-400 hover:bg-red-400/30",
+  "Closé": "bg-info/20 text-info hover:bg-info/30",
 };
 
 interface CalendarFiltersProps {

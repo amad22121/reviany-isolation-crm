@@ -6,29 +6,41 @@
 // ─── Appointment ──────────────────────────────────────────────────────────────
 
 export const AppointmentStatus = {
-  PENDING: "pending",
+  PLANNED: "planned",
   CONFIRMED: "confirmed",
+  UNCONFIRMED: "unconfirmed",
   AT_RISK: "at_risk",
+  POSTPONED: "postponed",
+  CANCELLED_CALLBACK: "cancelled_callback",
+  CANCELLED_FINAL: "cancelled_final",
+  NO_SHOW: "no_show",
   CLOSED: "closed",
-  CANCELLED: "cancelled",
 } as const;
 export type AppointmentStatus = (typeof AppointmentStatus)[keyof typeof AppointmentStatus];
 
 export const APPOINTMENT_STATUSES: AppointmentStatus[] = [
-  AppointmentStatus.PENDING,
+  AppointmentStatus.PLANNED,
   AppointmentStatus.CONFIRMED,
+  AppointmentStatus.UNCONFIRMED,
   AppointmentStatus.AT_RISK,
+  AppointmentStatus.POSTPONED,
+  AppointmentStatus.CANCELLED_CALLBACK,
+  AppointmentStatus.CANCELLED_FINAL,
+  AppointmentStatus.NO_SHOW,
   AppointmentStatus.CLOSED,
-  AppointmentStatus.CANCELLED,
 ];
 
 /** Human-readable labels (French UI) */
 export const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
-  [AppointmentStatus.PENDING]: "En attente",
+  [AppointmentStatus.PLANNED]: "Planifié",
   [AppointmentStatus.CONFIRMED]: "Confirmé",
+  [AppointmentStatus.UNCONFIRMED]: "Non confirmé",
   [AppointmentStatus.AT_RISK]: "À risque",
-  [AppointmentStatus.CLOSED]: "Closed",
-  [AppointmentStatus.CANCELLED]: "Annulé",
+  [AppointmentStatus.POSTPONED]: "Reporté",
+  [AppointmentStatus.CANCELLED_CALLBACK]: "Annulé (à rappeler)",
+  [AppointmentStatus.CANCELLED_FINAL]: "Annulé (définitif)",
+  [AppointmentStatus.NO_SHOW]: "No-show",
+  [AppointmentStatus.CLOSED]: "Closé",
 };
 
 /**
@@ -36,11 +48,18 @@ export const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
  * Use this when reading data from existing mock/zustand stores.
  */
 export const LEGACY_STATUS_MAP: Record<string, AppointmentStatus> = {
-  "En attente": AppointmentStatus.PENDING,
+  "Planifié": AppointmentStatus.PLANNED,
+  "En attente": AppointmentStatus.PLANNED,
   "Confirmé": AppointmentStatus.CONFIRMED,
+  "Non confirmé": AppointmentStatus.UNCONFIRMED,
   "À risque": AppointmentStatus.AT_RISK,
+  "Reporté": AppointmentStatus.POSTPONED,
+  "Annulé (à rappeler)": AppointmentStatus.CANCELLED_CALLBACK,
+  "Annulé (définitif)": AppointmentStatus.CANCELLED_FINAL,
+  "No-show": AppointmentStatus.NO_SHOW,
   "Closed": AppointmentStatus.CLOSED,
-  "Annulé": AppointmentStatus.CANCELLED,
+  "Closé": AppointmentStatus.CLOSED,
+  "Annulé": AppointmentStatus.CANCELLED_CALLBACK,
 };
 
 export function toLegacyStatus(s: AppointmentStatus): string {
@@ -48,7 +67,7 @@ export function toLegacyStatus(s: AppointmentStatus): string {
 }
 
 export function fromLegacyStatus(s: string): AppointmentStatus {
-  return LEGACY_STATUS_MAP[s] ?? AppointmentStatus.PENDING;
+  return LEGACY_STATUS_MAP[s] ?? AppointmentStatus.PLANNED;
 }
 
 // ─── Hot Call ──────────────────────────────────────────────────────────────────

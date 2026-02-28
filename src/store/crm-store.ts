@@ -1,13 +1,11 @@
 import { create } from "zustand";
-import { Appointment, AppointmentStatus, INITIAL_APPOINTMENTS, SALES_REPS, HotCall, HotCallStatus, HotCallPhase, HotCallFeedback, CallLogEntry, StatusChangeLog } from "@/data/crm-data";
+import { Appointment, AppointmentStatus, INITIAL_APPOINTMENTS, SALES_REPS, HotCall, HotCallStatus, HotCallPhase, HotCallFeedback, CallLogEntry, StatusChangeLog, HOT_CALL_TRIGGER_STATUSES } from "@/data/crm-data";
 
 // Re-export AppRole from new workspace system
 export type { AppRole } from "@/lib/workspace/WorkspaceProvider";
 
 // Re-export useAuth as backward-compatible shim
 export { useAuthCompat as useAuth } from "@/lib/auth/useAuthCompat";
-
-// Legacy AuthState interface removed — now provided by useAuthCompat
 
 interface CrmState {
   appointments: Appointment[];
@@ -146,7 +144,7 @@ export const useCrm = create<CrmState>((set, get) => ({
                 preQual1: "",
                 preQual2: "",
                 notes: hc.notes,
-                status: "En attente" as const,
+                status: "Planifié" as const,
                 source: hc.source,
                 smsScheduled: false,
                 createdAt: todayStr,
@@ -251,7 +249,7 @@ export const useCrm = create<CrmState>((set, get) => ({
                 preQual1: "",
                 preQual2: "",
                 notes: note || hc.notes,
-                status: "En attente" as const,
+                status: "Planifié" as const,
                 source: hc.source,
                 smsScheduled: false,
                 createdAt: todayStr,
@@ -305,7 +303,7 @@ export const useCrm = create<CrmState>((set, get) => ({
             preQual1: "",
             preQual2: "",
             notes: hc.notes,
-            status: "En attente" as const,
+            status: "Planifié" as const,
             source: hc.source,
             smsScheduled: false,
             createdAt: new Date().toISOString().split("T")[0],
@@ -356,8 +354,8 @@ export const useCrm = create<CrmState>((set, get) => ({
       const alreadyInHotCalls = state.hotCalls.some((h) => h.originalAppointmentId === appt.id);
       if (alreadyInHotCalls) return;
 
-      // Annulé → automatically move to Hot Calls
-      if (appt.status === "Annulé") {
+      // Hot Call trigger statuses → automatically move to Hot Calls
+      if (HOT_CALL_TRIGGER_STATUSES.includes(appt.status)) {
         state.moveAppointmentToHotCalls(appt.id, "Premier contact");
       }
     });
@@ -365,7 +363,7 @@ export const useCrm = create<CrmState>((set, get) => ({
   convertBacklogToAppointment: (id, updates) =>
     set((state) => ({
       appointments: state.appointments.map((a) =>
-        a.id === id ? { ...a, ...updates, status: "En attente" as const } : a
+        a.id === id ? { ...a, ...updates, status: "Planifié" as const } : a
       ),
     })),
   decrementHotCallAttempts: (id) =>
@@ -385,11 +383,10 @@ export const useCrm = create<CrmState>((set, get) => ({
         return {
           hotCalls: state.hotCalls.filter((h) => h.id !== id),
           appointments: state.appointments.map((a) =>
-            a.id === appt.id ? { ...a, date, time: time || "09:00", status: "En attente" as const } : a
+            a.id === appt.id ? { ...a, date, time: time || "09:00", status: "Planifié" as const } : a
           ),
         };
       }
-      // No original appointment found - create one as fallback
       return {
         hotCalls: state.hotCalls.filter((h) => h.id !== id),
         appointments: [
@@ -407,7 +404,7 @@ export const useCrm = create<CrmState>((set, get) => ({
             preQual1: "",
             preQual2: "",
             notes: hc.notes,
-            status: "En attente" as const,
+            status: "Planifié" as const,
             source: hc.source,
             smsScheduled: false,
             createdAt: new Date().toISOString().split("T")[0],
@@ -417,5 +414,3 @@ export const useCrm = create<CrmState>((set, get) => ({
       };
     }),
 }));
-
-// Old useAuth zustand store removed — now re-exported from useAuthCompat above

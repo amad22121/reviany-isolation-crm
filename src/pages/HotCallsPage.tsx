@@ -227,7 +227,7 @@ const HotCallsPage = () => {
     preQual1: "",
     preQual2: "",
     notes: hc.notes || "",
-    status: "En attente",
+    status: "Planifié",
     source: (hc.source as "Door-to-door" | "Referral") || "Door-to-door",
     smsScheduled: false,
     createdAt: hc.created_at,

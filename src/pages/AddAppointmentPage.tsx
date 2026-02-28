@@ -122,7 +122,7 @@ const AddAppointmentPage = () => {
       preQual1: buildPreQualString(),
       preQual2: "",
       notes,
-      status: "En attente" as const,
+      status: "Planifié" as const,
     };
 
     if (backlogItem) {

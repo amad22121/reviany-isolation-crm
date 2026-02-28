@@ -83,9 +83,9 @@ const DashboardPage = () => {
 
   const dailyKpis = useMemo(() => {
     const total = dayAppts.length;
-    const confirmed = dayAppts.filter((a) => a.status === "Confirmé" || a.status === "Closed").length;
+    const confirmed = dayAppts.filter((a) => a.status === "Confirmé" || a.status === "Closé").length;
     const atRisk = dayAppts.filter((a) => a.status === "À risque").length;
-    const closed = dayAppts.filter((a) => a.status === "Closed").length;
+    const closed = dayAppts.filter((a) => a.status === "Closé").length;
     return {
       total,
       confirmRate: total > 0 ? Math.round((confirmed / total) * 100) : 0,
@@ -117,10 +117,10 @@ const DashboardPage = () => {
 
   const kpis = useMemo(() => {
     const total = periodAppts.length;
-    const confirmed = periodAppts.filter((a) => a.status === "Confirmé" || a.status === "Closed").length;
+    const confirmed = periodAppts.filter((a) => a.status === "Confirmé" || a.status === "Closé").length;
     const atRisk = periodAppts.filter((a) => a.status === "À risque").length;
-    const closed = periodAppts.filter((a) => a.status === "Closed").length;
-    const cancelled = periodAppts.filter((a) => a.status === "Annulé").length;
+    const closed = periodAppts.filter((a) => a.status === "Closé").length;
+    const cancelled = periodAppts.filter((a) => a.status === "Annulé (à rappeler)" || a.status === "Annulé (définitif)").length;
     return {
       total,
       confirmRate: total > 0 ? Math.round((confirmed / total) * 100) : 0,
@@ -135,10 +135,10 @@ const DashboardPage = () => {
     return teamReps.map((r) => {
       const ra = periodAppts.filter((a) => a.repId === r.id);
       const generated = ra.length;
-      const confirmed = ra.filter((a) => a.status === "Confirmé" || a.status === "Closed").length;
+      const confirmed = ra.filter((a) => a.status === "Confirmé" || a.status === "Closé").length;
       const atRisk = ra.filter((a) => a.status === "À risque").length;
-      const closed = ra.filter((a) => a.status === "Closed").length;
-      const cancelled = ra.filter((a) => a.status === "Annulé").length;
+      const closed = ra.filter((a) => a.status === "Closé").length;
+      const cancelled = ra.filter((a) => a.status === "Annulé (à rappeler)" || a.status === "Annulé (définitif)").length;
       return { id: r.id, name: r.name, generated, confirmed, atRisk, closed, cancelled };
     });
   }, [teamReps, periodAppts]);
@@ -156,13 +156,13 @@ const DashboardPage = () => {
   // Alerts
   const alerts = useMemo(() => {
     const items: { label: string; type: "warning" | "danger" }[] = [];
-    const tomorrowAtRisk = teamAppts.filter((a) => a.date === tomorrow && (a.status === "En attente" || a.status === "À risque"));
+    const tomorrowAtRisk = teamAppts.filter((a) => a.date === tomorrow && (a.status === "Planifié" || a.status === "Non confirmé" || a.status === "À risque"));
     if (tomorrowAtRisk.length > 0)
       items.push({ label: `${tomorrowAtRisk.length} RDV à risque demain`, type: "warning" });
     const atRiskRecent = teamAppts.filter((a) => a.status === "À risque" && a.date >= threeDaysAgo);
     if (atRiskRecent.length > 0)
       items.push({ label: `${atRiskRecent.length} RDV à risque récents`, type: "danger" });
-    const staleLeads = teamAppts.filter((a) => a.status === "En attente" && a.date < threeDaysAgo);
+    const staleLeads = teamAppts.filter((a) => a.status === "Planifié" && a.date < threeDaysAgo);
     if (staleLeads.length > 0)
       items.push({ label: `${staleLeads.length} leads sans suivi depuis +3 jours`, type: "danger" });
     return items;
@@ -199,11 +199,15 @@ const DashboardPage = () => {
   };
 
   const statusColors: Record<string, string> = {
-    "En attente": "bg-warning/20 text-warning",
+    "Planifié": "bg-warning/20 text-warning",
     "Confirmé": "bg-green-500/20 text-green-400",
+    "Non confirmé": "bg-orange-300/20 text-orange-300",
     "À risque": "bg-destructive/20 text-destructive",
-    "Closed": "bg-info/20 text-info",
-    "Annulé": "bg-muted text-muted-foreground",
+    "Reporté": "bg-blue-400/20 text-blue-400",
+    "Annulé (à rappeler)": "bg-amber-500/20 text-amber-400",
+    "Annulé (définitif)": "bg-muted text-muted-foreground",
+    "No-show": "bg-red-400/20 text-red-400",
+    "Closé": "bg-info/20 text-info",
   };
 
   const periodLabels: Record<Period, string> = { "7d": "7 jours", "30d": "30 jours", month: "Ce mois" };
@@ -268,7 +272,7 @@ const DashboardPage = () => {
               { label: "RDV générés", value: dailyKpis.total, icon: CalendarCheck, color: "text-primary" },
               { label: "Taux de confirmation", value: `${dailyKpis.confirmRate}%`, icon: CheckCircle2, color: "text-green-400" },
               { label: "À risque", value: dailyKpis.atRisk, icon: XCircle, color: "text-destructive" },
-              { label: "Closed (ventes)", value: dailyKpis.closed, icon: TrendingUp, color: "text-info" },
+              { label: "Closé (ventes)", value: dailyKpis.closed, icon: TrendingUp, color: "text-info" },
             ].map((s) => (
               <div key={s.label} className="glass-card p-5">
                 <div className="flex items-center justify-between mb-3">
@@ -406,7 +410,7 @@ const DashboardPage = () => {
               { label: "RDV générés", value: kpis.total, icon: CalendarCheck, color: "text-primary" },
               { label: "Taux de confirmation", value: `${kpis.confirmRate}%`, icon: CheckCircle2, color: "text-green-400" },
               { label: "À risque", value: kpis.atRisk, icon: XCircle, color: "text-destructive" },
-              { label: "Closed (ventes)", value: kpis.closed, icon: TrendingUp, color: "text-info" },
+              { label: "Closé (ventes)", value: kpis.closed, icon: TrendingUp, color: "text-info" },
             ].map((s) => (
               <div key={s.label} className="glass-card p-5">
                 <div className="flex items-center justify-between mb-3">
@@ -433,7 +437,7 @@ const DashboardPage = () => {
                     ["generated", "RDV générés"],
                     ["confirmed", "Confirmés"],
                     ["atRisk", "À risque"],
-                    ["closed", "Closed"],
+                    ["closed", "Closé"],
                     ["cancelled", "Annulés"],
                   ] as [SortKey, string][]).map(([key, label]) => (
                     <th
