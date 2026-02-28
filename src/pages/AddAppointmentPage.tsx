@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MapPin, ArrowLeft } from "lucide-react";
 
 const CITY_CHIPS = ["Montréal", "Laval", "Longueuil", "Terrebonne", "Mascouche"];
-const ORIGIN_OPTIONS = ["Door-to-door", "Référence", "Facebook", "Autre"];
+const LEAD_SOURCE_OPTIONS = ["Door-to-door", "Référence", "Facebook", "Autre"];
 const WORK_DONE_OPTIONS = ["Oui", "Non", "Je ne sais pas"];
 const INSPECTION_OPTIONS = ["Oui", "Non", "Je ne sais pas"];
 const DECISION_DELAY_OPTIONS = ["0–7 jours", "1–2 semaines", "2–4 semaines", "1 mois+", "Je ne sais pas"];
@@ -49,8 +49,9 @@ const AddAppointmentPage = () => {
   const [phone, setPhone] = useState(backlogItem?.phone || "");
   const [address, setAddress] = useState(backlogItem?.address || "");
   const [city, setCity] = useState(backlogItem?.city || "");
-  const [origin, setOrigin] = useState(backlogItem?.origin || "");
-  const [originOther, setOriginOther] = useState("");
+  const [culturalOrigin, setCulturalOrigin] = useState("");
+  const [leadSource, setLeadSource] = useState(backlogItem?.origin || "Door-to-door");
+  const [leadSourceOther, setLeadSourceOther] = useState("");
   const [date, setDate] = useState(backlogItem?.date || new Date().toISOString().split("T")[0]);
   const [time, setTime] = useState(backlogItem?.time || "09:00");
   const [repId, setRepId] = useState(backlogItem?.repId || (role === "representant" ? currentRepId || SALES_REPS[0].id : SALES_REPS[0].id));
@@ -63,7 +64,7 @@ const AddAppointmentPage = () => {
     return `${address.trim()}, ${city.trim()}, QC`;
   }, [address, city]);
 
-  const effectiveOrigin = origin === "Autre" ? originOther : origin;
+  const effectiveLeadSource = leadSource === "Autre" ? leadSourceOther : leadSource;
 
   const validate = (isBacklog: boolean) => {
     const e: Record<string, string> = {};
@@ -72,8 +73,8 @@ const AddAppointmentPage = () => {
     else if (phone.replace(/\D/g, "").length < 10) e.phone = "Min. 10 chiffres";
     if (!address.trim()) e.address = "Requis";
     if (!city.trim()) e.city = "Requis";
-    if (!origin) e.origin = "Requis";
-    if (origin === "Autre" && !originOther.trim()) e.originOther = "Requis";
+    if (!leadSource) e.leadSource = "Requis";
+    if (leadSource === "Autre" && !leadSourceOther.trim()) e.leadSourceOther = "Requis";
     if (!isBacklog && !date) e.date = "Requis";
     if (!isBacklog && !time) e.time = "Requis";
     // Prequalification
@@ -114,7 +115,7 @@ const AddAppointmentPage = () => {
       phone,
       address: adresseComplete || address,
       city,
-      origin: effectiveOrigin || undefined,
+      origin: effectiveLeadSource || undefined,
       date,
       time,
       repId,
@@ -143,7 +144,7 @@ const AddAppointmentPage = () => {
       phone,
       address: adresseComplete || address,
       city,
-      origin: effectiveOrigin || undefined,
+      origin: effectiveLeadSource || undefined,
       date: date || "",
       time: time || "",
       repId,
@@ -264,32 +265,47 @@ const AddAppointmentPage = () => {
             </div>
           )}
 
-          {/* Origine */}
+          {/* Origine culturelle */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">Origine *</Label>
-              <Select value={origin} onValueChange={(v) => { setOrigin(v); clearError("origin"); }}>
-                <SelectTrigger className={errors.origin ? "border-destructive" : ""}>
-                  <SelectValue placeholder="Sélectionner l'origine" />
+              <Label className="text-xs">Origine / profil culturel</Label>
+              <Input
+                value={culturalOrigin}
+                onChange={(e) => setCulturalOrigin(e.target.value)}
+                placeholder="Ex: Arabe, Haïtienne, Québécoise, etc."
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Section 1b: Source du lead ── */}
+        <div className="glass-card p-4 space-y-3">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Source du lead</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Source du lead *</Label>
+              <Select value={leadSource} onValueChange={(v) => { setLeadSource(v); clearError("leadSource"); }}>
+                <SelectTrigger className={errors.leadSource ? "border-destructive" : ""}>
+                  <SelectValue placeholder="Sélectionner la source" />
                 </SelectTrigger>
                 <SelectContent>
-                  {ORIGIN_OPTIONS.map((o) => (
+                  {LEAD_SOURCE_OPTIONS.map((o) => (
                     <SelectItem key={o} value={o}>{o}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {fieldError("origin")}
+              {fieldError("leadSource")}
             </div>
-            {origin === "Autre" && (
+            {leadSource === "Autre" && (
               <div className="space-y-1">
-                <Label className="text-xs">Préciser l'origine *</Label>
+                <Label className="text-xs">Préciser la source *</Label>
                 <Input
-                  value={originOther}
-                  onChange={(e) => { setOriginOther(e.target.value); clearError("originOther"); }}
+                  value={leadSourceOther}
+                  onChange={(e) => { setLeadSourceOther(e.target.value); clearError("leadSourceOther"); }}
                   placeholder="Préciser..."
-                  className={errors.originOther ? "border-destructive" : ""}
+                  className={errors.leadSourceOther ? "border-destructive" : ""}
                 />
-                {fieldError("originOther")}
+                {fieldError("leadSourceOther")}
               </div>
             )}
           </div>
