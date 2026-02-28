@@ -64,7 +64,7 @@ const ZoneDetailPanel = ({
   };
 
   return (
-    <div className="absolute right-0 top-0 bottom-0 w-full sm:w-[340px] bg-card border-l border-border overflow-y-auto z-[1100]">
+    <div className="absolute right-0 top-0 bottom-0 w-full sm:w-[340px] bg-card border-l border-border overflow-y-auto z-[1200] shadow-xl">
       <div className="p-4 space-y-5">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-foreground">{zone.name}</h3>
