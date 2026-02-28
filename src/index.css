@@ -68,3 +68,11 @@
     box-shadow: 0 0 20px hsl(142 64% 45% / 0.15);
   }
 }
+
+/* White icons for date/time native pickers */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1);
+  opacity: 0.9;
+  cursor: pointer;
+}
