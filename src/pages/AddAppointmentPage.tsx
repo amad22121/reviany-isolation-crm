@@ -54,7 +54,7 @@ const AddAppointmentPage = () => {
   const [leadSourceOther, setLeadSourceOther] = useState("");
   const [date, setDate] = useState(backlogItem?.date || new Date().toISOString().split("T")[0]);
   const [time, setTime] = useState(backlogItem?.time || "09:00");
-  const [repId, setRepId] = useState(backlogItem?.repId || (role === "representant" ? currentRepId || SALES_REPS[0].id : SALES_REPS[0].id));
+  const [repId, setRepId] = useState(backlogItem?.repId || (role === "representant" ? currentRepId || SALES_REPS[0]?.id || "" : SALES_REPS[0]?.id || ""));
   const [notes, setNotes] = useState(backlogItem?.notes || "");
   const [preQual, setPreQual] = useState<PreQualState>(INITIAL_PREQUAL);
   const [errors, setErrors] = useState<Record<string, string>>({});

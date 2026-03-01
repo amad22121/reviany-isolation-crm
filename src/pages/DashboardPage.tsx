@@ -223,7 +223,28 @@ const DashboardPage = () => {
     <>
       <div className="space-y-6">
 
-        {/* ===== SECTION 1 — Performance journalière ===== */}
+        {/* Empty state when no data */}
+        {teamAppts.length === 0 && teamReps.length === 0 && (
+          <div className="glass-card p-12 text-center">
+            <div className="flex flex-col items-center gap-4">
+              <CalendarCheck className="h-12 w-12 text-muted-foreground/40" />
+              <h2 className="text-lg font-semibold text-foreground">Bienvenue dans votre tableau de bord</h2>
+              <p className="text-muted-foreground text-sm max-w-md">
+                Aucune donnée pour le moment. Commencez par ajouter des représentants et créer des rendez-vous pour voir vos statistiques ici.
+              </p>
+              <div className="flex gap-3">
+                <a href="/users" className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
+                  Ajouter des représentants
+                </a>
+                <a href="/add-appointment" className="bg-secondary text-secondary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-secondary/80 transition-colors">
+                  Créer un rendez-vous
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {(teamAppts.length > 0 || teamReps.length > 0) && (<>
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-foreground">Performance journalière</h2>
@@ -501,6 +522,7 @@ const DashboardPage = () => {
             </table>
           </div>
         </div>
+        </>)}
       </div>
 
       <FicheClient appointment={selectedAppt} open={!!selectedAppt} onOpenChange={(o) => !o && setSelectedAppt(null)} />

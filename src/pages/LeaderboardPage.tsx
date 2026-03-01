@@ -17,7 +17,7 @@ const LeaderboardPage = () => {
     return SALES_REPS;
   }, [role, currentManagerId]);
 
-  const DAILY_GOAL = Math.ceil(dailyTarget / SALES_REPS.length);
+  const DAILY_GOAL = SALES_REPS.length > 0 ? Math.ceil(dailyTarget / SALES_REPS.length) : 0;
 
   const data = useMemo(() => {
     const now = new Date();
@@ -81,6 +81,17 @@ const LeaderboardPage = () => {
             </tr>
           </thead>
           <tbody>
+            {data.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-4 py-12 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <Trophy className="h-10 w-10 text-muted-foreground/50" />
+                    <p className="text-muted-foreground font-medium">Aucune donnée disponible</p>
+                    <p className="text-muted-foreground text-xs">Les statistiques apparaîtront lorsque des rendez-vous et des représentants seront ajoutés.</p>
+                  </div>
+                </td>
+              </tr>
+            )}
             {data.map((rep, i) => (
               <tr key={rep.id} className={`border-b border-border/50 ${i === 0 ? "bg-primary/5" : ""}`}>
                 <td className="px-4 py-3">
@@ -101,7 +112,7 @@ const LeaderboardPage = () => {
                     <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
                       <div
                         className="h-full bg-primary rounded-full transition-all"
-                        style={{ width: `${Math.min(100, (rep.booked / (DAILY_GOAL * goalMultiplier)) * 100)}%` }}
+                        style={{ width: `${DAILY_GOAL > 0 ? Math.min(100, (rep.booked / (DAILY_GOAL * goalMultiplier)) * 100) : 0}%` }}
                       />
                     </div>
                     <span className="text-xs text-muted-foreground">{rep.booked}/{DAILY_GOAL * goalMultiplier}</span>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { TrendingUp } from "lucide-react";
 import { useCrm, useAuth, AppRole } from "@/store/crm-store";
 import { SALES_REPS, Appointment, AppointmentStatus } from "@/data/crm-data";
 import { useMarketingLeadsQuery, MarketingLead } from "@/hooks/useMarketingLeads";
@@ -94,6 +95,15 @@ const StatisticsPage = () => {
     <div className="space-y-6">
       <h1 className="text-xl font-bold text-foreground">Statistiques</h1>
 
+      {filteredAppts.length === 0 && filteredLeads.length === 0 && (
+        <div className="glass-card p-12 text-center">
+          <div className="flex flex-col items-center gap-3">
+            <TrendingUp className="h-10 w-10 text-muted-foreground/40" />
+            <p className="text-muted-foreground font-medium">Aucune donnée pour la période sélectionnée</p>
+            <p className="text-muted-foreground text-xs">Ajoutez des rendez-vous pour voir les statistiques apparaître ici.</p>
+          </div>
+        </div>
+      )}
       <StatisticsFilters
         isRep={isRep}
         dateRange={dateRange}
