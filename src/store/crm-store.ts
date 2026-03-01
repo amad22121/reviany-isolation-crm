@@ -1,5 +1,7 @@
 import { create } from "zustand";
-import { Appointment, AppointmentStatus, INITIAL_APPOINTMENTS, SALES_REPS, HotCall, HotCallStatus, HotCallPhase, HotCallFeedback, CallLogEntry, StatusChangeLog, HOT_CALL_TRIGGER_STATUSES } from "@/data/crm-data";
+import { Appointment, AppointmentStatus, HotCall, HotCallStatus, HotCallPhase, HotCallFeedback, CallLogEntry, StatusChangeLog, HOT_CALL_TRIGGER_STATUSES } from "@/data/crm-data";
+import { MOCK_SALES_REPS, MOCK_APPOINTMENTS, MOCK_HOT_CALLS } from "@/lib/data/mock-data";
+import { USE_MOCK } from "@/lib/data/config";
 
 // Re-export AppRole from new workspace system
 export type { AppRole } from "@/lib/workspace/WorkspaceProvider";
@@ -43,12 +45,7 @@ interface CrmState {
 const today = new Date().toISOString().split("T")[0];
 const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
-const INITIAL_HOT_CALLS: HotCall[] = [
-  { id: "hc1", fullName: "Diane Simard", phone: "(438) 555-0112", address: "430 Rue Beaubien E", city: "Montréal", source: "Door-to-door", repId: "rep2", status: "No answer", phase: "À rappeler", lastFeedback: "No answer", attempts: 2, lastContactDate: yesterday, followUpDate: today, notes: "Non confirmé, replanifier", createdAt: yesterday, tags: ["Callback"], callHistory: [{ date: yesterday, time: "10:30", repId: "rep2", note: "Pas de réponse" }] },
-  { id: "hc2", fullName: "Lucie Tremblay", phone: "(514) 555-0120", address: "890 Rue Wellington", city: "Verdun", source: "Referral", repId: "rep1", status: "Call back later", phase: "En cours", lastFeedback: "Call back later", attempts: 1, lastContactDate: yesterday, followUpDate: today, notes: "Rappeler le matin", createdAt: yesterday, tags: ["À rappeler matin"], callHistory: [{ date: yesterday, time: "14:00", repId: "rep1", note: "Rappeler le matin" }] },
-  { id: "hc3", fullName: "Yves Bouchard", phone: "(438) 555-0130", address: "1200 Avenue du Parc", city: "Montréal", source: "Door-to-door", repId: "rep3", status: "Follow-up 3 months", phase: "En cours", lastFeedback: "Follow-up 3 months", attempts: 3, lastContactDate: yesterday, followUpDate: "2026-05-19", notes: "Intéressé mais pas maintenant", createdAt: yesterday, tags: ["Client chaud"], callHistory: [{ date: yesterday, time: "11:00", repId: "rep3", note: "Intéressé mais pas maintenant" }] },
-  { id: "hc4", fullName: "Julie Roy", phone: "(514) 555-0140", address: "567 Boulevard Gouin O", city: "Laval", source: "Door-to-door", repId: "rep4", status: "Reschedule requested", phase: "À rappeler", lastFeedback: "Reschedule requested", attempts: 1, lastContactDate: today, followUpDate: today, notes: "Veut un RDV en soirée", createdAt: today, tags: ["À rappeler soir"], callHistory: [{ date: today, time: "09:00", repId: "rep4", note: "Veut un RDV en soirée" }] },
-];
+const INITIAL_HOT_CALLS: HotCall[] = USE_MOCK ? MOCK_HOT_CALLS : [];
 
 const computeFollowUpDate = (status: HotCallStatus, fromDate: string): string => {
   const d = new Date(fromDate);
@@ -72,9 +69,9 @@ const createLogEntry = (prev: string, next: string, userId: string): StatusChang
 };
 
 export const useCrm = create<CrmState>((set, get) => ({
-  appointments: INITIAL_APPOINTMENTS,
+  appointments: USE_MOCK ? MOCK_APPOINTMENTS : [],
   hotCalls: INITIAL_HOT_CALLS,
-  repGoals: Object.fromEntries(SALES_REPS.map((r) => [r.id, 0])),
+  repGoals: Object.fromEntries(MOCK_SALES_REPS.map((r) => [r.id, 0])),
   dailyTarget: 15,
   weeklyTarget: 75,
   addAppointment: (appt) =>

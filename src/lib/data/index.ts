@@ -2,6 +2,7 @@
  * Data layer barrel export.
  * Import repos from @/lib/data
  */
+export { USE_MOCK } from "./config";
 export { authRepo } from "./authRepo";
 export { usersRepo } from "./usersRepo";
 export { appointmentsRepo } from "./appointmentsRepo";

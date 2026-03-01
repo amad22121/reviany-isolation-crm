@@ -1,6 +1,6 @@
 /**
  * Appointments Repository — CRUD for appointments.
- * TODO: Replace with Supabase queries.
+ * Uses mock data when USE_MOCK is true; ready for Supabase queries.
  *
  * Supabase shape:
  *   list → supabase.from('appointments').select('*').eq('workspace_id', wsId)
@@ -14,8 +14,9 @@
 
 import type { Appointment, StatusChangeLog } from "@/domain/types";
 import type { AppointmentStatus } from "@/domain/enums";
-import { INITIAL_APPOINTMENTS, SALES_REPS } from "@/data/crm-data";
 import { fromLegacyStatus } from "@/domain/enums";
+import { USE_MOCK } from "./config";
+import { MOCK_APPOINTMENTS, MOCK_SALES_REPS } from "./mock-data";
 
 interface ListFilters {
   workspaceId: string;
@@ -59,20 +60,25 @@ function mapLegacy(a: any): Appointment {
 
 export const appointmentsRepo = {
   /**
-   * TODO: Replace with Supabase
-   * const { data } = await supabase
-   *   .from('appointments')
-   *   .select('*')
-   *   .eq('workspace_id', filters.workspaceId)
-   *   .order('date', { ascending: false });
-   * If role === 'representant': .eq('rep_id', filters.userId)
+   * List appointments, optionally filtered.
+   * TODO: Replace mock branch with Supabase query.
    */
   async list(filters: ListFilters): Promise<Appointment[]> {
+    if (!USE_MOCK) {
+      // TODO: Supabase query
+      // const { data } = await supabase
+      //   .from('appointments')
+      //   .select('*')
+      //   .eq('workspace_id', filters.workspaceId)
+      //   .order('date', { ascending: false });
+      return [];
+    }
+
     await new Promise((r) => setTimeout(r, 100));
-    let results = INITIAL_APPOINTMENTS.map(mapLegacy);
+    let results = MOCK_APPOINTMENTS.map(mapLegacy);
 
     if (filters.role === "representant" && filters.userId) {
-      const repId = SALES_REPS.find((r) => r.id === filters.userId)?.id;
+      const repId = MOCK_SALES_REPS.find((r) => r.id === filters.userId)?.id;
       if (repId) results = results.filter((a) => a.rep_id === repId);
     }
     if (filters.repId) results = results.filter((a) => a.rep_id === filters.repId);
@@ -84,20 +90,24 @@ export const appointmentsRepo = {
   },
 
   /**
-   * TODO: Replace with Supabase
-   * const { data } = await supabase.from('appointments').select('*').eq('id', id).single();
+   * Get a single appointment by ID.
+   * TODO: Replace mock branch with Supabase query.
    */
   async get(params: { workspaceId: string; appointmentId: string }): Promise<Appointment | null> {
-    const a = INITIAL_APPOINTMENTS.find((x) => x.id === params.appointmentId);
+    if (!USE_MOCK) {
+      // TODO: Supabase query
+      return null;
+    }
+    const a = MOCK_APPOINTMENTS.find((x) => x.id === params.appointmentId);
     return a ? mapLegacy(a) : null;
   },
 
   /**
-   * TODO: Replace with Supabase
-   * const { data, error } = await supabase.from('appointments').insert({ ...payload, workspace_id }).select().single();
+   * Create a new appointment.
+   * TODO: Replace with Supabase insert.
    */
   async create(params: { workspaceId: string; payload: Omit<Appointment, "id" | "created_at" | "status_log"> }): Promise<Appointment> {
-    // Placeholder — in real impl, Supabase returns the created row
+    // TODO: Supabase insert
     return {
       ...params.payload,
       id: `a${Date.now()}`,
@@ -107,17 +117,16 @@ export const appointmentsRepo = {
   },
 
   /**
-   * TODO: Replace with Supabase
-   * const { error } = await supabase.from('appointments').update(payload).eq('id', id);
+   * Update an appointment.
+   * TODO: Replace with Supabase update.
    */
   async update(params: { workspaceId: string; appointmentId: string; payload: Partial<Appointment> }): Promise<void> {
-    // TODO: Replace with Supabase update
+    // TODO: Supabase update
   },
 
   /**
-   * TODO: Replace with Supabase
-   * const { error } = await supabase.from('appointments').update({ status }).eq('id', id);
-   * Also insert into activity_log
+   * Update appointment status with audit log.
+   * TODO: Replace with Supabase update + activity log insert.
    */
   async updateStatus(params: {
     workspaceId: string;
@@ -125,22 +134,22 @@ export const appointmentsRepo = {
     status: AppointmentStatus;
     userId: string;
   }): Promise<void> {
-    // TODO: Replace with Supabase update + activity log insert
+    // TODO: Supabase update + activity log
   },
 
   /**
-   * TODO: Replace with Supabase
-   * const { error } = await supabase.from('appointments').update({ date, time, status: 'pending' }).eq('id', id);
+   * Rebook an appointment to a new date/time.
+   * TODO: Replace with Supabase update.
    */
   async rebook(params: { workspaceId: string; appointmentId: string; newDate: string; newTime: string }): Promise<void> {
-    // TODO: Replace with Supabase
+    // TODO: Supabase update
   },
 
   /**
-   * TODO: Replace with Supabase
-   * Update status to 'cancelled' + create hot_call entry
+   * Cancel an appointment and create a hot call entry.
+   * TODO: Replace with Supabase transaction.
    */
   async cancel(params: { workspaceId: string; appointmentId: string; userId: string }): Promise<void> {
-    // TODO: Replace with Supabase — also triggers hot call creation
+    // TODO: Supabase transaction
   },
 };

@@ -1,27 +1,24 @@
 /**
  * Users Repository — team members & reps.
- * TODO: Replace with Supabase queries.
- *
- * Supabase shape:
- *   listReps → supabase.from('profiles').select('*').eq('workspace_id', wsId)
- *   getUser → supabase.from('profiles').select('*').eq('id', id).single()
+ * Uses mock data when USE_MOCK is true; ready for Supabase queries.
  */
 
 import type { SalesRep } from "@/domain/types";
-import { SALES_REPS } from "@/data/crm-data";
+import { USE_MOCK } from "./config";
+import { MOCK_SALES_REPS } from "./mock-data";
 
 export const usersRepo = {
   /**
-   * TODO: Replace with Supabase
-   * const { data } = await supabase
-   *   .from('workspace_members')
-   *   .select('*, profiles(*)')
-   *   .eq('workspace_id', workspaceId)
-   *   .eq('role', 'representant');
+   * List all reps in the workspace.
+   * TODO: Replace mock branch with Supabase query.
    */
   async listReps(params: { workspaceId: string }): Promise<SalesRep[]> {
+    if (!USE_MOCK) {
+      // TODO: Supabase query
+      return [];
+    }
     await new Promise((r) => setTimeout(r, 50));
-    return SALES_REPS.map((r) => ({
+    return MOCK_SALES_REPS.map((r) => ({
       id: r.id,
       name: r.name,
       avatar: r.avatar,
@@ -31,11 +28,15 @@ export const usersRepo = {
   },
 
   /**
-   * TODO: Replace with Supabase
-   * const { data } = await supabase.from('profiles').select('*').eq('id', id).single();
+   * Get a single user by ID.
+   * TODO: Replace mock branch with Supabase query.
    */
   async getUser(params: { workspaceId: string; userId: string }): Promise<SalesRep | null> {
-    const rep = SALES_REPS.find((r) => r.id === params.userId);
+    if (!USE_MOCK) {
+      // TODO: Supabase query
+      return null;
+    }
+    const rep = MOCK_SALES_REPS.find((r) => r.id === params.userId);
     if (!rep) return null;
     return {
       id: rep.id,
