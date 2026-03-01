@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback } from "react";
 import { useAuth } from "@/store/crm-store";
+import { useCrm } from "@/store/crm-store";
 import { toast } from "sonner";
 import FicheClient from "@/components/FicheClient";
 import {
@@ -32,6 +33,7 @@ import {
   XCircle,
   CalendarDays,
   CalendarRange,
+  AlertTriangle,
 } from "lucide-react";
 import {
   useHotCallsQuery,
@@ -45,6 +47,8 @@ import {
 import { HotCallPhase, HOT_CALL_PHASE_LABELS } from "@/domain/enums";
 import { HOT_CALL_FEEDBACKS, type HotCallFeedback } from "@/data/crm-data";
 import { can } from "@/lib/permissions/can";
+import { getAtRiskToday, getAtRiskThisWeek, type AtRiskAppointment } from "@/lib/atRiskLogic";
+import AtRiskAppointmentsSection from "@/components/hotcalls/AtRiskAppointmentsSection";
 
 const DEFAULT_TAGS = ["Callback", "Client chaud", "Client froid", "Budget", "À rappeler matin", "À rappeler soir"];
 
@@ -57,6 +61,32 @@ const HotCallsPage = () => {
   const canManage = can(role, "manage_hot_calls");
   const canReassign = can(role, "reassign_hot_calls");
   const isRep = role === "representant";
+
+  // ─── Appointments (for at-risk detection) ─────────────────────────────────
+  const storeAppointments = useCrm((s) => s.appointments);
+  const allAppointments = useMemo((): AtRiskAppointment[] => {
+    let appts = storeAppointments.map((a) => ({
+      id: a.id,
+      full_name: a.fullName,
+      phone: a.phone,
+      address: a.address,
+      city: a.city,
+      date: a.date,
+      time: a.time,
+      rep_id: a.repId,
+      status: a.status,
+      notes: a.notes,
+      origin: a.origin,
+    }));
+    // Rep filter: only their own appointments
+    if (isRep && currentRepId) {
+      appts = appts.filter((a) => a.rep_id === currentRepId);
+    }
+    return appts;
+  }, [storeAppointments, isRep, currentRepId]);
+
+  const atRiskToday = useMemo(() => getAtRiskToday(allAppointments), [allAppointments]);
+  const atRiskWeek = useMemo(() => getAtRiskThisWeek(allAppointments), [allAppointments]);
 
   const { data: hotCalls = [], isLoading } = useHotCallsQuery();
   const claimMut = useClaimHotCall();
@@ -446,10 +476,10 @@ const HotCallsPage = () => {
               <span className="flex items-center gap-1.5"><Lock className="h-3.5 w-3.5" /> Mes Hot Calls ({myCalls.length})</span>
             </button>
             <button onClick={() => setTab("today")} className={tabBtnClass("today")}>
-              <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" /> Aujourd'hui ({todayCalls.length})</span>
+              <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" /> Aujourd'hui ({atRiskToday.length + todayCalls.length})</span>
             </button>
             <button onClick={() => setTab("week")} className={tabBtnClass("week")}>
-              <span className="flex items-center gap-1.5"><CalendarRange className="h-3.5 w-3.5" /> Cette semaine ({weekCalls.length})</span>
+              <span className="flex items-center gap-1.5"><CalendarRange className="h-3.5 w-3.5" /> Cette semaine ({atRiskWeek.length + weekCalls.length})</span>
             </button>
             {canManage && (
               <span className="text-[10px] text-muted-foreground self-center ml-1">
@@ -476,8 +506,8 @@ const HotCallsPage = () => {
           </div>
         )}
 
-        {/* Empty states */}
-        {!isLoading && filtered.length === 0 && (
+        {/* Empty states — for pool/mine tabs */}
+        {!isLoading && filtered.length === 0 && (tab === "pool" || tab === "mine") && (
           <div className="glass-card p-12 text-center">
             <Flame className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-foreground mb-2">{emptyMessages[tab].title}</h3>
@@ -485,7 +515,52 @@ const HotCallsPage = () => {
           </div>
         )}
 
-        {/* Table */}
+        {/* À faire views (today/week): dual sections */}
+        {!isLoading && (tab === "today" || tab === "week") && (
+          <div className="space-y-6">
+            {/* Section 1: RDV à risque */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-warning" />
+                <h2 className="text-sm font-semibold text-foreground">
+                  RDV à risque (à confirmer)
+                </h2>
+                <span className="text-xs text-muted-foreground">
+                  ({(tab === "today" ? atRiskToday : atRiskWeek).length})
+                </span>
+              </div>
+              <AtRiskAppointmentsSection
+                appointments={tab === "today" ? atRiskToday : atRiskWeek}
+                canManage={canManage}
+              />
+            </div>
+
+            {/* Section 2: Hot Calls à relancer */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Flame className="h-4 w-4 text-destructive" />
+                <h2 className="text-sm font-semibold text-foreground">
+                  Hot Calls à relancer
+                </h2>
+                <span className="text-xs text-muted-foreground">
+                  ({filtered.length})
+                </span>
+              </div>
+              {filtered.length === 0 && (
+                <div className="glass-card p-8 text-center">
+                  <Flame className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">
+                    {tab === "today"
+                      ? "Aucun Hot Call à relancer aujourd'hui."
+                      : "Aucun Hot Call à relancer cette semaine."}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Hot Calls Table */}
         {!isLoading && filtered.length > 0 && (
           <div className="glass-card overflow-hidden">
             <div className="overflow-x-auto">
