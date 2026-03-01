@@ -135,10 +135,6 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
             <Settings className="h-4 w-4" />
             <span>Dev: Changer rôle</span>
           </button>
-          <div className="flex items-center gap-3 px-3 py-2 text-xs text-muted-foreground">
-            <RoleIcon className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">{roleLabel}</span>
-          </div>
           <button
             onClick={signOut}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground w-full transition-colors"
