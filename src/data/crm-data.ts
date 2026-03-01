@@ -54,6 +54,8 @@ export interface Appointment {
   address: string;
   city: string;
   origin?: string;
+  culturalOrigin?: string;
+  leadSource?: string;
   date: string;
   time: string;
   repId: string;

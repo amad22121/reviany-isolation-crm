@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Appointment, AppointmentStatus, SALES_REPS, HotCall, CallLogEntry } from "@/data/crm-data";
 import ClientPhotosSection from "@/components/ClientPhotosSection";
 import { useCrm } from "@/store/crm-store";
@@ -19,7 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MapPin, Phone, Calendar, Clock, User, HelpCircle, StickyNote, Pencil, Check, Trash2, BadgeCheck, History } from "lucide-react";
+import { MapPin, Phone, Calendar, Clock, User, StickyNote, Pencil, Check, Trash2, BadgeCheck, History, Briefcase, ClipboardCheck, Tag } from "lucide-react";
 
 const statusColors: Record<string, string> = {
   "Planifié": "bg-warning/20 text-warning border-warning/30",
@@ -42,6 +42,24 @@ interface FicheClientProps {
 
 const ALL_STATUSES: AppointmentStatus[] = ["Planifié", "Confirmé", "Non confirmé", "À risque", "Reporté", "Annulé (à rappeler)", "Annulé (définitif)", "No-show", "Closé"];
 
+// ── Helper: parse preQual1 pipe-delimited string into structured data ──
+function parsePreQual(preQual1: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  if (!preQual1) return result;
+  const parts = preQual1.split(" | ");
+  for (const part of parts) {
+    const colonIdx = part.indexOf(": ");
+    if (colonIdx > 0) {
+      const key = part.substring(0, colonIdx).trim();
+      const value = part.substring(colonIdx + 2).trim();
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+const EmptyValue = () => <span className="text-muted-foreground italic text-xs">Non renseigné</span>;
+
 const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientProps) => {
   const { updateNotes, deleteAppointment, updateStatus, moveAppointmentToHotCalls } = useCrm();
   const { role } = useAuth();
@@ -62,6 +80,19 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
     return () => document.removeEventListener("mousedown", handler);
   }, [statusDropdownOpen]);
 
+  // Parse prequal data
+  const preQualData = useMemo(() => {
+    if (!appointment) return {};
+    return parsePreQual(appointment.preQual1);
+  }, [appointment?.preQual1]);
+
+  // Determine if we have new structured prequal or old format
+  const hasStructuredPreQual = useMemo(() => {
+    return Object.keys(preQualData).some(k =>
+      ["Travail réalisé", "Inspection", "Années propriétaire", "Secteur", "Travaux", "Inspecteur", "Délai décision"].includes(k)
+    );
+  }, [preQualData]);
+
   if (!appointment) return null;
 
   const rep = SALES_REPS.find((r) => r.id === appointment.repId);
@@ -70,7 +101,6 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
   const allowedStatuses: AppointmentStatus[] = (() => {
     if (role === "proprietaire") return ALL_STATUSES;
     if (role === "gestionnaire") return ALL_STATUSES;
-    // Représentant: only Planifié and Confirmé
     return ["Planifié", "Confirmé"] as AppointmentStatus[];
   })();
 
@@ -86,7 +116,9 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
     setStatusDropdownOpen(false);
   };
 
-  const origin = hotCall?.origin || appointment.origin;
+  // Resolve cultural origin and lead source
+  const culturalOrigin = appointment.culturalOrigin || null;
+  const leadSource = appointment.leadSource || appointment.origin || appointment.source || null;
   const callHistory = hotCall?.callHistory || [];
 
   const handleEditNotes = () => {
@@ -119,7 +151,7 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-6 mt-2">
+          <div className="space-y-5 mt-2">
             {/* Client name & status */}
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-foreground">
@@ -174,36 +206,49 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
               )}
             </div>
 
-            {/* Informations principales + Origine */}
+            {/* ── A) Informations principales ── */}
             <div className="glass-card p-4 space-y-3">
               <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
                 Informations principales
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Phone */}
                 <div className="flex items-center gap-2 text-sm">
                   <Phone className="h-4 w-4 text-primary shrink-0" />
-                  <span className="text-foreground">{appointment.phone}</span>
+                  <a href={`tel:${appointment.phone}`} className="text-primary hover:underline">
+                    {appointment.phone}
+                  </a>
                 </div>
+                {/* Rep */}
+                <div className="flex items-center gap-2 text-sm">
+                  <User className="h-4 w-4 text-primary shrink-0" />
+                  <span className="text-muted-foreground text-xs mr-1">Rep:</span>
+                  <span className="text-foreground">{rep?.name || "—"}</span>
+                </div>
+                {/* Date */}
                 <div className="flex items-center gap-2 text-sm">
                   <Calendar className="h-4 w-4 text-primary shrink-0" />
-                  <span className="text-foreground">{appointment.date}</span>
+                  <span className="text-foreground">{appointment.date || "—"}</span>
                 </div>
+                {/* Time */}
                 <div className="flex items-center gap-2 text-sm">
                   <Clock className="h-4 w-4 text-primary shrink-0" />
                   <span className="text-foreground">{appointment.time || "—"}</span>
                 </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <User className="h-4 w-4 text-primary shrink-0" />
-                  <span className="text-foreground">{rep?.name || "—"}</span>
-                </div>
+                {/* Cultural origin */}
                 <div className="flex items-center gap-2 text-sm">
                   <BadgeCheck className="h-4 w-4 text-primary shrink-0" />
-                  <span className="text-muted-foreground text-xs mr-1">Origine:</span>
-                  <span className={`text-sm ${origin ? "text-foreground" : "text-muted-foreground italic"}`}>
-                    {origin || "Non renseigné"}
-                  </span>
+                  <span className="text-muted-foreground text-xs mr-1">Origine / profil:</span>
+                  <span className="text-foreground">{culturalOrigin || <EmptyValue />}</span>
+                </div>
+                {/* Lead source */}
+                <div className="flex items-center gap-2 text-sm">
+                  <Tag className="h-4 w-4 text-primary shrink-0" />
+                  <span className="text-muted-foreground text-xs mr-1">Source:</span>
+                  <span className="text-foreground">{leadSource || <EmptyValue />}</span>
                 </div>
               </div>
+              {/* Address with Google Maps link */}
               <div className="flex items-start gap-2 text-sm pt-1">
                 <MapPin className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                 <a
@@ -217,21 +262,69 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
               </div>
             </div>
 
-            {/* Préqualification */}
+            {/* ── B) Préqualification ── */}
             <div className="glass-card p-4 space-y-3">
               <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-                <HelpCircle className="h-4 w-4" /> Questions de préqualification
+                <ClipboardCheck className="h-4 w-4" /> Préqualification
               </h3>
-              <div className="space-y-2">
-                <div className="bg-secondary/50 rounded-lg p-3">
-                  <p className="text-xs text-muted-foreground mb-1">Question A</p>
-                  <p className="text-sm text-muted-foreground italic">{appointment.preQual1 || "Réponse à compléter ici"}</p>
+
+              {hasStructuredPreQual ? (
+                <div className="space-y-2">
+                  {/* 1. Travail réalisé */}
+                  <PreQualRow
+                    label="Ce travail a déjà été réalisé ?"
+                    value={preQualData["Travail réalisé"]}
+                  />
+                  {/* 2. Inspection */}
+                  <PreQualRow
+                    label="Rapport d'inspection ?"
+                    value={preQualData["Inspection"]}
+                  />
+                  {preQualData["Inspection"] === "Oui" && (
+                    <>
+                      <PreQualRow
+                        label="Par qui a-t-il été fait ?"
+                        value={preQualData["Inspecteur"]}
+                        indent
+                      />
+                      <PreQualRow
+                        label="Délais de décision"
+                        value={preQualData["Délai décision"]}
+                        indent
+                      />
+                    </>
+                  )}
+                  {/* 3. Durée propriété */}
+                  <PreQualRow
+                    label="Durée de propriété (années)"
+                    value={preQualData["Années propriétaire"]}
+                  />
+                  {/* 4. Domaine */}
+                  <PreQualRow
+                    label="Domaine d'activité"
+                    value={preQualData["Secteur"]}
+                  />
+                  {/* 5. Travaux */}
+                  <PreQualRow
+                    label="Travaux récents / investissements futurs"
+                    value={preQualData["Travaux"]}
+                  />
                 </div>
-                <div className="bg-secondary/50 rounded-lg p-3">
-                  <p className="text-xs text-muted-foreground mb-1">Question B</p>
-                  <p className="text-sm text-muted-foreground italic">{appointment.preQual2 || "Réponse à compléter ici"}</p>
+              ) : (
+                /* Legacy fallback: show raw preQual1 / preQual2 */
+                <div className="space-y-2">
+                  <div className="bg-secondary/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Préqualification</p>
+                    <p className="text-sm text-foreground">{appointment.preQual1 || <EmptyValue />}</p>
+                  </div>
+                  {appointment.preQual2 && (
+                    <div className="bg-secondary/50 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground mb-1">Détails supplémentaires</p>
+                      <p className="text-sm text-foreground">{appointment.preQual2}</p>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Historique des appels */}
@@ -314,7 +407,7 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
                 />
               ) : (
               <p className="text-sm text-foreground bg-secondary/50 rounded-lg p-3">
-                {appointment.notes || <span className="text-muted-foreground italic">Notes détaillées à ajouter ici</span>}
+                {appointment.notes || <EmptyValue />}
               </p>
               )}
             </div>
@@ -357,5 +450,15 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
     </>
   );
 };
+
+// ── Sub-component for prequal rows ──
+function PreQualRow({ label, value, indent }: { label: string; value?: string; indent?: boolean }) {
+  return (
+    <div className={`bg-secondary/50 rounded-lg p-3 ${indent ? "ml-4 border-l-2 border-primary/30" : ""}`}>
+      <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
+      <p className="text-sm text-foreground">{value || <EmptyValue />}</p>
+    </div>
+  );
+}
 
 export default FicheClient;
