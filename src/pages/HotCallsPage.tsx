@@ -416,8 +416,25 @@ const HotCallsPage = () => {
           </div>
         )}
 
+        {/* Empty states */}
+        {!isLoading && filtered.length === 0 && (
+          <div className="glass-card p-12 text-center">
+            <Flame className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              {tab === "pool" ? "Aucun Hot Call dans le pool" : tab === "mine" ? "Aucun Hot Call assigné" : "Aucun Hot Call"}
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {tab === "pool"
+                ? "Les leads à rappeler apparaîtront ici automatiquement."
+                : tab === "mine"
+                ? "Prenez un lead depuis le pool pour commencer vos relances."
+                : "Aucun hot call n'a encore été créé."}
+            </p>
+          </div>
+        )}
+
         {/* Table */}
-        {!isLoading && (
+        {!isLoading && filtered.length > 0 && (
           <div className="glass-card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
