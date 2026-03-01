@@ -116,14 +116,13 @@ export const HOT_CALL_STATUSES: HotCallStatus[] = [
   "Dead",
 ];
 
-export type HotCallPhase = "À rappeler" | "En cours" | "Re-booké" | "Converti" | "Perdu";
+export type HotCallPhase = "pool" | "claimed" | "scheduled_follow_up" | "closed";
 
 export const HOT_CALL_PHASES: HotCallPhase[] = [
-  "À rappeler",
-  "En cours",
-  "Re-booké",
-  "Converti",
-  "Perdu",
+  "pool",
+  "claimed",
+  "scheduled_follow_up",
+  "closed",
 ];
 
 export type HotCallFeedback =

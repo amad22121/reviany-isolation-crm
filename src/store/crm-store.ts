@@ -328,7 +328,7 @@ export const useCrm = create<CrmState>((set, get) => ({
             source: appt.source || "Door-to-door",
             repId: appt.repId,
             status,
-            phase: "À rappeler" as HotCallPhase,
+            phase: "pool" as HotCallPhase,
             lastFeedback: "No answer" as HotCallFeedback,
             attempts: 1,
             lastContactDate: todayStr,

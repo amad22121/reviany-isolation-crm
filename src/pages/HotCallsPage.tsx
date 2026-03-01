@@ -1,6 +1,5 @@
 import { useMemo, useState, useCallback } from "react";
 import { useAuth } from "@/store/crm-store";
-import { SALES_REPS, HOT_CALL_PHASES, HOT_CALL_FEEDBACKS, HotCallPhase, HotCallFeedback, Appointment } from "@/data/crm-data";
 import { toast } from "sonner";
 import FicheClient from "@/components/FicheClient";
 import {
@@ -14,7 +13,6 @@ import {
   Phone,
   Search,
   Flame,
-  CalendarCheck,
   TrendingUp,
   RotateCcw,
   Trash2,
@@ -23,7 +21,6 @@ import {
   X,
   Tag,
   MapPin,
-  CalendarPlus,
   Pencil,
   Lock,
   Unlock,
@@ -31,6 +28,10 @@ import {
   Timer,
   Hand,
   Users,
+  CalendarPlus,
+  XCircle,
+  CalendarDays,
+  CalendarRange,
 } from "lucide-react";
 import {
   useHotCallsQuery,
@@ -40,17 +41,21 @@ import {
   useDeleteHotCall,
   useAddHotCallNote,
   DbHotCall,
-  isAvailable,
-  isClaimedBy,
 } from "@/hooks/useHotCalls";
+import { HotCallPhase, HOT_CALL_PHASE_LABELS } from "@/domain/enums";
+import { HOT_CALL_FEEDBACKS, type HotCallFeedback } from "@/data/crm-data";
+import { can } from "@/lib/permissions/can";
 
 const DEFAULT_TAGS = ["Callback", "Client chaud", "Client froid", "Budget", "À rappeler matin", "À rappeler soir"];
 
-type ViewTab = "pool" | "mine" | "all";
+type ViewTab = "pool" | "mine" | "today" | "week";
+
+const CLAIM_DURATION_MS = 24 * 60 * 60 * 1000; // 24h
 
 const HotCallsPage = () => {
   const { role, currentRepId } = useAuth();
-  const canManage = role === "proprietaire" || role === "gestionnaire";
+  const canManage = can(role, "manage_hot_calls");
+  const canReassign = can(role, "reassign_hot_calls");
   const isRep = role === "representant";
 
   const { data: hotCalls = [], isLoading } = useHotCallsQuery();
@@ -60,14 +65,11 @@ const HotCallsPage = () => {
   const deleteMut = useDeleteHotCall();
   const addNoteMut = useAddHotCallNote();
 
-  const [tab, setTab] = useState<ViewTab>(isRep ? "pool" : "all");
-  const [phaseFilter, setPhaseFilter] = useState("all");
-  const [repFilter, setRepFilter] = useState("all");
+  const [tab, setTab] = useState<ViewTab>("pool");
   const [search, setSearch] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   // Fiche client modal
-  const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
   const [selectedHotCallForFiche, setSelectedHotCallForFiche] = useState<DbHotCall | null>(null);
 
   // Post-call popup
@@ -75,13 +77,11 @@ const HotCallsPage = () => {
   const [postCallFeedback, setPostCallFeedback] = useState<HotCallFeedback>("No answer");
   const [postCallNote, setPostCallNote] = useState("");
   const [postCallDate, setPostCallDate] = useState("");
-  const [postCallRescheduleDate, setPostCallRescheduleDate] = useState("");
-  const [postCallRescheduleTime, setPostCallRescheduleTime] = useState("09:00");
 
-  // Rebook popup
-  const [rebookId, setRebookId] = useState<string | null>(null);
-  const [rebookDate, setRebookDate] = useState("");
-  const [rebookTime, setRebookTime] = useState("09:00");
+  // Schedule follow-up popup
+  const [scheduleId, setScheduleId] = useState<string | null>(null);
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleTime, setScheduleTime] = useState("09:00");
 
   // Edit follow-up date popup
   const [editDateId, setEditDateId] = useState<string | null>(null);
@@ -97,67 +97,86 @@ const HotCallsPage = () => {
 
   const today = new Date().toISOString().split("T")[0];
 
-  const isRescheduleeFeedback = postCallFeedback === "Reschedule requested";
+  // ─── Phase-based filtering ──────────────────────────────────────────────────
 
-  // Pool = available leads
-  const poolCalls = useMemo(() => hotCalls.filter(isAvailable), [hotCalls]);
-  // Mine = claimed by current rep with valid lock
-  const myCalls = useMemo(() => hotCalls.filter((h) => isClaimedBy(h, currentRepId || "")), [hotCalls, currentRepId]);
-  // All = everything (for manager)
-  const allCalls = hotCalls;
+  const poolCalls = useMemo(
+    () => hotCalls.filter((h) => h.phase === HotCallPhase.POOL || h.phase === "pool" || h.phase === "À rappeler"),
+    [hotCalls]
+  );
+
+  const myCalls = useMemo(
+    () =>
+      hotCalls.filter(
+        (h) =>
+          h.assigned_to_user_id === currentRepId &&
+          (h.phase === HotCallPhase.CLAIMED ||
+            h.phase === "claimed" ||
+            h.phase === HotCallPhase.SCHEDULED_FOLLOW_UP ||
+            h.phase === "scheduled_follow_up")
+      ),
+    [hotCalls, currentRepId]
+  );
+
+  const todayCalls = useMemo(() => {
+    const todayStr = new Date().toISOString().split("T")[0];
+    return hotCalls.filter((h) => h.follow_up_date === todayStr && h.phase !== HotCallPhase.CLOSED && h.phase !== "closed");
+  }, [hotCalls]);
+
+  const weekCalls = useMemo(() => {
+    const now = new Date();
+    const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const todayStr = now.toISOString().split("T")[0];
+    return hotCalls.filter(
+      (h) =>
+        h.follow_up_date &&
+        h.follow_up_date >= todayStr &&
+        h.follow_up_date <= in7Days &&
+        h.phase !== HotCallPhase.CLOSED &&
+        h.phase !== "closed"
+    );
+  }, [hotCalls]);
 
   const baseCalls = useMemo(() => {
     if (tab === "pool") return poolCalls;
     if (tab === "mine") return myCalls;
-    return allCalls;
-  }, [tab, poolCalls, myCalls, allCalls]);
+    if (tab === "today") return todayCalls;
+    return weekCalls;
+  }, [tab, poolCalls, myCalls, todayCalls, weekCalls]);
 
   const filtered = useMemo(() => {
-    return baseCalls.filter((h) => {
-      if (phaseFilter !== "all" && h.phase !== phaseFilter) return false;
-      if (repFilter !== "all" && h.assigned_to_user_id !== repFilter) return false;
-      if (search) {
-        const q = search.toLowerCase();
-        if (
-          !h.full_name.toLowerCase().includes(q) &&
-          !h.phone.includes(q) &&
-          !h.address.toLowerCase().includes(q)
-        )
-          return false;
-      }
-      return true;
-    });
-  }, [baseCalls, phaseFilter, repFilter, search]);
-
-  // Stats
-  const weekStats = useMemo(() => {
-    const startOfWeek = (() => {
-      const d = new Date();
-      const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-      return new Date(d.getFullYear(), d.getMonth(), diff).toISOString().split("T")[0];
-    })();
-    const weekCalls = hotCalls.filter((h) => h.created_at >= startOfWeek);
-    const rebooked = hotCalls.filter(
-      (h) => h.phase === "Re-booké" && h.last_contact_date && h.last_contact_date >= startOfWeek
+    if (!search) return baseCalls;
+    const q = search.toLowerCase();
+    return baseCalls.filter(
+      (h) =>
+        h.full_name.toLowerCase().includes(q) ||
+        h.phone.includes(q) ||
+        h.address.toLowerCase().includes(q)
     );
+  }, [baseCalls, search]);
+
+  // ─── Stats ──────────────────────────────────────────────────────────────────
+
+  const stats = useMemo(() => {
     const totalAttempts = hotCalls.reduce((s, h) => s + h.attempts, 0);
     const avgAttempts = hotCalls.length > 0 ? (totalAttempts / hotCalls.length).toFixed(1) : "0";
-    const recoveryRate = weekCalls.length > 0 ? Math.round((rebooked.length / weekCalls.length) * 100) : 0;
-    return { total: weekCalls.length, rebooked: rebooked.length, recoveryRate, avgAttempts, pool: poolCalls.length, mine: myCalls.length };
+    const closedCount = hotCalls.filter(
+      (h) => h.phase === HotCallPhase.CLOSED || h.phase === "closed"
+    ).length;
+    const recoveryRate = hotCalls.length > 0 ? Math.round((closedCount / hotCalls.length) * 100) : 0;
+    return { pool: poolCalls.length, mine: myCalls.length, recoveryRate, avgAttempts };
   }, [hotCalls, poolCalls.length, myCalls.length]);
 
-  const getRepName = (repId: string | null) => {
-    if (!repId) return "—";
-    return SALES_REPS.find((r) => r.id === repId)?.name || repId;
-  };
+  // ─── Phase colors ─────────────────────────────────────────────────────────
 
   const phaseColors: Record<string, string> = {
+    pool: "bg-warning/20 text-warning",
     "À rappeler": "bg-warning/20 text-warning",
+    claimed: "bg-info/20 text-info",
     "En cours": "bg-info/20 text-info",
+    scheduled_follow_up: "bg-primary/20 text-primary",
     "Re-booké": "bg-primary/20 text-primary",
-    "Converti": "bg-green-500/20 text-green-400",
-    "Perdu": "bg-destructive/20 text-destructive",
+    closed: "bg-muted text-muted-foreground",
+    "Perdu": "bg-muted text-muted-foreground",
   };
 
   const feedbackColors: Record<string, string> = {
@@ -171,73 +190,108 @@ const HotCallsPage = () => {
     "Follow-up 12 months": "bg-accent/20 text-accent-foreground",
   };
 
-  // Lock time remaining
+  // ─── Lock time remaining ──────────────────────────────────────────────────
+
   const getLockRemaining = (hc: DbHotCall): string | null => {
     if (!hc.lock_expires_at) return null;
     const diff = new Date(hc.lock_expires_at).getTime() - Date.now();
     if (diff <= 0) return null;
-    const mins = Math.ceil(diff / 60000);
-    return `${mins} min`;
+    const hours = Math.floor(diff / 3600000);
+    const mins = Math.ceil((diff % 3600000) / 60000);
+    return hours > 0 ? `${hours}h${mins}m` : `${mins}m`;
   };
 
-  // Claim a lead
-  const handleClaim = useCallback(async (id: string) => {
-    if (!currentRepId) return;
-    try {
-      await claimMut.mutateAsync({ id, repId: currentRepId });
-      toast.success("Lead pris avec succès !");
-    } catch (err: any) {
-      if (err.message === "ALREADY_CLAIMED") {
-        toast.error("Ce lead est déjà pris par un autre rep.");
-      } else {
-        toast.error("Erreur lors de la prise du lead.");
+  const getPhaseLabel = (phase: string) => {
+    return HOT_CALL_PHASE_LABELS[phase as HotCallPhase] || phase;
+  };
+
+  // ─── Actions ──────────────────────────────────────────────────────────────
+
+  const handleClaim = useCallback(
+    async (id: string) => {
+      if (!currentRepId) return;
+      try {
+        await claimMut.mutateAsync({ id, repId: currentRepId });
+        // Also set phase to "claimed"
+        await updateMut.mutateAsync({
+          id,
+          updates: { phase: HotCallPhase.CLAIMED },
+          extendLock: false,
+        });
+        toast.success("Lead assigné");
+      } catch (err: any) {
+        if (err.message === "ALREADY_CLAIMED") {
+          toast.error("Ce lead est déjà pris par un autre rep.");
+        } else {
+          toast.error("Erreur lors de la prise du lead.");
+        }
       }
-    }
-  }, [claimMut, currentRepId]);
+    },
+    [claimMut, updateMut, currentRepId]
+  );
 
-  // Release a lead
-  const handleRelease = useCallback(async (id: string) => {
-    try {
-      await releaseMut.mutateAsync(id);
-      toast.success("Lead relâché dans la pool.");
-    } catch {
-      toast.error("Erreur lors du relâchement.");
-    }
-  }, [releaseMut]);
+  const handleReturnToPool = useCallback(
+    async (id: string) => {
+      try {
+        await releaseMut.mutateAsync(id);
+        await updateMut.mutateAsync({
+          id,
+          updates: { phase: HotCallPhase.POOL },
+          extendLock: false,
+        });
+        toast.success("Lead remis dans la pool.");
+      } catch {
+        toast.error("Erreur lors du retour en pool.");
+      }
+    },
+    [releaseMut, updateMut]
+  );
 
-  // Extend lock on action
-  const doAction = useCallback(async (id: string, updates: Record<string, any>) => {
+  const handleMarkClosed = useCallback(
+    async (id: string) => {
+      try {
+        await updateMut.mutateAsync({
+          id,
+          updates: { phase: HotCallPhase.CLOSED },
+          extendLock: false,
+        });
+        toast.success("Lead marqué comme fermé.");
+      } catch {
+        toast.error("Erreur.");
+      }
+    },
+    [updateMut]
+  );
+
+  const handleScheduleFollowUp = async () => {
+    if (!scheduleId || !scheduleDate) return;
     try {
-      await updateMut.mutateAsync({ id, updates, extendLock: true });
+      const followUpDatetime = `${scheduleDate}`;
+      await updateMut.mutateAsync({
+        id: scheduleId,
+        updates: {
+          phase: HotCallPhase.SCHEDULED_FOLLOW_UP,
+          follow_up_date: followUpDatetime,
+        },
+        extendLock: true,
+      });
+      toast.success("Relance planifiée");
     } catch {
       toast.error("Erreur.");
     }
-  }, [updateMut]);
-
-  const hotCallToAppointment = (hc: DbHotCall): Appointment => ({
-    id: hc.id,
-    fullName: hc.full_name,
-    phone: hc.phone,
-    address: hc.address,
-    city: hc.city,
-    origin: hc.origin || undefined,
-    date: hc.last_contact_date || "",
-    time: "",
-    repId: hc.assigned_to_user_id || "",
-    preQual1: "",
-    preQual2: "",
-    notes: hc.notes || "",
-    status: "Planifié",
-    source: (hc.source as "Door-to-door" | "Referral") || "Door-to-door",
-    smsScheduled: false,
-    createdAt: hc.created_at,
-    statusLog: [],
-  });
-
-  const handleOpenFiche = (hc: DbHotCall) => {
-    setSelectedAppt(hotCallToAppointment(hc));
-    setSelectedHotCallForFiche(hc);
+    setScheduleId(null);
   };
+
+  const doAction = useCallback(
+    async (id: string, updates: Record<string, any>) => {
+      try {
+        await updateMut.mutateAsync({ id, updates, extendLock: true });
+      } catch {
+        toast.error("Erreur.");
+      }
+    },
+    [updateMut]
+  );
 
   const openGoogleMaps = (address: string, city: string) => {
     const query = encodeURIComponent(`${address}, ${city}`);
@@ -249,16 +303,13 @@ const HotCallsPage = () => {
     setPostCallFeedback((hc.last_feedback as HotCallFeedback) || "No answer");
     setPostCallNote("");
     setPostCallDate(hc.follow_up_date || today);
-    setPostCallRescheduleDate("");
-    setPostCallRescheduleTime("09:00");
   };
 
   const submitPostCall = async () => {
     if (!postCallId) return;
-    const repId = currentRepId || "rep1";
+    const repId = currentRepId || "";
 
     try {
-      // Update the hot call
       await updateMut.mutateAsync({
         id: postCallId,
         updates: {
@@ -267,12 +318,10 @@ const HotCallsPage = () => {
           attempts: (hotCalls.find((h) => h.id === postCallId)?.attempts || 0) + 1,
           last_contact_date: today,
           follow_up_date: postCallDate || undefined,
-          notes: postCallNote || undefined,
         },
         extendLock: true,
       });
 
-      // Add note to history
       if (postCallNote) {
         await addNoteMut.mutateAsync({
           hot_call_id: postCallId,
@@ -292,7 +341,7 @@ const HotCallsPage = () => {
   const handleReassign = async () => {
     if (!reassignId || !reassignRepId) return;
     const now = new Date().toISOString();
-    const expires = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+    const expires = new Date(Date.now() + CLAIM_DURATION_MS).toISOString();
     try {
       await updateMut.mutateAsync({
         id: reassignId,
@@ -301,9 +350,10 @@ const HotCallsPage = () => {
           locked_at: now,
           lock_expires_at: expires,
           last_action_at: now,
+          phase: HotCallPhase.CLAIMED,
         },
       });
-      toast.success(`Lead assigné à ${getRepName(reassignRepId)}`);
+      toast.success("Lead réassigné");
     } catch {
       toast.error("Erreur lors de la réassignation.");
     }
@@ -320,28 +370,44 @@ const HotCallsPage = () => {
 
   const addTag = async (hcId: string, tag: string) => {
     const hc = hotCalls.find((h) => h.id === hcId);
-    if (!hc || hc.tags.includes(tag)) return;
-    await doAction(hcId, { tags: [...hc.tags, tag] });
+    if (!hc || (hc.tags || []).includes(tag)) return;
+    await doAction(hcId, { tags: [...(hc.tags || []), tag] });
   };
 
   const removeTag = async (hcId: string, tag: string) => {
     const hc = hotCalls.find((h) => h.id === hcId);
     if (!hc) return;
-    await doAction(hcId, { tags: hc.tags.filter((t) => t !== tag) });
+    await doAction(hcId, { tags: (hc.tags || []).filter((t: string) => t !== tag) });
   };
 
-  const canSavePostCall = isRescheduleeFeedback ? !!postCallRescheduleDate : true;
-
-  // Can the current user act on this hot call?
   const canActOn = (hc: DbHotCall) => {
     if (canManage) return true;
-    return isClaimedBy(hc, currentRepId || "");
+    return hc.assigned_to_user_id === currentRepId;
   };
 
   const tabBtnClass = (t: ViewTab) =>
     `px-4 py-2 text-sm rounded-lg transition-colors ${
       tab === t ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
     }`;
+
+  const emptyMessages: Record<ViewTab, { title: string; desc: string }> = {
+    pool: {
+      title: "Aucun Hot Call dans le pool",
+      desc: "Les leads à rappeler apparaîtront ici automatiquement.",
+    },
+    mine: {
+      title: "Aucun Hot Call assigné",
+      desc: "Prenez un lead depuis le pool pour commencer vos relances.",
+    },
+    today: {
+      title: "Aucune relance aujourd'hui",
+      desc: "Les leads avec une relance planifiée pour aujourd'hui apparaîtront ici.",
+    },
+    week: {
+      title: "Aucune relance cette semaine",
+      desc: "Les leads avec une relance dans les 7 prochains jours apparaîtront ici.",
+    },
+  };
 
   return (
     <>
@@ -354,10 +420,10 @@ const HotCallsPage = () => {
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: "Pool disponible", sub: "Leads à prendre", value: weekStats.pool, icon: Users, color: "text-info" },
-            { label: "Mes Hot Calls", sub: "En cours", value: weekStats.mine, icon: Lock, color: "text-primary" },
-            { label: "Récupération", sub: "Taux de conversion", value: `${weekStats.recoveryRate}%`, icon: TrendingUp, color: "text-warning" },
-            { label: "Tentatives", sub: "Moyenne par lead", value: weekStats.avgAttempts, icon: RotateCcw, color: "text-muted-foreground" },
+            { label: "Pool disponible", sub: "Leads à prendre", value: stats.pool, icon: Users, color: "text-info" },
+            { label: "Mes Hot Calls", sub: "En cours", value: stats.mine, icon: Lock, color: "text-primary" },
+            { label: "Récupération", sub: "Taux de fermeture", value: `${stats.recoveryRate}%`, icon: TrendingUp, color: "text-warning" },
+            { label: "Tentatives", sub: "Moyenne par lead", value: stats.avgAttempts, icon: RotateCcw, color: "text-muted-foreground" },
           ].map((s) => (
             <div key={s.label} className="glass-card p-4">
               <div className="flex items-center justify-between mb-1">
@@ -370,7 +436,7 @@ const HotCallsPage = () => {
           ))}
         </div>
 
-        {/* Tab toggle + filters */}
+        {/* Tab toggle + search */}
         <div className="flex flex-wrap gap-3 items-center">
           <div className="flex gap-2">
             <button onClick={() => setTab("pool")} className={tabBtnClass("pool")}>
@@ -379,10 +445,16 @@ const HotCallsPage = () => {
             <button onClick={() => setTab("mine")} className={tabBtnClass("mine")}>
               <span className="flex items-center gap-1.5"><Lock className="h-3.5 w-3.5" /> Mes Hot Calls ({myCalls.length})</span>
             </button>
+            <button onClick={() => setTab("today")} className={tabBtnClass("today")}>
+              <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" /> Aujourd'hui ({todayCalls.length})</span>
+            </button>
+            <button onClick={() => setTab("week")} className={tabBtnClass("week")}>
+              <span className="flex items-center gap-1.5"><CalendarRange className="h-3.5 w-3.5" /> Cette semaine ({weekCalls.length})</span>
+            </button>
             {canManage && (
-              <button onClick={() => setTab("all")} className={tabBtnClass("all")}>
-                <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> Tous ({allCalls.length})</span>
-              </button>
+              <span className="text-[10px] text-muted-foreground self-center ml-1">
+                Total: {hotCalls.length}
+              </span>
             )}
           </div>
 
@@ -395,18 +467,6 @@ const HotCallsPage = () => {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-
-          <select className="bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground" value={phaseFilter} onChange={(e) => setPhaseFilter(e.target.value)}>
-            <option value="all">Toutes les phases</option>
-            {HOT_CALL_PHASES.map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
-
-          {canManage && tab === "all" && (
-            <select className="bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground" value={repFilter} onChange={(e) => setRepFilter(e.target.value)}>
-              <option value="all">Tous les reps</option>
-              {SALES_REPS.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-            </select>
-          )}
         </div>
 
         {/* Loading */}
@@ -420,16 +480,8 @@ const HotCallsPage = () => {
         {!isLoading && filtered.length === 0 && (
           <div className="glass-card p-12 text-center">
             <Flame className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">
-              {tab === "pool" ? "Aucun Hot Call dans le pool" : tab === "mine" ? "Aucun Hot Call assigné" : "Aucun Hot Call"}
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              {tab === "pool"
-                ? "Les leads à rappeler apparaîtront ici automatiquement."
-                : tab === "mine"
-                ? "Prenez un lead depuis le pool pour commencer vos relances."
-                : "Aucun hot call n'a encore été créé."}
-            </p>
+            <h3 className="text-lg font-semibold text-foreground mb-2">{emptyMessages[tab].title}</h3>
+            <p className="text-sm text-muted-foreground">{emptyMessages[tab].desc}</p>
           </div>
         )}
 
@@ -443,7 +495,7 @@ const HotCallsPage = () => {
                     {["Nom", "Téléphone", "Adresse", "Phase", "Feedback", "Tentatives", "Relance",
                       ...(tab !== "pool" ? ["Assigné à"] : []),
                       ...(tab === "mine" ? ["Lock"] : []),
-                      "Tags", "Actions"
+                      "Tags", "Actions",
                     ].map((h) => (
                       <th key={h} className="text-left px-3 py-3 text-muted-foreground font-medium text-xs">{h}</th>
                     ))}
@@ -451,8 +503,7 @@ const HotCallsPage = () => {
                 </thead>
                 <tbody>
                   {filtered.map((h) => {
-                    const claimed = !isAvailable(h);
-                    const isMine = isClaimedBy(h, currentRepId || "");
+                    const isMine = h.assigned_to_user_id === currentRepId;
                     const lockRemaining = getLockRemaining(h);
                     const editable = canActOn(h);
 
@@ -460,7 +511,7 @@ const HotCallsPage = () => {
                       <tr key={h.id} className={`border-b border-border/50 hover:bg-secondary/30 transition-colors ${isMine ? "bg-primary/5" : ""}`}>
                         {/* Nom */}
                         <td className="px-3 py-3 font-medium whitespace-nowrap">
-                          <button onClick={() => handleOpenFiche(h)} className="text-primary hover:underline text-left">
+                          <button onClick={() => setSelectedHotCallForFiche(h)} className="text-primary hover:underline text-left">
                             {h.full_name}
                           </button>
                         </td>
@@ -490,36 +541,16 @@ const HotCallsPage = () => {
 
                         {/* Phase */}
                         <td className="px-3 py-3">
-                          {editable ? (
-                            <select
-                              value={h.phase}
-                              onChange={(e) => doAction(h.id, { phase: e.target.value })}
-                              className={`px-2 py-1 rounded-full text-xs font-medium border-none outline-none cursor-pointer ${phaseColors[h.phase] || "bg-muted text-muted-foreground"}`}
-                            >
-                              {HOT_CALL_PHASES.map((p) => <option key={p} value={p}>{p}</option>)}
-                            </select>
-                          ) : (
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${phaseColors[h.phase] || "bg-muted text-muted-foreground"}`}>
-                              {h.phase}
-                            </span>
-                          )}
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${phaseColors[h.phase] || "bg-muted text-muted-foreground"}`}>
+                            {getPhaseLabel(h.phase)}
+                          </span>
                         </td>
 
                         {/* Feedback */}
                         <td className="px-3 py-3">
-                          {editable ? (
-                            <select
-                              value={h.last_feedback}
-                              onChange={(e) => doAction(h.id, { last_feedback: e.target.value, status: e.target.value })}
-                              className={`px-2 py-1 rounded-full text-xs font-medium border-none outline-none cursor-pointer ${feedbackColors[h.last_feedback] || "bg-muted text-muted-foreground"}`}
-                            >
-                              {HOT_CALL_FEEDBACKS.map((f) => <option key={f} value={f}>{f}</option>)}
-                            </select>
-                          ) : (
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${feedbackColors[h.last_feedback] || "bg-muted text-muted-foreground"}`}>
-                              {h.last_feedback}
-                            </span>
-                          )}
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${feedbackColors[h.last_feedback] || "bg-muted text-muted-foreground"}`}>
+                            {h.last_feedback}
+                          </span>
                         </td>
 
                         {/* Tentatives */}
@@ -553,16 +584,9 @@ const HotCallsPage = () => {
                         {/* Assigné à */}
                         {tab !== "pool" && (
                           <td className="px-3 py-3">
-                            {canManage ? (
-                              <button
-                                onClick={() => { setReassignId(h.id); setReassignRepId(h.assigned_to_user_id || ""); }}
-                                className="text-xs text-foreground hover:text-primary hover:underline"
-                              >
-                                {getRepName(h.assigned_to_user_id)}
-                              </button>
-                            ) : (
-                              <span className="text-xs text-foreground">{getRepName(h.assigned_to_user_id)}</span>
-                            )}
+                            <span className="text-xs text-foreground">
+                              {h.assigned_to_user_id ? h.assigned_to_user_id.substring(0, 8) + "…" : "—"}
+                            </span>
                           </td>
                         )}
 
@@ -582,7 +606,7 @@ const HotCallsPage = () => {
                         {/* Tags */}
                         <td className="px-3 py-3">
                           <div className="flex flex-wrap gap-1 items-center max-w-[150px]">
-                            {h.tags.map((tag) => (
+                            {(h.tags || []).map((tag) => (
                               <span key={tag} className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent/20 text-accent-foreground">
                                 {tag}
                                 {editable && (
@@ -602,7 +626,7 @@ const HotCallsPage = () => {
                                 </button>
                                 {editingTagsId === h.id && (
                                   <div className="absolute top-7 right-0 z-50 bg-card border border-border rounded-lg shadow-lg p-2 min-w-[160px] space-y-1">
-                                    {DEFAULT_TAGS.filter((t) => !h.tags.includes(t)).map((t) => (
+                                    {DEFAULT_TAGS.filter((t) => !(h.tags || []).includes(t)).map((t) => (
                                       <button
                                         key={t}
                                         onClick={() => { addTag(h.id, t); setEditingTagsId(null); }}
@@ -660,30 +684,52 @@ const HotCallsPage = () => {
                               </Button>
                             )}
 
-                            {/* Mine view: Release button */}
-                            {tab === "mine" && isMine && (
+                            {/* Schedule follow-up */}
+                            {editable && tab !== "pool" && (
                               <button
-                                onClick={() => handleRelease(h.id)}
+                                onClick={() => { setScheduleId(h.id); setScheduleDate(h.follow_up_date || ""); setScheduleTime("09:00"); }}
+                                className="p-1.5 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
+                                title="Planifier relance"
+                              >
+                                <CalendarPlus className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+
+                            {/* Return to pool (Owner/Manager only) */}
+                            {canReassign && tab !== "pool" && h.phase !== HotCallPhase.CLOSED && (
+                              <button
+                                onClick={() => handleReturnToPool(h.id)}
                                 className="p-1.5 rounded hover:bg-warning/20 text-muted-foreground hover:text-warning transition-colors"
-                                title="Relâcher dans la pool"
+                                title="Remettre dans la pool"
                               >
                                 <Unlock className="h-3.5 w-3.5" />
                               </button>
                             )}
 
-                            {editable && (
-                              <>
-                                <button
-                                  onClick={() => { setEditDateId(h.id); setEditDateValue(h.follow_up_date || ""); }}
-                                  className="p-1.5 rounded hover:bg-info/20 text-muted-foreground hover:text-info transition-colors"
-                                  title="Modifier date relance"
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </button>
-                              </>
+                            {/* Mark dead/closed */}
+                            {editable && h.phase !== HotCallPhase.CLOSED && (
+                              <button
+                                onClick={() => handleMarkClosed(h.id)}
+                                className="p-1.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
+                                title="Marquer Dead/Closed"
+                              >
+                                <XCircle className="h-3.5 w-3.5" />
+                              </button>
                             )}
 
-                            {canManage && tab === "all" && (
+                            {/* Edit follow-up date */}
+                            {editable && (
+                              <button
+                                onClick={() => { setEditDateId(h.id); setEditDateValue(h.follow_up_date || ""); }}
+                                className="p-1.5 rounded hover:bg-info/20 text-muted-foreground hover:text-info transition-colors"
+                                title="Modifier date relance"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+
+                            {/* Reassign (manager) */}
+                            {canReassign && (
                               <button
                                 onClick={() => { setReassignId(h.id); setReassignRepId(h.assigned_to_user_id || ""); }}
                                 className="p-1.5 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
@@ -693,6 +739,7 @@ const HotCallsPage = () => {
                               </button>
                             )}
 
+                            {/* Delete (manager) */}
                             {canManage && (
                               <>
                                 {deleteConfirm === h.id ? (
@@ -716,17 +763,6 @@ const HotCallsPage = () => {
                       </tr>
                     );
                   })}
-                  {filtered.length === 0 && (
-                    <tr>
-                      <td colSpan={12} className="px-4 py-8 text-center text-muted-foreground">
-                        {tab === "pool"
-                          ? "Aucun lead disponible dans la pool"
-                          : tab === "mine"
-                          ? "Aucun hot call assigné. Prenez un lead dans la Pool !"
-                          : "Aucun hot call trouvé"}
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>
@@ -735,30 +771,50 @@ const HotCallsPage = () => {
       </div>
 
       {/* Fiche Client Modal */}
-      <FicheClient
-        appointment={selectedAppt}
-        hotCall={selectedHotCallForFiche ? {
-          id: selectedHotCallForFiche.id,
-          fullName: selectedHotCallForFiche.full_name,
-          phone: selectedHotCallForFiche.phone,
-          address: selectedHotCallForFiche.address,
-          city: selectedHotCallForFiche.city,
-          source: (selectedHotCallForFiche.source as "Door-to-door" | "Referral") || "Door-to-door",
-          repId: selectedHotCallForFiche.assigned_to_user_id || "",
-          status: selectedHotCallForFiche.status as any,
-          phase: selectedHotCallForFiche.phase as any,
-          lastFeedback: selectedHotCallForFiche.last_feedback as any,
-          attempts: selectedHotCallForFiche.attempts,
-          lastContactDate: selectedHotCallForFiche.last_contact_date || "",
-          followUpDate: selectedHotCallForFiche.follow_up_date || "",
-          notes: selectedHotCallForFiche.notes || "",
-          createdAt: selectedHotCallForFiche.created_at,
-          tags: selectedHotCallForFiche.tags || [],
-          callHistory: [],
-        } : undefined}
-        open={!!selectedAppt}
-        onOpenChange={(o) => { if (!o) { setSelectedAppt(null); setSelectedHotCallForFiche(null); } }}
-      />
+      {selectedHotCallForFiche && (
+        <FicheClient
+          appointment={{
+            id: selectedHotCallForFiche.id,
+            fullName: selectedHotCallForFiche.full_name,
+            phone: selectedHotCallForFiche.phone,
+            address: selectedHotCallForFiche.address,
+            city: selectedHotCallForFiche.city,
+            origin: selectedHotCallForFiche.origin || undefined,
+            date: selectedHotCallForFiche.last_contact_date || "",
+            time: "",
+            repId: selectedHotCallForFiche.assigned_to_user_id || "",
+            preQual1: "",
+            preQual2: "",
+            notes: selectedHotCallForFiche.notes || "",
+            status: "Planifié",
+            source: (selectedHotCallForFiche.source as "Door-to-door" | "Referral") || "Door-to-door",
+            smsScheduled: false,
+            createdAt: selectedHotCallForFiche.created_at,
+            statusLog: [],
+          }}
+          hotCall={{
+            id: selectedHotCallForFiche.id,
+            fullName: selectedHotCallForFiche.full_name,
+            phone: selectedHotCallForFiche.phone,
+            address: selectedHotCallForFiche.address,
+            city: selectedHotCallForFiche.city,
+            source: (selectedHotCallForFiche.source as "Door-to-door" | "Referral") || "Door-to-door",
+            repId: selectedHotCallForFiche.assigned_to_user_id || "",
+            status: selectedHotCallForFiche.status as any,
+            phase: selectedHotCallForFiche.phase as any,
+            lastFeedback: selectedHotCallForFiche.last_feedback as any,
+            attempts: selectedHotCallForFiche.attempts,
+            lastContactDate: selectedHotCallForFiche.last_contact_date || "",
+            followUpDate: selectedHotCallForFiche.follow_up_date || "",
+            notes: selectedHotCallForFiche.notes || "",
+            createdAt: selectedHotCallForFiche.created_at,
+            tags: selectedHotCallForFiche.tags || [],
+            callHistory: [],
+          }}
+          open={!!selectedHotCallForFiche}
+          onOpenChange={(o) => { if (!o) setSelectedHotCallForFiche(null); }}
+        />
+      )}
 
       {/* Post-Call Popup */}
       <Dialog open={!!postCallId} onOpenChange={(o) => { if (!o) setPostCallId(null); }}>
@@ -778,29 +834,6 @@ const HotCallsPage = () => {
               </select>
             </div>
 
-            {isRescheduleeFeedback && (
-              <>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Nouvelle date du rendez-vous <span className="text-destructive">*</span></label>
-                  <input
-                    type="date"
-                    value={postCallRescheduleDate}
-                    onChange={(e) => setPostCallRescheduleDate(e.target.value)}
-                    className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Heure du rendez-vous</label>
-                  <input
-                    type="time"
-                    value={postCallRescheduleTime}
-                    onChange={(e) => setPostCallRescheduleTime(e.target.value)}
-                    className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-              </>
-            )}
-
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Note</label>
               <textarea
@@ -811,25 +844,56 @@ const HotCallsPage = () => {
               />
             </div>
 
-            {!isRescheduleeFeedback && (
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Prochaine relance</label>
-                <input
-                  type="date"
-                  value={postCallDate}
-                  onChange={(e) => setPostCallDate(e.target.value)}
-                  className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-            )}
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Prochaine relance</label>
+              <input
+                type="date"
+                value={postCallDate}
+                onChange={(e) => setPostCallDate(e.target.value)}
+                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
 
             <div className="flex gap-2 pt-2">
-              <Button onClick={submitPostCall} className="flex-1" disabled={!canSavePostCall}>
+              <Button onClick={submitPostCall} className="flex-1">
                 Enregistrer + 1 tentative
               </Button>
               <Button variant="outline" onClick={() => setPostCallId(null)}>
                 Annuler
               </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Schedule Follow-up Popup */}
+      <Dialog open={!!scheduleId} onOpenChange={(o) => { if (!o) setScheduleId(null); }}>
+        <DialogContent className="sm:max-w-[350px] bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-foreground">Planifier relance</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Date de relance</label>
+              <input
+                type="date"
+                value={scheduleDate}
+                onChange={(e) => setScheduleDate(e.target.value)}
+                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Heure</label>
+              <input
+                type="time"
+                value={scheduleTime}
+                onChange={(e) => setScheduleTime(e.target.value)}
+                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button onClick={handleScheduleFollowUp} className="flex-1" disabled={!scheduleDate}>Planifier</Button>
+              <Button variant="outline" onClick={() => setScheduleId(null)}>Annuler</Button>
             </div>
           </div>
         </DialogContent>
@@ -867,21 +931,19 @@ const HotCallsPage = () => {
           </DialogHeader>
           <div className="space-y-4 mt-2">
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Représentant</label>
-              <select
+              <label className="text-xs text-muted-foreground mb-1 block">ID du représentant</label>
+              <input
                 value={reassignRepId}
                 onChange={(e) => setReassignRepId(e.target.value)}
-                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground"
-              >
-                <option value="">— Aucun (retour pool) —</option>
-                {SALES_REPS.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
+                placeholder="Entrez l'ID du représentant..."
+                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
             </div>
             <div className="flex gap-2 pt-2">
               <Button onClick={async () => {
                 if (!reassignId) return;
                 if (!reassignRepId) {
-                  await handleRelease(reassignId);
+                  await handleReturnToPool(reassignId);
                 } else {
                   await handleReassign();
                 }
