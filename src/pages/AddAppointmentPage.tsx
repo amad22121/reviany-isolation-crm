@@ -313,22 +313,22 @@ const AddAppointmentPage = () => {
         {/* ── Section 2: RDV info ── */}
         <div className="glass-card p-4 space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Rendez-vous</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1 min-w-0">
+          <div className="grid grid-cols-2 gap-4 overflow-hidden">
+            <div className="space-y-1 min-w-0 overflow-hidden">
               <Label className="text-xs">Date *</Label>
-              <Input type="date" value={date} onChange={(e) => { setDate(e.target.value); clearError("date"); }} className={`w-full min-w-0 ${errors.date ? "border-destructive" : ""}`} />
+              <Input type="date" value={date} onChange={(e) => { setDate(e.target.value); clearError("date"); }} className={`w-full min-w-0 max-w-full ${errors.date ? "border-destructive" : ""}`} />
               {fieldError("date")}
             </div>
-            <div className="space-y-1 min-w-0">
+            <div className="space-y-1 min-w-0 overflow-hidden">
               <Label className="text-xs">Heure *</Label>
-              <Input type="time" value={time} onChange={(e) => { setTime(e.target.value); clearError("time"); }} className={`w-full min-w-0 ${errors.time ? "border-destructive" : ""}`} />
+              <Input type="time" value={time} onChange={(e) => { setTime(e.target.value); clearError("time"); }} className={`w-full min-w-0 max-w-full ${errors.time ? "border-destructive" : ""}`} />
               {fieldError("time")}
             </div>
           </div>
-          <div className="mt-4 space-y-1 min-w-0">
+          <div className="space-y-1 min-w-0">
             <Label className="text-xs">Représentant</Label>
             <Select value={repId} onValueChange={setRepId} disabled={role === "representant"}>
-              <SelectTrigger className="w-full min-w-0 truncate">
+              <SelectTrigger className="w-full min-w-0 max-w-full truncate">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
