@@ -40,6 +40,10 @@ export function isAtRisk(appt: AtRiskAppointment, now: Date = new Date()): boole
   const apptDate = new Date(`${appt.date}T${appt.time || "09:00"}`);
   if (apptDate <= now) return false;
 
+  // Must be within the risk window (e.g. 12h before appointment)
+  const riskStart = new Date(apptDate.getTime() - RISK_WINDOW_HOURS * 60 * 60 * 1000);
+  if (now < riskStart) return false;
+
   return true;
 }
 
