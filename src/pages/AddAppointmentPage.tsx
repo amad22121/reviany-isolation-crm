@@ -313,7 +313,7 @@ const AddAppointmentPage = () => {
         {/* ── Section 2: RDV info ── */}
         <div className="glass-card p-4 space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Rendez-vous</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1 min-w-0">
               <Label className="text-xs">Date *</Label>
               <Input type="date" value={date} onChange={(e) => { setDate(e.target.value); clearError("date"); }} className={`w-full min-w-0 ${errors.date ? "border-destructive" : ""}`} />
@@ -324,19 +324,19 @@ const AddAppointmentPage = () => {
               <Input type="time" value={time} onChange={(e) => { setTime(e.target.value); clearError("time"); }} className={`w-full min-w-0 ${errors.time ? "border-destructive" : ""}`} />
               {fieldError("time")}
             </div>
-            <div className="space-y-1 min-w-0 sm:col-span-2 lg:col-span-1">
-              <Label className="text-xs">Représentant</Label>
-              <Select value={repId} onValueChange={setRepId} disabled={role === "representant"}>
-                <SelectTrigger className="w-full min-w-0 truncate">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SALES_REPS.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          </div>
+          <div className="mt-4 space-y-1 min-w-0">
+            <Label className="text-xs">Représentant</Label>
+            <Select value={repId} onValueChange={setRepId} disabled={role === "representant"}>
+              <SelectTrigger className="w-full min-w-0 truncate">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SALES_REPS.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
