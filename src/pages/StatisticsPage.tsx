@@ -9,16 +9,13 @@ import RepPerformanceTable from "@/components/statistics/RepPerformanceTable";
 import LeadsPerformance from "@/components/statistics/LeadsPerformance";
 import DetailedAppointmentTable from "@/components/statistics/DetailedAppointmentTable";
 
-export type DateRange = "today" | "this_week" | "last_week" | "this_month" | "custom";
+export type DateRange = "this_week" | "last_week" | "this_month" | "custom";
 
 function getDateRange(range: DateRange, customStart?: string, customEnd?: string): [string, string] {
   const now = new Date();
   const fmt = (d: Date) => d.toISOString().split("T")[0];
 
-  if (range === "today") {
-    const t = fmt(now);
-    return [t, t];
-  }
+  // removed "today" option
   if (range === "this_week") {
     const day = now.getDay();
     const mon = new Date(now);

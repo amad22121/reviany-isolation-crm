@@ -3,11 +3,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { DateRange } from "@/pages/StatisticsPage";
 
 const DATE_RANGES: { value: DateRange; label: string }[] = [
-  { value: "today", label: "Aujourd'hui" },
   { value: "this_week", label: "Cette semaine" },
   { value: "last_week", label: "Semaine dernière" },
   { value: "this_month", label: "Ce mois" },
-  { value: "custom", label: "Personnalisé" },
+  { value: "custom", label: "Période personnalisée" },
+];
+
+const SOURCE_OPTIONS = [
+  { value: "all", label: "Toutes sources" },
+  { value: "Door-to-door", label: "Door-to-door" },
+  { value: "Referral", label: "Référence" },
+  { value: "Facebook", label: "Facebook" },
+  { value: "Autre", label: "Autre" },
 ];
 
 interface Props {
@@ -39,7 +46,7 @@ const StatisticsFilters = ({
 }: Props) => (
   <div className="flex flex-wrap items-end gap-3">
     <Select value={dateRange} onValueChange={(v) => onDateRangeChange(v as DateRange)}>
-      <SelectTrigger className="w-[170px] h-9 text-xs">
+      <SelectTrigger className="w-[180px] h-9 text-xs">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -82,14 +89,13 @@ const StatisticsFilters = ({
     )}
 
     <Select value={selectedSource} onValueChange={onSourceChange}>
-      <SelectTrigger className="w-[140px] h-9 text-xs">
+      <SelectTrigger className="w-[150px] h-9 text-xs">
         <SelectValue placeholder="Source" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="all">Toutes sources</SelectItem>
-        <SelectItem value="Facebook">Facebook</SelectItem>
-        <SelectItem value="Door-to-door">Door-to-door</SelectItem>
-        <SelectItem value="Referral">Referral</SelectItem>
+        {SOURCE_OPTIONS.map((o) => (
+          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+        ))}
       </SelectContent>
     </Select>
   </div>
