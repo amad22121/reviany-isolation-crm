@@ -101,15 +101,15 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       <aside
         className={`${
           sidebarOpen ? "w-60" : "w-0 overflow-hidden"
-        } bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-200 shrink-0`}
+        } bg-sidebar border-r border-sidebar-border flex flex-col h-screen sticky top-0 transition-all duration-200 shrink-0 overflow-hidden`}
       >
-        <div className="p-4 flex items-center gap-3 border-b border-sidebar-border">
+        <div className="p-4 flex items-center gap-3 border-b border-sidebar-border shrink-0">
           <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
             <Building2 className="h-4 w-4 text-primary-foreground" />
           </div>
           <span className="font-bold text-foreground text-sm whitespace-nowrap">Growth Sales CRM</span>
         </div>
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto min-h-0">
           {links.map((link) => (
             <NavLink
               key={link.to}
@@ -127,8 +127,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
             </NavLink>
           ))}
         </nav>
-        <div className="p-3 border-t border-sidebar-border space-y-1">
-          {/* Dev role toggle */}
+        <div className="p-3 border-t border-sidebar-border space-y-1 shrink-0">
           <button
             onClick={() => setShowDevPanel(!showDevPanel)}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50 w-full transition-colors"
@@ -136,12 +135,16 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
             <Settings className="h-4 w-4" />
             <span>Dev: Changer rôle</span>
           </button>
+          <div className="flex items-center gap-3 px-3 py-2 text-xs text-muted-foreground">
+            <RoleIcon className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{roleLabel}</span>
+          </div>
           <button
             onClick={signOut}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50 w-full transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground w-full transition-colors"
           >
             <LogOut className="h-4 w-4" />
-            <span>Déconnexion</span>
+            <span>Se déconnecter</span>
           </button>
         </div>
       </aside>
@@ -157,7 +160,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           <h2 className="text-sm font-medium text-foreground capitalize">{pageTitle}</h2>
           <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
             <RoleIcon className="h-3.5 w-3.5" />
-            {roleLabel}
+            <span className="hidden sm:inline">{roleLabel}</span>
           </div>
         </header>
 
