@@ -121,22 +121,20 @@ export const LEGACY_HOT_CALL_STATUS_MAP: Record<string, HotCallStatus> = {
 // ─── Hot Call Phase ───────────────────────────────────────────────────────────
 
 export const HotCallPhase = {
-  TO_CALL: "to_call",
-  IN_PROGRESS: "in_progress",
-  REBOOKED: "rebooked",
-  CONVERTED: "converted",
-  LOST: "lost",
+  POOL: "pool",
+  CLAIMED: "claimed",
+  SCHEDULED_FOLLOW_UP: "scheduled_follow_up",
+  CLOSED: "closed",
 } as const;
 export type HotCallPhase = (typeof HotCallPhase)[keyof typeof HotCallPhase];
 
 export const HOT_CALL_PHASES: HotCallPhase[] = Object.values(HotCallPhase);
 
 export const HOT_CALL_PHASE_LABELS: Record<HotCallPhase, string> = {
-  [HotCallPhase.TO_CALL]: "À rappeler",
-  [HotCallPhase.IN_PROGRESS]: "En cours",
-  [HotCallPhase.REBOOKED]: "Re-booké",
-  [HotCallPhase.CONVERTED]: "Converti",
-  [HotCallPhase.LOST]: "Perdu",
+  [HotCallPhase.POOL]: "Pool",
+  [HotCallPhase.CLAIMED]: "Pris",
+  [HotCallPhase.SCHEDULED_FOLLOW_UP]: "Relance planifiée",
+  [HotCallPhase.CLOSED]: "Fermé",
 };
 
 // ─── Hot Call Feedback ────────────────────────────────────────────────────────

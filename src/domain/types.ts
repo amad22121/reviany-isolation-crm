@@ -117,7 +117,7 @@ export interface HotCall {
   source: LeadSource;
   assigned_to_user_id: string | null;
   status: HotCallStatus | string; // string for legacy compatibility
-  phase: HotCallPhase | string;
+  phase: HotCallPhase | string; // "pool" | "claimed" | "scheduled_follow_up" | "closed"
   last_feedback: HotCallFeedback | string;
   attempts: number;
   last_contact_date: string | null;
