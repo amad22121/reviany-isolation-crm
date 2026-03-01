@@ -28,14 +28,7 @@ const formatPhone = (raw: string) => {
   return raw;
 };
 
-const INITIAL_USERS: ManagedUser[] = [
-  { id: "mgr1", name: "Arthur", phone: "5141234567", email: "arthur@growthsales.ca", role: "gestionnaire", active: true },
-  { id: "rep1", name: "Samvel", phone: "5142345678", email: "samvel@growthsales.ca", role: "representant", active: true },
-  { id: "rep2", name: "Enzo", phone: "5143456789", email: "enzo@growthsales.ca", role: "representant", active: true },
-  { id: "rep3", name: "Florian", phone: "5144567890", email: "florian@growthsales.ca", role: "representant", active: true },
-  { id: "rep4", name: "Hakim", phone: "5145678901", email: "hakim@growthsales.ca", role: "representant", active: true },
-  { id: "rep5", name: "Alex", phone: "5146789012", email: "alex@growthsales.ca", role: "representant", active: true },
-];
+const INITIAL_USERS: ManagedUser[] = [];
 
 const UserManagementPage = () => {
   const [users, setUsers] = useState<ManagedUser[]>(INITIAL_USERS);
@@ -171,7 +164,19 @@ const UserManagementPage = () => {
               })}
               {users.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Aucun utilisateur</td>
+                  <td colSpan={6} className="px-4 py-12 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <Users className="h-10 w-10 text-muted-foreground/50" />
+                      <p className="text-muted-foreground font-medium">Aucun représentant pour le moment</p>
+                      <p className="text-muted-foreground text-xs">Ajoutez votre premier représentant pour commencer.</p>
+                      <button
+                        onClick={() => setShowAddModal(true)}
+                        className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                      >
+                        <UserPlus className="h-4 w-4" /> Ajouter un représentant
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               )}
             </tbody>

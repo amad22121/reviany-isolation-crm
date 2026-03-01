@@ -63,7 +63,7 @@ const RepViewPage = () => {
   return (
     <><div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-foreground">Bienvenue, {rep?.name}</h1>
+        <h1 className="text-xl font-bold text-foreground">Bienvenue{rep ? `, ${rep.name}` : ""}</h1>
         <button
           onClick={() => navigate("/add-appointment")}
           className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
