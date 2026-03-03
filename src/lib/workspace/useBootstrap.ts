@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import type { AppRole } from "./WorkspaceProvider";
 
 export interface Membership {
@@ -6,27 +7,36 @@ export interface Membership {
   role: AppRole;
   rep_id: string | null;
   manager_id: string | null;
+  display_name: string;
 }
 
-/**
- * TODO: Replace with Supabase
- * Fetch the authenticated user's membership (workspace, role, rep assignment).
- * Currently returns placeholder data.
- */
-async function fetchMembership(userId: string): Promise<Membership> {
-  // TODO: Replace with Supabase
-  // const { data, error } = await supabase
-  //   .from('workspace_members')
-  //   .select('workspace_id, role, rep_id, manager_id')
-  //   .eq('user_id', userId)
-  //   .single();
-  await new Promise((r) => setTimeout(r, 400));
+async function fetchMembership(userId: string): Promise<Membership | null> {
+  // First check if team_members entry exists
+  const { data: tm } = await supabase
+    .from("team_members")
+    .select("workspace_id, role, user_id")
+    .eq("user_id", userId)
+    .limit(1)
+    .maybeSingle();
+
+  // Get profile
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role, display_name, user_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!profile && !tm) return null;
+
+  const role = (tm?.role ?? profile?.role ?? "representant") as AppRole;
+  const workspaceId = tm?.workspace_id ?? "default";
 
   return {
-    workspace_id: "workspace_demo_1",
-    role: "proprietaire",
-    rep_id: null,
-    manager_id: null,
+    workspace_id: workspaceId,
+    role,
+    rep_id: role === "representant" ? userId : null,
+    manager_id: role === "gestionnaire" ? userId : null,
+    display_name: profile?.display_name ?? "",
   };
 }
 
