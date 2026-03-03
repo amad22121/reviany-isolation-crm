@@ -1,52 +1,21 @@
 import { useMemo, useState } from "react";
-import { Appointment, SALES_REPS, HotCall } from "@/data/crm-data";
+import { Appointment, SALES_REPS } from "@/data/crm-data";
 import { ChevronUp, ChevronDown } from "lucide-react";
+import { computeRepPerf, RepPerf } from "@/lib/statistics/statsHelpers";
 
 interface Props {
   appointments: Appointment[];
-  hotCalls: HotCall[];
-  startDate: string;
-  endDate: string;
+  prevAppointments: Appointment[];
+  onRepClick?: (rep: RepPerf) => void;
 }
 
-type SortKey = "name" | "total" | "confirmed" | "unconfirmed" | "atRisk" | "postponed" | "cancelledCb" | "cancelledFinal" | "noShow" | "closed" | "closingRate" | "confirmRate";
+type SortKey = "name" | "total" | "confirmed" | "closed" | "closingRate" | "confirmRate" | "cancelRate" | "noShowRate";
 
-interface RepRow {
-  name: string;
-  total: number;
-  confirmed: number;
-  unconfirmed: number;
-  atRisk: number;
-  postponed: number;
-  cancelledCb: number;
-  cancelledFinal: number;
-  noShow: number;
-  closed: number;
-  closingRate: number;
-  confirmRate: number;
-}
-
-const RepPerformanceTable = ({ appointments }: Props) => {
+const RepPerformanceTable = ({ appointments, prevAppointments, onRepClick }: Props) => {
   const [sortKey, setSortKey] = useState<SortKey>("closingRate");
   const [sortAsc, setSortAsc] = useState(false);
 
-  const data: RepRow[] = useMemo(() => {
-    return SALES_REPS.map((rep) => {
-      const ra = appointments.filter((a) => a.repId === rep.id);
-      const total = ra.length;
-      const confirmed = ra.filter((a) => a.status === "Confirmé").length;
-      const unconfirmed = ra.filter((a) => a.status === "Non confirmé").length;
-      const atRisk = ra.filter((a) => a.status === "À risque").length;
-      const postponed = ra.filter((a) => a.status === "Reporté").length;
-      const cancelledCb = ra.filter((a) => a.status === "Annulé (à rappeler)").length;
-      const cancelledFinal = ra.filter((a) => a.status === "Annulé (définitif)").length;
-      const noShow = ra.filter((a) => a.status === "No-show").length;
-      const closed = ra.filter((a) => a.status === "Closé").length;
-      const closingRate = total > 0 ? Math.round((closed / total) * 100) : 0;
-      const confirmRate = total > 0 ? Math.round((confirmed / total) * 100) : 0;
-      return { name: rep.name, total, confirmed, unconfirmed, atRisk, postponed, cancelledCb, cancelledFinal, noShow, closed, closingRate, confirmRate };
-    });
-  }, [appointments]);
+  const data = useMemo(() => computeRepPerf(appointments, prevAppointments), [appointments, prevAppointments]);
 
   const sorted = useMemo(() => {
     return [...data].sort((a, b) => {
@@ -67,19 +36,20 @@ const RepPerformanceTable = ({ appointments }: Props) => {
     return sortAsc ? <ChevronUp className="h-3 w-3 inline ml-0.5" /> : <ChevronDown className="h-3 w-3 inline ml-0.5" />;
   };
 
+  const ScoreDot = ({ score }: { score: "elite" | "stable" | "improve" }) => {
+    const map = { elite: "🟢", stable: "🟡", improve: "🔴" };
+    return <span className="text-xs">{map[score]}</span>;
+  };
+
   const cols: { key: SortKey; label: string }[] = [
     { key: "name", label: "Représentant" },
     { key: "total", label: "Total" },
     { key: "confirmed", label: "Conf." },
-    { key: "unconfirmed", label: "Non conf." },
-    { key: "atRisk", label: "À risque" },
-    { key: "postponed", label: "Reportés" },
-    { key: "cancelledCb", label: "Ann. (rapp.)" },
-    { key: "cancelledFinal", label: "Ann. (déf.)" },
-    { key: "noShow", label: "No-show" },
     { key: "closed", label: "Closés" },
-    { key: "closingRate", label: "Closing %" },
     { key: "confirmRate", label: "Conf. %" },
+    { key: "closingRate", label: "Closing %" },
+    { key: "cancelRate", label: "Annul. %" },
+    { key: "noShowRate", label: "No-show %" },
   ];
 
   return (
@@ -101,23 +71,25 @@ const RepPerformanceTable = ({ appointments }: Props) => {
                   <SortIcon col={col.key} />
                 </th>
               ))}
+              <th className="px-2 py-2.5 text-left font-medium text-muted-foreground">Score</th>
             </tr>
           </thead>
           <tbody>
             {sorted.map((row) => (
-              <tr key={row.name} className="border-b border-border/30 hover:bg-secondary/30 transition-colors">
+              <tr
+                key={row.id}
+                onClick={() => onRepClick?.(row)}
+                className="border-b border-border/30 hover:bg-secondary/30 transition-colors cursor-pointer"
+              >
                 <td className="px-2 py-2.5 font-medium text-foreground whitespace-nowrap">{row.name}</td>
                 <td className="px-2 py-2.5 text-foreground">{row.total}</td>
                 <td className="px-2 py-2.5 text-green-400">{row.confirmed}</td>
-                <td className="px-2 py-2.5 text-yellow-400">{row.unconfirmed}</td>
-                <td className="px-2 py-2.5 text-orange-400">{row.atRisk}</td>
-                <td className="px-2 py-2.5 text-blue-400">{row.postponed}</td>
-                <td className="px-2 py-2.5 text-amber-400">{row.cancelledCb}</td>
-                <td className="px-2 py-2.5 text-muted-foreground">{row.cancelledFinal}</td>
-                <td className="px-2 py-2.5 text-red-400">{row.noShow}</td>
                 <td className="px-2 py-2.5 text-info">{row.closed}</td>
-                <td className="px-2 py-2.5 font-semibold text-foreground">{row.closingRate}%</td>
                 <td className="px-2 py-2.5 font-semibold text-foreground">{row.confirmRate}%</td>
+                <td className="px-2 py-2.5 font-semibold text-foreground">{row.closingRate}%</td>
+                <td className="px-2 py-2.5 text-amber-400">{row.cancelRate}%</td>
+                <td className="px-2 py-2.5 text-red-400">{row.noShowRate}%</td>
+                <td className="px-2 py-2.5"><ScoreDot score={row.score} /></td>
               </tr>
             ))}
           </tbody>
