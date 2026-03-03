@@ -1,7 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useWorkspaceContext } from "@/lib/workspace/WorkspaceProvider";
 import { useAuthContext } from "@/lib/auth/AuthProvider";
-import { SALES_REPS, MANAGERS } from "@/data/crm-data";
 import {
   LayoutDashboard,
   CalendarPlus,
@@ -21,7 +20,6 @@ import {
   MapPinned,
   Megaphone,
   BarChart3,
-  Settings,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -41,11 +39,10 @@ const ROUTE_LABELS: Record<string, string> = {
 };
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
-  const { role, setDevRole, currentRepId, currentManagerId } = useWorkspaceContext();
+  const { role, displayName } = useWorkspaceContext();
   const { signOut } = useAuthContext();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [showDevPanel, setShowDevPanel] = useState(false);
 
   const ownerLinks = [
     { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
@@ -72,6 +69,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     { to: "/leaderboard", label: "Classement", icon: Trophy },
     { to: "/appointments", label: "Rendez-vous", icon: List },
     { to: "/statistics", label: "Statistiques", icon: BarChart3 },
+    { to: "/users", label: "Gestion utilisateurs", icon: Users },
   ];
 
   const repLinks = [
@@ -129,13 +127,6 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
         </nav>
         <div className="p-3 border-t border-sidebar-border space-y-1 shrink-0">
           <button
-            onClick={() => setShowDevPanel(!showDevPanel)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50 w-full transition-colors"
-          >
-            <Settings className="h-4 w-4" />
-            <span>Dev: Changer rôle</span>
-          </button>
-          <button
             onClick={signOut}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground w-full transition-colors"
           >
@@ -156,48 +147,11 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           <h2 className="text-sm font-medium text-foreground capitalize">{pageTitle}</h2>
           <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
             <RoleIcon className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{roleLabel}</span>
+            <span className="hidden sm:inline">
+              {displayName ? `${displayName} · ${roleLabel}` : roleLabel}
+            </span>
           </div>
         </header>
-
-        {/* Dev role panel */}
-        {showDevPanel && (
-          <div className="border-b border-border bg-card/80 p-3">
-            <p className="text-xs text-muted-foreground mb-2 font-medium">🔧 Dev: Changer de rôle (placeholder)</p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setDevRole("proprietaire")}
-                className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                  role === "proprietaire" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                }`}
-              >
-                <Crown className="h-3 w-3 inline mr-1" /> Propriétaire
-              </button>
-              {MANAGERS.map((mgr) => (
-                <button
-                  key={mgr.id}
-                  onClick={() => setDevRole("gestionnaire", null, mgr.id)}
-                  className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                    role === "gestionnaire" && currentManagerId === mgr.id ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                  }`}
-                >
-                  <Users className="h-3 w-3 inline mr-1" /> Gestionnaire — {mgr.name}
-                </button>
-              ))}
-              {SALES_REPS.map((rep) => (
-                <button
-                  key={rep.id}
-                  onClick={() => setDevRole("representant", rep.id)}
-                  className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                    role === "representant" && currentRepId === rep.id ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                  }`}
-                >
-                  <UserCheck className="h-3 w-3 inline mr-1" /> {rep.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         <main className="flex-1 p-6 overflow-auto">{children}</main>
       </div>

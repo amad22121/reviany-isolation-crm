@@ -55,10 +55,8 @@ const UserManagementPage = () => {
   const [users, setUsers] = useState<TeamUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteRole, setInviteRole] = useState<"gestionnaire" | "representant">("representant");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  // Invite form
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -67,11 +65,6 @@ const UserManagementPage = () => {
   });
 
   const canManageUsers = can(role, "manage_users") || role === "gestionnaire";
-
-  // Redirect rep away
-  if (role === "representant") {
-    return <Navigate to="/dashboard" replace />;
-  }
 
   const loadUsers = useCallback(async () => {
     if (!workspaceId) return;
@@ -84,6 +77,11 @@ const UserManagementPage = () => {
   useEffect(() => {
     loadUsers();
   }, [loadUsers]);
+
+  // Redirect rep away — AFTER all hooks
+  if (role === "representant") {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const handleInvite = async () => {
     if (!form.name.trim() || !form.email.trim() || !workspaceId) return;
@@ -137,7 +135,6 @@ const UserManagementPage = () => {
 
   const openInviteModal = (defaultRole: "gestionnaire" | "representant") => {
     setForm({ name: "", phone: "", email: "", role: defaultRole });
-    setInviteRole(defaultRole);
     setShowInviteModal(true);
   };
 
