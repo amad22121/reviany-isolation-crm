@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.get-photo-url]
 verify_jwt = false
+
+[functions.invite-user]
+verify_jwt = false
+
+[functions.update-user-status]
+verify_jwt = false
