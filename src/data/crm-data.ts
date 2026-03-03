@@ -81,6 +81,11 @@ export interface Appointment {
   smsScheduled: boolean;
   createdAt: string;
   statusLog: StatusChangeLog[];
+  /** Revenue fields – populated when status = "Closé" */
+  closedValue?: number;
+  closedAt?: string;
+  closedBy?: string;
+  wasRecovered?: boolean;
 }
 
 export type HotCallStatus =
