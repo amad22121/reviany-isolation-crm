@@ -17,6 +17,7 @@ interface CrmState {
   repGoals: Record<string, number>;
   addAppointment: (appt: Omit<Appointment, "id" | "smsScheduled" | "createdAt" | "statusLog">) => void;
   updateStatus: (id: string, status: AppointmentStatus, userId?: string) => void;
+  closeAppointment: (id: string, closedValue: number, userId?: string, wasRecovered?: boolean) => void;
   deleteAppointment: (id: string) => void;
   updateNotes: (id: string, notes: string) => void;
   setDailyTarget: (target: number) => void;
@@ -93,6 +94,22 @@ export const useCrm = create<CrmState>((set, get) => ({
         if (a.id !== id) return a;
         const log = createLogEntry(a.status, status, userId);
         return { ...a, status, statusLog: [...a.statusLog, log] };
+      }),
+    })),
+  closeAppointment: (id, closedValue, userId = "system", wasRecovered = false) =>
+    set((state) => ({
+      appointments: state.appointments.map((a) => {
+        if (a.id !== id) return a;
+        const log = createLogEntry(a.status, "Closé", userId);
+        return {
+          ...a,
+          status: "Closé" as const,
+          closedValue,
+          closedAt: new Date().toISOString(),
+          closedBy: userId,
+          wasRecovered,
+          statusLog: [...a.statusLog, log],
+        };
       }),
     })),
   deleteAppointment: (id) =>
