@@ -16,6 +16,8 @@ import {
   ToggleRight,
   RefreshCw,
   Loader2,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Navigate } from "react-router-dom";
 import {
@@ -56,6 +58,7 @@ const UserManagementPage = () => {
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [credentials, setCredentials] = useState<{ email: string; password: string } | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -87,7 +90,7 @@ const UserManagementPage = () => {
     if (!form.name.trim() || !form.email.trim() || !workspaceId) return;
 
     setActionLoading("invite");
-    const { error } = await usersRepo.inviteUser({
+    const { error, temp_password } = await usersRepo.inviteUser({
       email: form.email.trim(),
       display_name: form.name.trim(),
       phone: form.phone.trim() || undefined,
@@ -98,12 +101,9 @@ const UserManagementPage = () => {
     if (error) {
       toast({ title: "Erreur", description: error, variant: "destructive" });
     } else {
-      toast({
-        title: "✅ Invitation envoyée",
-        description: `Invitation envoyée à ${form.email}`,
-      });
-      setForm({ name: "", phone: "", email: "", role: "representant" });
       setShowInviteModal(false);
+      setCredentials({ email: form.email.trim(), password: temp_password || "" });
+      setForm({ name: "", phone: "", email: "", role: "representant" });
       await loadUsers();
     }
     setActionLoading(null);
@@ -362,6 +362,80 @@ const UserManagementPage = () => {
           </div>
         </div>
       )}
+      {/* Credentials Modal */}
+      {credentials && (
+        <CredentialsModal
+          email={credentials.email}
+          password={credentials.password}
+          onClose={() => setCredentials(null)}
+        />
+      )}
+    </div>
+  );
+};
+
+/* ---------- Credentials sub-component ---------- */
+const CredentialsModal = ({
+  email,
+  password,
+  onClose,
+}: {
+  email: string;
+  password: string;
+  onClose: () => void;
+}) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(`Email: ${email}\nMot de passe temporaire: ${password}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-lg font-bold text-foreground">Identifiants temporaires</h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div className="bg-secondary rounded-lg p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground">Email</span>
+            </div>
+            <p className="text-sm font-mono text-foreground">{email}</p>
+          </div>
+
+          <div className="bg-secondary rounded-lg p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground">Mot de passe temporaire</span>
+            </div>
+            <p className="text-sm font-mono text-foreground select-all">{password}</p>
+          </div>
+
+          <button
+            onClick={handleCopy}
+            className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2.5 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+          >
+            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {copied ? "Copié !" : "Copier les identifiants"}
+          </button>
+
+          <p className="text-xs text-muted-foreground text-center">
+            L'utilisateur doit se connecter et changer son mot de passe immédiatement.
+          </p>
+        </div>
+      </div>
     </div>
   );
 };

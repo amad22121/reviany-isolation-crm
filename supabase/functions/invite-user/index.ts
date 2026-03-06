@@ -24,6 +24,7 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
+    // Verify caller identity
     const anonClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -54,10 +55,9 @@ Deno.serve(async (req) => {
     }
 
     const callerRole = callerProfile.role;
+    const { email, full_name, phone, role, tenant_id } = await req.json();
 
-    const { email, display_name, phone, role, tenant_id } = await req.json();
-
-    if (!email || !display_name || !role) {
+    if (!email || !full_name || !role) {
       return new Response(
         JSON.stringify({ error: "Email, nom et rôle requis" }),
         {
@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Permission checks — DB stores English roles (owner|manager|rep)
+    // Permission checks
     const isRep = callerRole === "rep";
     const isManager = callerRole === "manager";
     const targetIsRep = role === "rep";
@@ -102,13 +102,23 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Use caller's tenant_id if not provided
     const effectiveTenantId = tenant_id || callerProfile.tenant_id || "default";
 
-    // Create auth user with invite
+    // Generate temporary password
+    const tempPassword =
+      "Temp-" + crypto.randomUUID().slice(0, 8) + "!" + Math.random().toString(36).slice(-4);
+
+    // Create auth user with temporary password (no email sent)
     const { data: newUser, error: createError } =
-      await adminClient.auth.admin.inviteUserByEmail(email, {
-        data: { display_name, tenant_id: effectiveTenantId },
+      await adminClient.auth.admin.createUser({
+        email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: {
+          full_name,
+          tenant_id: effectiveTenantId,
+          display_name: full_name,
+        },
       });
 
     if (createError) {
@@ -133,15 +143,13 @@ Deno.serve(async (req) => {
 
     const userId = newUser.user.id;
 
-    // Update profile (auto-created by trigger) with role, phone, tenant_id, invited_at
+    // Update profile (auto-created by trigger) with role and tenant
     const { error: profileError } = await adminClient
       .from("profiles")
       .update({
-        display_name,
-        phone: phone || null,
+        display_name: full_name,
         role,
         tenant_id: effectiveTenantId,
-        invited_at: new Date().toISOString(),
       })
       .eq("user_id", userId);
 
@@ -150,7 +158,11 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, user_id: userId }),
+      JSON.stringify({
+        success: true,
+        user_id: userId,
+        temp_password: tempPassword,
+      }),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
