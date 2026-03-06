@@ -67,11 +67,32 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Map frontend role labels to DB enum values
+    const roleMap: Record<string, string> = {
+      proprietaire: "owner",
+      gestionnaire: "manager",
+      representant: "rep",
+      owner: "owner",
+      manager: "manager",
+      rep: "rep",
+    };
+    const dbRole = roleMap[role];
+    if (!dbRole) {
+      return new Response(
+        JSON.stringify({ error: "Rôle invalide: " + role }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+    console.log("Role mapping:", role, "->", dbRole);
+
     // Permission checks
     const isRep = callerRole === "rep";
     const isManager = callerRole === "manager";
-    const targetIsRep = role === "rep";
-    const targetIsOwner = role === "owner";
+    const targetIsRep = dbRole === "rep";
+    const targetIsOwner = dbRole === "owner";
 
     if (isRep) {
       return new Response(JSON.stringify({ error: "Accès refusé" }), {
@@ -150,7 +171,7 @@ Deno.serve(async (req) => {
         {
           user_id: userId,
           full_name,
-          role,
+          role: dbRole,
           tenant_id: effectiveTenantId,
         },
         { onConflict: "user_id" }
