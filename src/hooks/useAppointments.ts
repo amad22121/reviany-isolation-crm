@@ -22,9 +22,9 @@ function mapRow(row: any): Appointment {
     phone: client.phone || row.phone || "",
     address: client.address || row.address || "",
     city: client.city || row.city || "",
-    origin: client.origin || row.origin ?? undefined,
-    culturalOrigin: client.cultural_origin || row.cultural_origin ?? undefined,
-    leadSource: client.lead_source || row.lead_source ?? undefined,
+    origin: (client.origin || row.origin) ?? undefined,
+    culturalOrigin: (client.cultural_origin || row.cultural_origin) ?? undefined,
+    leadSource: (client.lead_source || row.lead_source) ?? undefined,
     date: scheduledAt
       ? scheduledAt.toISOString().split("T")[0]
       : row.date || "",
