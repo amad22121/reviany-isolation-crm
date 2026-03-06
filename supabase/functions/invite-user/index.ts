@@ -117,7 +117,6 @@ Deno.serve(async (req) => {
         user_metadata: {
           full_name,
           tenant_id: effectiveTenantId,
-          display_name: full_name,
         },
       });
 
