@@ -88,7 +88,7 @@ const UserManagementPage = () => {
     if (!form.name.trim() || !form.email.trim() || !workspaceId) return;
 
     setActionLoading("invite");
-    const { error } = await usersRepo.inviteUser({
+    const { error, temp_password } = await usersRepo.inviteUser({
       email: form.email.trim(),
       display_name: form.name.trim(),
       phone: form.phone.trim() || undefined,
@@ -99,12 +99,9 @@ const UserManagementPage = () => {
     if (error) {
       toast({ title: "Erreur", description: error, variant: "destructive" });
     } else {
-      toast({
-        title: "✅ Invitation envoyée",
-        description: `Invitation envoyée à ${form.email}`,
-      });
-      setForm({ name: "", phone: "", email: "", role: "representant" });
       setShowInviteModal(false);
+      setCredentials({ email: form.email.trim(), password: temp_password || "" });
+      setForm({ name: "", phone: "", email: "", role: "representant" });
       await loadUsers();
     }
     setActionLoading(null);
