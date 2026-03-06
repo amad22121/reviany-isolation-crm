@@ -32,9 +32,9 @@ export const usersRepo = {
     return profiles.map((p: any) => ({
       id: p.user_id,
       user_id: p.user_id,
-      display_name: p.full_name || "",
-      email: "",
-      phone: null,
+      display_name: p.full_name || p.display_name || "",
+      email: p.email || "",
+      phone: p.phone || null,
       role: mapDbRole(p.role) ?? "representant",
       status: (p.disabled_at ? "désactivé" : p.invited_at ? "invité" : "actif") as "actif" | "désactivé" | "invité",
       disabled_at: p.disabled_at ?? null,
