@@ -1,10 +1,11 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { useAuthContext } from "@/lib/auth/AuthProvider";
 import { useBootstrap, type Membership } from "./useBootstrap";
 
 export type AppRole = "proprietaire" | "gestionnaire" | "representant";
 
 interface WorkspaceContextValue {
+  /** tenant_id from profiles (replaces old workspaceId) */
   workspaceId: string | null;
   role: AppRole | null;
   currentRepId: string | null;
@@ -16,15 +17,13 @@ interface WorkspaceContextValue {
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
 
-import { useMemo } from "react";
-
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const { user } = useAuthContext();
   const { membership, loading } = useBootstrap(user?.id ?? null);
 
   const value = useMemo<WorkspaceContextValue>(() => {
     return {
-      workspaceId: membership?.workspace_id ?? null,
+      workspaceId: membership?.tenant_id ?? null,
       role: membership?.role ?? null,
       currentRepId: membership?.rep_id ?? null,
       currentManagerId: membership?.manager_id ?? null,

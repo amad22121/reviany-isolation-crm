@@ -3,40 +3,47 @@ import { supabase } from "@/integrations/supabase/client";
 import type { AppRole } from "./WorkspaceProvider";
 
 export interface Membership {
-  workspace_id: string;
+  tenant_id: string;
   role: AppRole;
   rep_id: string | null;
   manager_id: string | null;
   display_name: string;
 }
 
+/** Map DB role strings (owner|manager|rep or legacy French) to AppRole */
+function mapDbRole(dbRole: string | null | undefined): AppRole {
+  switch (dbRole) {
+    case "owner":
+    case "proprietaire":
+      return "proprietaire";
+    case "manager":
+    case "gestionnaire":
+      return "gestionnaire";
+    case "rep":
+    case "representant":
+    default:
+      return "representant";
+  }
+}
+
 async function fetchMembership(userId: string): Promise<Membership | null> {
-  // First check if team_members entry exists
-  const { data: tm } = await supabase
-    .from("team_members")
-    .select("workspace_id, role, user_id")
-    .eq("user_id", userId)
-    .limit(1)
-    .maybeSingle();
-
-  // Get profile
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from("profiles")
-    .select("role, display_name, user_id")
+    .select("display_name, role, user_id, tenant_id")
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (!profile && !tm) return null;
+  if (error || !profile) return null;
 
-  const role = (tm?.role ?? profile?.role ?? "representant") as AppRole;
-  const workspaceId = tm?.workspace_id ?? "default";
+  const role = mapDbRole(profile.role);
+  const tenantId = (profile as any).tenant_id ?? "default";
 
   return {
-    workspace_id: workspaceId,
+    tenant_id: tenantId,
     role,
     rep_id: role === "representant" ? userId : null,
     manager_id: role === "gestionnaire" ? userId : null,
-    display_name: profile?.display_name ?? "",
+    display_name: profile.display_name ?? "",
   };
 }
 

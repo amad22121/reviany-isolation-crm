@@ -1,5 +1,5 @@
 /**
- * useTeamMembers — fetches team members (profiles + team_members) from Supabase.
+ * useTeamMembers — fetches team members from the profiles table.
  * Returns TeamMember[] where id = user_id (for repId compatibility).
  * React Query caches the result so multiple components can use this hook efficiently.
  */
@@ -14,33 +14,32 @@ export interface TeamMember {
   avatar?: string;
 }
 
+/** Map DB role to French AppRole label */
+function mapDbRole(dbRole: string): string {
+  switch (dbRole) {
+    case "owner": return "proprietaire";
+    case "manager": return "gestionnaire";
+    case "rep": return "representant";
+    default: return dbRole; // already French or unknown
+  }
+}
+
 export function useTeamMembers() {
   return useQuery({
     queryKey: ["team-members"],
     queryFn: async (): Promise<TeamMember[]> => {
-      const { data: members, error: tmErr } = await supabase
-        .from("team_members")
-        .select("user_id, role, profile_id");
-
-      if (tmErr || !members?.length) return [];
-
-      const profileIds = members.map((m) => m.profile_id);
-      const { data: profiles, error: pErr } = await supabase
+      const { data: profiles, error } = await supabase
         .from("profiles")
-        .select("id, user_id, display_name, avatar_url")
-        .in("id", profileIds);
+        .select("id, user_id, display_name, avatar_url, role");
 
-      if (pErr || !profiles) return [];
+      if (error || !profiles) return [];
 
-      return profiles.map((p) => {
-        const tm = members.find((m) => m.profile_id === p.id);
-        return {
-          id: String(p.user_id),
-          name: p.display_name,
-          role: tm?.role || "representant",
-          avatar: p.avatar_url || undefined,
-        };
-      });
+      return profiles.map((p) => ({
+        id: String(p.user_id),
+        name: p.display_name,
+        role: mapDbRole(p.role),
+        avatar: p.avatar_url || undefined,
+      }));
     },
     staleTime: 5 * 60 * 1000, // 5 min cache
   });

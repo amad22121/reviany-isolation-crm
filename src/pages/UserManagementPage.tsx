@@ -92,7 +92,7 @@ const UserManagementPage = () => {
       display_name: form.name.trim(),
       phone: form.phone.trim() || undefined,
       role: form.role,
-      workspace_id: workspaceId,
+      tenant_id: workspaceId ?? "default",
     });
 
     if (error) {

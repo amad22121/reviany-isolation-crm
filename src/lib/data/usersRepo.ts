@@ -1,5 +1,5 @@
 /**
- * Users Repository — fetches team members from Supabase.
+ * Users Repository — fetches team members from profiles table (single source of truth).
  */
 
 import { supabase } from "@/integrations/supabase/client";
@@ -17,27 +17,26 @@ export interface TeamUser {
   created_at: string;
 }
 
+/** Map DB role (owner|manager|rep) to French AppRole */
+function mapDbRole(dbRole: string): TeamUser["role"] {
+  switch (dbRole) {
+    case "owner": return "proprietaire";
+    case "manager": return "gestionnaire";
+    case "rep": return "representant";
+    default: return dbRole as TeamUser["role"];
+  }
+}
+
 export const usersRepo = {
-  async listTeamUsers(workspaceId: string): Promise<TeamUser[]> {
-    // Get team members for this workspace
-    const { data: members, error: tmError } = await supabase
-      .from("team_members")
-      .select("user_id, role, workspace_id, profile_id")
-      .eq("workspace_id", workspaceId);
-
-    if (tmError || !members?.length) return [];
-
-    // Get profiles for these users
-    const userIds = members.map((m) => m.user_id);
-    const { data: profiles, error: pError } = await supabase
+  async listTeamUsers(tenantId: string): Promise<TeamUser[]> {
+    const { data: profiles, error } = await supabase
       .from("profiles")
       .select("*")
-      .in("user_id", userIds);
+      .eq("tenant_id" as any, tenantId);
 
-    if (pError || !profiles) return [];
+    if (error || !profiles) return [];
 
     return profiles.map((p) => {
-      const tm = members.find((m) => m.user_id === p.user_id);
       const hasConfirmed = !p.invited_at || p.updated_at > p.invited_at;
       let status: TeamUser["status"] = "actif";
       if (p.disabled_at) status = "désactivé";
@@ -47,9 +46,9 @@ export const usersRepo = {
         id: p.id,
         user_id: p.user_id,
         display_name: p.display_name,
-        email: "", // email from auth, we'll show what we have
+        email: "",
         phone: p.phone,
-        role: (tm?.role ?? p.role) as TeamUser["role"],
+        role: mapDbRole(p.role),
         status,
         disabled_at: p.disabled_at,
         invited_at: p.invited_at,
@@ -63,7 +62,7 @@ export const usersRepo = {
     display_name: string;
     phone?: string;
     role: string;
-    workspace_id: string;
+    tenant_id: string;
   }): Promise<{ error: string | null }> {
     const { data, error } = await supabase.functions.invoke("invite-user", {
       body: payload,
