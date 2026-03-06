@@ -117,7 +117,6 @@ Deno.serve(async (req) => {
         user_metadata: {
           full_name,
           tenant_id: effectiveTenantId,
-          display_name: full_name,
         },
       });
 
@@ -150,7 +149,7 @@ Deno.serve(async (req) => {
       .upsert(
         {
           user_id: userId,
-          display_name: full_name,
+          full_name,
           role,
           tenant_id: effectiveTenantId,
         },
