@@ -297,6 +297,7 @@ export type Database = {
           created_at: string
           disabled_at: string | null
           display_name: string
+          email: string
           id: string
           invited_at: string | null
           phone: string | null
@@ -310,6 +311,7 @@ export type Database = {
           created_at?: string
           disabled_at?: string | null
           display_name?: string
+          email?: string
           id?: string
           invited_at?: string | null
           phone?: string | null
@@ -323,6 +325,7 @@ export type Database = {
           created_at?: string
           disabled_at?: string | null
           display_name?: string
+          email?: string
           id?: string
           invited_at?: string | null
           phone?: string | null
