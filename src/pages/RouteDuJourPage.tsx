@@ -23,7 +23,7 @@ const statusColors: Record<string, string> = {
 };
 
 const RouteDuJourPage = () => {
-  const { appointments } = useCrm();
+  const { data: appointments = [] } = useAppointments();
   const { role, currentRepId } = useAuth();
   const isRep = role === "representant";
 

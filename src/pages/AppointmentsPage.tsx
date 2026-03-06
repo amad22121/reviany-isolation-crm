@@ -16,7 +16,9 @@ const STATUS_PERMISSIONS: Record<string, AppointmentStatus[]> = {
 
 const AppointmentsPage = () => {
   const navigate = useNavigate();
-  const { appointments, updateStatus, updateNotes } = useCrm();
+  const { data: appointments = [] } = useAppointments();
+  const updateStatusMutation = useUpdateAppointmentStatus();
+  const updateNotesMutation = useUpdateAppointmentNotes();
   const { role, currentManagerId } = useAuth();
   const { data: teamMembers = [] } = useTeamMembers();
   const [search, setSearch] = useState("");
@@ -28,7 +30,7 @@ const AppointmentsPage = () => {
   const [savedNoteId, setSavedNoteId] = useState<string | null>(null);
 
   const handleSaveNote = (id: string) => {
-    updateNotes(id, noteInput);
+    updateNotesMutation.mutate({ id, notes: noteInput });
     setEditingNoteId(null);
     setSavedNoteId(id);
     setTimeout(() => setSavedNoteId(null), 1200);

@@ -28,7 +28,8 @@ function getMonday(d: Date) {
 function addDays(d: Date, n: number) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
 
 const CalendarPage = () => {
-  const { appointments, updateStatus } = useCrm();
+  const { data: allAppointments = [] } = useAppointments();
+  const updateStatusMutation = useUpdateAppointmentStatus();
   const { role, currentRepId, currentManagerId } = useAuth();
   const isRep = role === "representant";
 
