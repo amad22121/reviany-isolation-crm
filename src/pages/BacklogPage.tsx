@@ -84,7 +84,7 @@ const BacklogPage = () => {
                       {canDelete && (
                         deleteConfirm === a.id ? (
                           <div className="flex items-center gap-1">
-                            <button onClick={() => { deleteAppointment(a.id); setDeleteConfirm(null); }} className="text-xs text-destructive font-medium">Oui</button>
+                            <button onClick={() => { deleteAppointmentMutation.mutate(a.id); setDeleteConfirm(null); }} className="text-xs text-destructive font-medium">Oui</button>
                             <button onClick={() => setDeleteConfirm(null)} className="text-xs text-muted-foreground">Non</button>
                           </div>
                         ) : (
