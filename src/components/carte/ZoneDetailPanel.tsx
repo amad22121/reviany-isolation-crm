@@ -15,7 +15,7 @@ const STATUS_BADGE: Record<TerritoryStatus, string> = {
   "Fait": "bg-green-500/20 text-green-400 border-green-500/30",
 };
 
-// getRepName moved inside component
+
 const getPolygonCenter = (polygon: [number, number][]): [number, number] => {
   const lat = polygon.reduce((s, p) => s + p[0], 0) / polygon.length;
   const lng = polygon.reduce((s, p) => s + p[1], 0) / polygon.length;
@@ -49,6 +49,7 @@ const ZoneDetailPanel = ({
   onUpdateDate,
   onDelete,
 }: ZoneDetailPanelProps) => {
+  const { data: teamMembers = [] } = useTeamMembers();
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesInput, setNotesInput] = useState(zone.notes || "");
   const canEdit = canManage || (isRep && zone.rep_id === currentRepId);
@@ -87,10 +88,10 @@ const ZoneDetailPanel = ({
             {canManage ? (
               <Select value={zone.rep_id} onValueChange={onUpdateRep}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent className="z-[9999]">{SALES_REPS.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>
+                <SelectContent className="z-[9999]">{teamMembers.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>
               </Select>
             ) : (
-              <p className="text-foreground">{getRepName(zone.rep_id)}</p>
+              <p className="text-foreground">{getRepNameFromList(teamMembers, zone.rep_id)}</p>
             )}
           </div>
           <div className="text-sm">

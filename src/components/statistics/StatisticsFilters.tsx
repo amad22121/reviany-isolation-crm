@@ -102,5 +102,6 @@ const StatisticsFilters = ({
     </Select>
   </div>
 );
+};
 
 export default StatisticsFilters;

@@ -75,12 +75,6 @@ export const appointmentsRepo = {
 
     // Mock branch — returns empty (no mock data)
     return [];
-    if (filters.repId) results = results.filter((a) => a.rep_id === filters.repId);
-    if (filters.status) results = results.filter((a) => a.status === filters.status);
-    if (filters.dateFrom) results = results.filter((a) => a.date >= filters.dateFrom!);
-    if (filters.dateTo) results = results.filter((a) => a.date <= filters.dateTo!);
-
-    return results;
   },
 
   /**

@@ -295,7 +295,7 @@ const MarketingLeadsPage = () => {
           >
             <option value="all">Tous les reps</option>
             <option value="unassigned">Non assigné</option>
-            {SALES_REPS.map((r) => (
+            {teamMembers.map((r) => (
               <option key={r.id} value={r.id}>{r.name}</option>
             ))}
           </select>
@@ -362,7 +362,7 @@ const MarketingLeadsPage = () => {
                           className="bg-secondary border border-border rounded px-2 py-1 text-xs text-foreground"
                         >
                           <option value="">Non assigné</option>
-                          {SALES_REPS.map((r) => (
+                          {teamMembers.map((r) => (
                             <option key={r.id} value={r.id}>{r.name}</option>
                           ))}
                         </select>
@@ -512,7 +512,7 @@ const MarketingLeadsPage = () => {
                   onChange={(e) => setBookForm({ ...bookForm, repId: e.target.value })}
                 >
                   <option value="">Sélectionner...</option>
-                  {SALES_REPS.map((r) => (
+                  {teamMembers.map((r) => (
                     <option key={r.id} value={r.id}>{r.name}</option>
                   ))}
                 </select>
@@ -572,6 +572,8 @@ const LeadDetailPanel = ({
   onIncrement,
   onDelete,
 }: LeadDetailPanelProps) => {
+  const { data: teamMembers = [] } = useTeamMembers();
+  const getRepName = (repId: string | null) => getRepNameFromList(teamMembers, repId);
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesInput, setNotesInput] = useState(lead.notes || "");
 
@@ -632,7 +634,7 @@ const LeadDetailPanel = ({
                 className="bg-secondary border border-border rounded px-2 py-0.5 text-xs text-foreground"
               >
                 <option value="">Non assigné</option>
-                {SALES_REPS.map((r) => (
+                {teamMembers.map((r) => (
                   <option key={r.id} value={r.id}>{r.name}</option>
                 ))}
               </select>
