@@ -1,4 +1,5 @@
-import { SALES_REPS, APPOINTMENT_STATUSES, AppointmentStatus } from "@/data/crm-data";
+import { APPOINTMENT_STATUSES, AppointmentStatus } from "@/data/crm-data";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +52,7 @@ const CalendarFilters = ({
   routeButtonLabel,
   onGenerateRoute,
 }: CalendarFiltersProps) => {
+  const { data: teamMembers = [] } = useTeamMembers();
   const displayStatuses = APPOINTMENT_STATUSES;
 
   return (
@@ -100,7 +102,7 @@ const CalendarFilters = ({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tous les reps</SelectItem>
-              {SALES_REPS.map((r) => (
+              {teamMembers.map((r) => (
                 <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
               ))}
             </SelectContent>

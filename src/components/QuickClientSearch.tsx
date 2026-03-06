@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Search, X, Phone, User, Calendar, Flame, Megaphone } from "lucide-react";
 import { useCrm } from "@/store/crm-store";
-import { SALES_REPS } from "@/data/crm-data";
+import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import { useNavigate } from "react-router-dom";
 import { useMarketingLeadsQuery } from "@/hooks/useMarketingLeads";
 
@@ -132,8 +132,8 @@ const QuickClientSearch = () => {
     }
   };
 
-  const getRepName = (repId: string) =>
-    SALES_REPS.find((r) => r.id === repId)?.name || repId;
+  const { data: teamMembers = [] } = useTeamMembers();
+  const getRepName = (repId: string) => getRepNameFromList(teamMembers, repId);
 
   return (
     <>

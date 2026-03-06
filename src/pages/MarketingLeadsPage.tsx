@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useAuth } from "@/store/crm-store";
 import { useCrm } from "@/store/crm-store";
-import { SALES_REPS } from "@/data/crm-data";
+import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import ClientPhotosSection from "@/components/ClientPhotosSection";
 import {
   useMarketingLeadsQuery,
@@ -68,13 +68,14 @@ const STATUS_LABELS: Record<LeadStatus, string> = {
   "Not Closed": "Non fermé",
 };
 
-const getRepName = (repId: string | null) =>
-  repId ? SALES_REPS.find((r) => r.id === repId)?.name || repId : "—";
+// getRepName moved into component body to use hook data
 
 const MarketingLeadsPage = () => {
   const { role } = useAuth();
   const { addAppointment } = useCrm();
   const { data: leads = [], isLoading } = useMarketingLeadsQuery();
+  const { data: teamMembers = [] } = useTeamMembers();
+  const getRepName = (repId: string | null) => getRepNameFromList(teamMembers, repId);
   const createLead = useCreateLead();
   const updateLead = useUpdateLead();
   const deleteLead = useDeleteLead();

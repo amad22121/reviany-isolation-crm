@@ -1,4 +1,5 @@
-import { Appointment, SALES_REPS } from "@/data/crm-data";
+import { Appointment } from "@/data/crm-data";
+import type { TeamMember } from "@/hooks/useTeamMembers";
 
 /** Period shift: given [start, end], compute [prevStart, prevEnd] of equal length. */
 export function getPreviousPeriod(start: string, end: string): [string, string] {
@@ -63,8 +64,8 @@ export interface RepPerf {
   score: "elite" | "stable" | "improve";
 }
 
-export function computeRepPerf(appts: Appointment[], prevAppts: Appointment[]): RepPerf[] {
-  return SALES_REPS.map((rep) => {
+export function computeRepPerf(appts: Appointment[], prevAppts: Appointment[], reps: TeamMember[] = []): RepPerf[] {
+  return reps.map((rep) => {
     const ra = appts.filter((a) => a.repId === rep.id);
     const pra = prevAppts.filter((a) => a.repId === rep.id);
     const total = ra.length;

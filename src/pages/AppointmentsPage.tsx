@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
-import { SALES_REPS, Appointment, APPOINTMENT_STATUSES, AppointmentStatus } from "@/data/crm-data";
+import { Appointment, APPOINTMENT_STATUSES, AppointmentStatus } from "@/data/crm-data";
+import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import { Search, MapPin, Bell, Check, Plus, CalendarPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ const AppointmentsPage = () => {
   const navigate = useNavigate();
   const { appointments, updateStatus, updateNotes } = useCrm();
   const { role, currentManagerId } = useAuth();
+  const { data: teamMembers = [] } = useTeamMembers();
   const [search, setSearch] = useState("");
   const [repFilter, setRepFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -32,17 +34,17 @@ const AppointmentsPage = () => {
   };
 
   const teamReps = useMemo(() => {
-    if (role === "gestionnaire" && currentManagerId) {
-      return SALES_REPS.filter((r) => r.managerId === currentManagerId);
+    if (role === "gestionnaire") {
+      return teamMembers.filter((r) => r.role === "representant");
     }
-    return SALES_REPS;
-  }, [role, currentManagerId]);
+    return teamMembers;
+  }, [role, teamMembers]);
 
   const teamRepIds = useMemo(() => new Set(teamReps.map((r) => r.id)), [teamReps]);
 
   const filtered = useMemo(() => {
     return appointments.filter((a) => {
-      if (role === "gestionnaire" && !teamRepIds.has(a.repId)) return false;
+      if (role === "gestionnaire" && teamRepIds.size > 0 && !teamRepIds.has(a.repId)) return false;
       if (a.status === "Backlog") return false;
       const matchSearch =
         !search ||
@@ -55,7 +57,7 @@ const AppointmentsPage = () => {
     });
   }, [appointments, search, repFilter, statusFilter, role, teamRepIds]);
 
-  const getRepName = (repId: string) => SALES_REPS.find((r) => r.id === repId)?.name || repId;
+  const getRepName = (repId: string) => getRepNameFromList(teamMembers, repId);
 
   const statusColors: Record<string, string> = {
     "Planifié": "bg-warning/20 text-warning",

@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
-import { Appointment, SALES_REPS } from "@/data/crm-data";
+import { Appointment } from "@/data/crm-data";
+import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import { ChevronDown, ChevronUp, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
@@ -22,7 +23,8 @@ interface Props {
 const DetailedAppointmentTable = ({ appointments }: Props) => {
   const [expanded, setExpanded] = useState(false);
   const [search, setSearch] = useState("");
-  const getRepName = (id: string) => SALES_REPS.find((r) => r.id === id)?.name || id;
+  const { data: teamMembers = [] } = useTeamMembers();
+  const getRepName = (id: string) => getRepNameFromList(teamMembers, id);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return appointments;

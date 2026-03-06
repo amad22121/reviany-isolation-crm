@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { Appointment, AppointmentStatus, HotCall, HotCallStatus, HotCallPhase, HotCallFeedback, CallLogEntry, StatusChangeLog, HOT_CALL_TRIGGER_STATUSES } from "@/data/crm-data";
-import { MOCK_SALES_REPS, MOCK_APPOINTMENTS, MOCK_HOT_CALLS } from "@/lib/data/mock-data";
-import { USE_MOCK } from "@/lib/data/config";
+// Mock data removed — store starts empty, ready for Supabase
 
 // Re-export AppRole from new workspace system
 export type { AppRole } from "@/lib/workspace/WorkspaceProvider";
@@ -46,7 +45,7 @@ interface CrmState {
 const today = new Date().toISOString().split("T")[0];
 const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
-const INITIAL_HOT_CALLS: HotCall[] = USE_MOCK ? MOCK_HOT_CALLS : [];
+const INITIAL_HOT_CALLS: HotCall[] = [];
 
 const computeFollowUpDate = (status: HotCallStatus, fromDate: string): string => {
   const d = new Date(fromDate);
@@ -70,9 +69,9 @@ const createLogEntry = (prev: string, next: string, userId: string): StatusChang
 };
 
 export const useCrm = create<CrmState>((set, get) => ({
-  appointments: USE_MOCK ? MOCK_APPOINTMENTS : [],
+  appointments: [],
   hotCalls: INITIAL_HOT_CALLS,
-  repGoals: Object.fromEntries(MOCK_SALES_REPS.map((r) => [r.id, 0])),
+  repGoals: {},
   dailyTarget: 15,
   weeklyTarget: 75,
   addAppointment: (appt) =>

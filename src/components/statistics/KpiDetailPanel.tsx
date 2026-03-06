@@ -1,5 +1,6 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Appointment, SALES_REPS } from "@/data/crm-data";
+import { Appointment } from "@/data/crm-data";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { computeStatusCounts, pct, variation } from "@/lib/statistics/statsHelpers";
 
@@ -47,13 +48,14 @@ const VariationBadge = ({ value }: { value: number | undefined }) => {
 };
 
 const KpiDetailPanel = ({ open, onClose, kpiKey, label, currentAppts, prevAppts }: Props) => {
+  const { data: teamMembers = [] } = useTeamMembers();
   const currentVal = getKpiValues(kpiKey, currentAppts);
   const prevVal = getKpiValues(kpiKey, prevAppts);
   const varPct = variation(currentVal, prevVal);
   const suffix = isRateKey(kpiKey) ? "%" : "";
 
   // Breakdown by rep
-  const repBreakdown = SALES_REPS.map((rep) => {
+  const repBreakdown = teamMembers.map((rep) => {
     const curr = getKpiValues(kpiKey, currentAppts.filter((a) => a.repId === rep.id));
     const prev = getKpiValues(kpiKey, prevAppts.filter((a) => a.repId === rep.id));
     return { name: rep.name, current: curr, previous: prev, variation: variation(curr, prev) };

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
-import { SALES_REPS } from "@/data/crm-data";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { Trophy, Medal } from "lucide-react";
 
 const LeaderboardPage = () => {
@@ -10,14 +10,16 @@ const LeaderboardPage = () => {
 
   const today = new Date().toISOString().split("T")[0];
 
-  const teamReps = useMemo(() => {
-    if (role === "gestionnaire" && currentManagerId) {
-      return SALES_REPS.filter((r) => r.managerId === currentManagerId);
-    }
-    return SALES_REPS;
-  }, [role, currentManagerId]);
+  const { data: teamMembers = [] } = useTeamMembers();
 
-  const DAILY_GOAL = SALES_REPS.length > 0 ? Math.ceil(dailyTarget / SALES_REPS.length) : 0;
+  const teamReps = useMemo(() => {
+    if (role === "gestionnaire") {
+      return teamMembers.filter((r) => r.role === "representant");
+    }
+    return teamMembers;
+  }, [role, teamMembers]);
+
+  const DAILY_GOAL = teamReps.length > 0 ? Math.ceil(dailyTarget / teamReps.length) : 0;
 
   const data = useMemo(() => {
     const now = new Date();
