@@ -56,6 +56,7 @@ const UserManagementPage = () => {
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [credentials, setCredentials] = useState<{ email: string; password: string } | null>(null);
 
   const [form, setForm] = useState({
     name: "",
