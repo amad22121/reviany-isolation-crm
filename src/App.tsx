@@ -22,6 +22,7 @@ import MarketingLeadsPage from "./pages/MarketingLeadsPage";
 import BacklogPage from "./pages/BacklogPage";
 import AppLayout from "./components/AppLayout";
 import QuickClientSearch from "./components/QuickClientSearch";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +50,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/login" element={<LoginRoute />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/" element={<ProtectedRoute><HomeRedirect /></ProtectedRoute>} />
       <Route path="/dashboard" element={<AuthenticatedLayout><DashboardPage /></AuthenticatedLayout>} />
       <Route path="/add-appointment" element={<AuthenticatedLayout><AddAppointmentPage /></AuthenticatedLayout>} />

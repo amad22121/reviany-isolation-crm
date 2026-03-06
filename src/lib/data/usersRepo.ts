@@ -32,13 +32,13 @@ export const usersRepo = {
     return profiles.map((p: any) => ({
       id: p.user_id,
       user_id: p.user_id,
-      display_name: p.full_name || p.display_name || "",
+      display_name: p.full_name || "",
       email: "",
-      phone: p.phone ?? null,
+      phone: null,
       role: mapDbRole(p.role) ?? "representant",
-      status: "actif" as const,
-      disabled_at: null,
-      invited_at: null,
+      status: (p.disabled_at ? "désactivé" : p.invited_at ? "invité" : "actif") as "actif" | "désactivé" | "invité",
+      disabled_at: p.disabled_at ?? null,
+      invited_at: p.invited_at ?? null,
       created_at: p.created_at,
     }));
   },
