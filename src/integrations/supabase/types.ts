@@ -301,6 +301,7 @@ export type Database = {
           invited_at: string | null
           phone: string | null
           role: string
+          tenant_id: string
           updated_at: string
           user_id: string
         }
@@ -313,6 +314,7 @@ export type Database = {
           invited_at?: string | null
           phone?: string | null
           role?: string
+          tenant_id?: string
           updated_at?: string
           user_id: string
         }
@@ -325,6 +327,7 @@ export type Database = {
           invited_at?: string | null
           phone?: string | null
           role?: string
+          tenant_id?: string
           updated_at?: string
           user_id?: string
         }
@@ -370,7 +373,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_user_role: { Args: { p_workspace_id?: string }; Returns: string }
+      get_user_role: { Args: { p_tenant_id?: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never

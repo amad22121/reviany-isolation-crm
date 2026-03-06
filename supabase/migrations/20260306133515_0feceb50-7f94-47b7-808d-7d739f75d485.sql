@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN tenant_id text NOT NULL DEFAULT 'default';

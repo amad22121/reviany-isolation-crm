@@ -24,7 +24,6 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    // Verify caller identity using anon client
     const anonClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -40,11 +39,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get caller's role
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
     const { data: callerProfile } = await adminClient
       .from("profiles")
-      .select("role")
+      .select("role, tenant_id")
       .eq("user_id", caller.id)
       .single();
 
@@ -57,7 +55,7 @@ Deno.serve(async (req) => {
 
     const callerRole = callerProfile.role;
 
-    const { email, display_name, phone, role, workspace_id } = await req.json();
+    const { email, display_name, phone, role, tenant_id } = await req.json();
 
     if (!email || !display_name || !role) {
       return new Response(
@@ -69,15 +67,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Permission checks
-    if (callerRole === "representant") {
+    // Permission checks — use both English and French role names
+    const isRep = callerRole === "representant" || callerRole === "rep";
+    const isManager = callerRole === "gestionnaire" || callerRole === "manager";
+    const targetIsRep = role === "representant" || role === "rep";
+    const targetIsOwner = role === "proprietaire" || role === "owner";
+
+    if (isRep) {
       return new Response(JSON.stringify({ error: "Accès refusé" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (callerRole === "gestionnaire" && role !== "representant") {
+    if (isManager && !targetIsRep) {
       return new Response(
         JSON.stringify({
           error: "Un gestionnaire ne peut inviter que des représentants",
@@ -89,7 +92,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (role === "proprietaire") {
+    if (targetIsOwner) {
       return new Response(
         JSON.stringify({ error: "Impossible de créer un propriétaire" }),
         {
@@ -99,14 +102,16 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Use caller's tenant_id if not provided
+    const effectiveTenantId = tenant_id || callerProfile.tenant_id || "default";
+
     // Create auth user with invite
     const { data: newUser, error: createError } =
       await adminClient.auth.admin.inviteUserByEmail(email, {
-        data: { display_name },
+        data: { display_name, tenant_id: effectiveTenantId },
       });
 
     if (createError) {
-      // Check if user already exists
       if (createError.message?.includes("already been registered")) {
         return new Response(
           JSON.stringify({ error: "Cet email est déjà enregistré" }),
@@ -128,42 +133,20 @@ Deno.serve(async (req) => {
 
     const userId = newUser.user.id;
 
-    // Update profile (auto-created by trigger) with role, phone, invited_at
+    // Update profile (auto-created by trigger) with role, phone, tenant_id, invited_at
     const { error: profileError } = await adminClient
       .from("profiles")
       .update({
         display_name,
         phone: phone || null,
         role,
+        tenant_id: effectiveTenantId,
         invited_at: new Date().toISOString(),
       })
       .eq("user_id", userId);
 
     if (profileError) {
       console.error("Profile update error:", profileError);
-    }
-
-    // Get profile id
-    const { data: profile } = await adminClient
-      .from("profiles")
-      .select("id")
-      .eq("user_id", userId)
-      .single();
-
-    // Create team_members entry
-    if (profile) {
-      const { error: tmError } = await adminClient
-        .from("team_members")
-        .insert({
-          workspace_id: workspace_id || "default",
-          user_id: userId,
-          profile_id: profile.id,
-          role,
-        });
-
-      if (tmError) {
-        console.error("Team member insert error:", tmError);
-      }
     }
 
     return new Response(
