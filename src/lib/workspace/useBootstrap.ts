@@ -21,7 +21,11 @@ async function fetchMembership(userId: string): Promise<Membership | null> {
   if (error || !profile) return null;
 
   const role = mapDbRole(profile.role);
-  const tenantId = (profile as any).tenant_id ?? "default";
+  if (!role) {
+    console.warn(`[useBootstrap] Unknown DB role "${profile.role}" for user ${userId}`);
+    return null;
+  }
+  const tenantId = profile.tenant_id ?? "default";
 
   return {
     tenant_id: tenantId,

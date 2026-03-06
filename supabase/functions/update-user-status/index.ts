@@ -96,15 +96,15 @@ Deno.serve(async (req) => {
     const callerRole = callerProfile.role;
     const targetRole = targetProfile.role;
 
-    // Permission checks
-    if (callerRole === "representant") {
+    // Permission checks — use English DB roles
+    if (callerRole === "rep") {
       return new Response(JSON.stringify({ error: "Accès refusé" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (callerRole === "gestionnaire" && targetRole !== "representant") {
+    if (callerRole === "manager" && targetRole !== "rep") {
       return new Response(
         JSON.stringify({
           error: "Un gestionnaire ne peut gérer que des représentants",
@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
     }
 
     // Cannot disable an owner
-    if (targetRole === "proprietaire") {
+    if (targetRole === "owner") {
       return new Response(
         JSON.stringify({
           error: "Impossible de désactiver un propriétaire",

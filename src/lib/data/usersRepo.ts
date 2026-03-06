@@ -42,7 +42,7 @@ export const usersRepo = {
         display_name: p.display_name,
         email: "",
         phone: p.phone,
-        role: mapDbRole(p.role),
+        role: mapDbRole(p.role) ?? "representant",
         status,
         disabled_at: p.disabled_at,
         invited_at: p.invited_at,
