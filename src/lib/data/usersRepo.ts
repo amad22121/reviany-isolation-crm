@@ -24,7 +24,7 @@ export const usersRepo = {
   async listTeamUsers(tenantId: string): Promise<TeamUser[]> {
     const { data: profiles, error } = await supabase
       .from("profiles")
-      .select("user_id, full_name, role, tenant_id, created_at")
+      .select("*")
       .filter("tenant_id", "eq", tenantId);
 
     if (error || !profiles) return [];
@@ -32,9 +32,9 @@ export const usersRepo = {
     return profiles.map((p: any) => ({
       id: p.user_id,
       user_id: p.user_id,
-      display_name: p.full_name ?? "",
+      display_name: p.full_name || p.display_name || "",
       email: "",
-      phone: null,
+      phone: p.phone ?? null,
       role: mapDbRole(p.role) ?? "representant",
       status: "actif" as const,
       disabled_at: null,

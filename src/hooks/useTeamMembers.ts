@@ -30,13 +30,13 @@ export function useTeamMembers() {
     queryFn: async (): Promise<TeamMember[]> => {
       const { data: profiles, error } = await supabase
         .from("profiles")
-        .select("user_id, full_name, role");
+        .select("*");
 
       if (error || !profiles) return [];
 
       return profiles.map((p: any) => ({
         id: String(p.user_id),
-        name: p.full_name ?? "",
+        name: p.full_name || p.display_name || "",
         role: mapDbRole(p.role) ?? "representant",
         avatar: undefined,
       }));
