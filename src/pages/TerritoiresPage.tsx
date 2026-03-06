@@ -506,7 +506,7 @@ const TerritoiresPage = () => {
                             <span className="text-xs text-muted-foreground">{getRepName(z.rep_id)}</span>
                           </SelectTrigger>
                           <SelectContent className="z-[9999] bg-popover">
-                            {SALES_REPS.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+                            {teamMembers.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       ) : (
