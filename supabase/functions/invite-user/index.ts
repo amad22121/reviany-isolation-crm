@@ -142,20 +142,33 @@ Deno.serve(async (req) => {
     }
 
     const userId = newUser.user.id;
+    console.log("Auth user created successfully:", userId);
 
-    // Update profile (auto-created by trigger) with role and tenant
+    // Upsert profile to ensure it exists with correct data
     const { error: profileError } = await adminClient
       .from("profiles")
-      .update({
-        display_name: full_name,
-        role,
-        tenant_id: effectiveTenantId,
-      })
-      .eq("user_id", userId);
+      .upsert(
+        {
+          user_id: userId,
+          display_name: full_name,
+          role,
+          tenant_id: effectiveTenantId,
+        },
+        { onConflict: "user_id" }
+      );
 
     if (profileError) {
-      console.error("Profile update error:", profileError);
+      console.error("Profile upsert FAILED:", profileError);
+      return new Response(
+        JSON.stringify({ error: "Utilisateur auth créé mais échec de création du profil: " + profileError.message }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
+
+    console.log("Profile upserted successfully for user:", userId);
 
     return new Response(
       JSON.stringify({
