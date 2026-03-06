@@ -49,14 +49,20 @@ export const usersRepo = {
     phone?: string;
     role: string;
     tenant_id: string;
-  }): Promise<{ error: string | null }> {
+  }): Promise<{ error: string | null; temp_password?: string }> {
     const { data, error } = await supabase.functions.invoke("invite-user", {
-      body: payload,
+      body: {
+        email: payload.email,
+        full_name: payload.display_name,
+        phone: payload.phone,
+        role: payload.role,
+        tenant_id: payload.tenant_id,
+      },
     });
 
     if (error) return { error: error.message };
     if (data?.error) return { error: data.error };
-    return { error: null };
+    return { error: null, temp_password: data?.temp_password };
   },
 
   async updateUserStatus(
