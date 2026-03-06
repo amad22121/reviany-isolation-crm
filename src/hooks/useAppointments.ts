@@ -18,22 +18,22 @@ function mapRow(row: any): Appointment {
 
   return {
     id: row.id,
-    fullName: client.full_name || row.full_name || "",
-    phone: client.phone || row.phone || "",
-    address: client.address || row.address || "",
-    city: client.city || row.city || "",
-    origin: (client.origin || row.origin) ?? undefined,
-    culturalOrigin: (client.cultural_origin || row.cultural_origin) ?? undefined,
-    leadSource: (client.lead_source || row.lead_source) ?? undefined,
+    fullName: client.full_name ?? "",
+    phone: client.phone ?? "",
+    address: client.address ?? "",
+    city: client.city ?? "",
+    origin: client.origin ?? undefined,
+    culturalOrigin: client.cultural_origin ?? undefined,
+    leadSource: client.lead_source ?? undefined,
     date: scheduledAt
       ? scheduledAt.toISOString().split("T")[0]
-      : row.date || "",
+      : "",
     time: scheduledAt
       ? `${String(scheduledAt.getHours()).padStart(2, "0")}:${String(scheduledAt.getMinutes()).padStart(2, "0")}`
-      : row.time || "",
+      : "",
     repId: row.rep_id,
-    preQual1: row.pre_qual_1 ?? buildPreQualFromColumns(row),
-    preQual2: row.pre_qual_2 ?? "",
+    preQual1: buildPreQualFromColumns(row),
+    preQual2: "",
     notes: row.notes ?? "",
     status: row.status as AppointmentStatus,
     source: row.source ?? undefined,
@@ -151,7 +151,7 @@ export function useAddAppointment() {
           ? `${payload.date}T${payload.time}:00`
           : null;
 
-      // 3. Insert appointment
+      // 3. Insert appointment (normalized columns + required legacy NOT NULL columns)
       const { data, error } = await supabase
         .from("appointments")
         .insert({
@@ -168,19 +168,10 @@ export function useAddAppointment() {
           had_inspection_report: payload.hadInspectionReport || null,
           inspection_by: payload.inspectionBy || null,
           decision_timeline: payload.decisionTimeline || null,
-          source: payload.source || null,
-          // Keep legacy columns populated for backward compat
+          // Required NOT NULL legacy columns (DB defaults won't suffice for date)
           full_name: payload.fullName,
           phone: payload.phone,
-          address: payload.address,
-          city: payload.city,
           date: payload.date,
-          time: payload.time,
-          cultural_origin: payload.culturalOrigin || null,
-          lead_source: payload.leadSource || null,
-          origin: payload.origin || null,
-          sms_scheduled: false,
-          status_log: [],
         })
         .select("*, clients(*)")
         .single();
