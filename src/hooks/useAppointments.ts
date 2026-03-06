@@ -151,7 +151,7 @@ export function useAddAppointment() {
           ? `${payload.date}T${payload.time}:00`
           : null;
 
-      // 3. Insert appointment (only normalized columns)
+      // 3. Insert appointment (normalized columns + required legacy NOT NULL columns)
       const { data, error } = await supabase
         .from("appointments")
         .insert({
@@ -168,6 +168,10 @@ export function useAddAppointment() {
           had_inspection_report: payload.hadInspectionReport || null,
           inspection_by: payload.inspectionBy || null,
           decision_timeline: payload.decisionTimeline || null,
+          // Required NOT NULL legacy columns (DB defaults won't suffice for date)
+          full_name: payload.fullName,
+          phone: payload.phone,
+          date: payload.date,
         })
         .select("*, clients(*)")
         .single();
