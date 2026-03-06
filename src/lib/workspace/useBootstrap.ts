@@ -12,13 +12,15 @@ export interface Membership {
 }
 
 async function fetchMembership(userId: string): Promise<Membership | null> {
-  const { data: profile, error } = await supabase
+  // Select real DB columns; cast needed because generated types lag behind actual schema
+  const { data, error } = await supabase
     .from("profiles")
-    .select("full_name, role, user_id, tenant_id")
+    .select("user_id, role, tenant_id, display_name")
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (error || !profile) return null;
+  if (error || !data) return null;
+  const profile = data as any;
 
   const role = mapDbRole(profile.role);
   if (!role) {
