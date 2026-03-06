@@ -4,6 +4,7 @@ import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import ClientPhotosSection from "@/components/ClientPhotosSection";
 import { useCrm } from "@/store/crm-store";
 import { useAuth } from "@/store/crm-store";
+import { useUpdateAppointmentStatus, useUpdateAppointmentNotes, useDeleteAppointment as useDeleteApptMutation } from "@/hooks/useAppointments";
 import {
   Dialog,
   DialogContent,

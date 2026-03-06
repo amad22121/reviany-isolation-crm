@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
+import { useAppointments, useDeleteAppointment as useDeleteApptMutation } from "@/hooks/useAppointments";
 import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import { useNavigate } from "react-router-dom";
 import { Phone, Search, Archive, ArrowRight, Trash2 } from "lucide-react";

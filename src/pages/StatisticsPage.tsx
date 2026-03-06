@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { TrendingUp } from "lucide-react";
-import { useCrm, useAuth } from "@/store/crm-store";
+import { useAuth } from "@/store/crm-store";
 import { Appointment } from "@/data/crm-data";
+import { useAppointments } from "@/hooks/useAppointments";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { useMarketingLeadsQuery, MarketingLead } from "@/hooks/useMarketingLeads";
 import { can } from "@/lib/permissions/can";

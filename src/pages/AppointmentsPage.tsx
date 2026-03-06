@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { useCrm, useAuth } from "@/store/crm-store";
+import { useAuth } from "@/store/crm-store";
 import { Appointment, APPOINTMENT_STATUSES, AppointmentStatus } from "@/data/crm-data";
+import { useAppointments, useUpdateAppointmentStatus, useUpdateAppointmentNotes } from "@/hooks/useAppointments";
 import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import { Search, MapPin, Bell, Check, Plus, CalendarPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";

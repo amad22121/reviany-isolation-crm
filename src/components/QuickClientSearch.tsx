@@ -4,6 +4,7 @@ import { useCrm } from "@/store/crm-store";
 import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import { useNavigate } from "react-router-dom";
 import { useMarketingLeadsQuery } from "@/hooks/useMarketingLeads";
+import { useAppointments } from "@/hooks/useAppointments";
 
 interface ClientResult {
   id: string;

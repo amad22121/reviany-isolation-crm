@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
-import { useCrm, useAuth } from "@/store/crm-store";
+import { useAuth } from "@/store/crm-store";
+import { useAppointments, useAddAppointment } from "@/hooks/useAppointments";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";

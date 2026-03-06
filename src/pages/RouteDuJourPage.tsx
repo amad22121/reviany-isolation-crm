@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { useCrm, useAuth } from "@/store/crm-store";
+import { useAuth } from "@/store/crm-store";
 import { Appointment } from "@/data/crm-data";
+import { useAppointments } from "@/hooks/useAppointments";
 import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

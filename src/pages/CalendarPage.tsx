@@ -1,6 +1,7 @@
 import { useMemo, useState, useCallback } from "react";
-import { useCrm, useAuth } from "@/store/crm-store";
+import { useAuth } from "@/store/crm-store";
 import { Appointment, AppointmentStatus, APPOINTMENT_STATUSES } from "@/data/crm-data";
+import { useAppointments, useUpdateAppointmentStatus } from "@/hooks/useAppointments";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import FicheClient from "@/components/FicheClient";
 import CalendarFilters from "@/components/calendar/CalendarFilters";

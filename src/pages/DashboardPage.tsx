@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
 import { Appointment } from "@/data/crm-data";
+import { useAppointments } from "@/hooks/useAppointments";
 import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import FicheClient from "@/components/FicheClient";
 import { format } from "date-fns";
