@@ -152,14 +152,14 @@ const UserManagementPage = () => {
               onClick={() => openInviteModal("gestionnaire")}
               className="flex items-center gap-2 bg-secondary text-secondary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-secondary/80 transition-colors"
             >
-              <Users className="h-4 w-4" /> Ajouter un gestionnaire
+              <Users className="h-4 w-4" /> Créer un gestionnaire
             </button>
           )}
           <button
             onClick={() => openInviteModal("representant")}
             className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
           >
-            <UserPlus className="h-4 w-4" /> Ajouter un représentant
+            <UserPlus className="h-4 w-4" /> Créer un représentant
           </button>
         </div>
       </div>
@@ -256,7 +256,7 @@ const UserManagementPage = () => {
                             <button
                               className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
                             >
-                              <RefreshCw className="h-3 w-3" /> Renvoyer
+                              <RefreshCw className="h-3 w-3" /> Renvoyer identifiants
                             </button>
                           )}
                         </div>
@@ -281,7 +281,7 @@ const UserManagementPage = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-bold text-foreground">Inviter un utilisateur</h3>
+              <h3 className="text-lg font-bold text-foreground">Créer un utilisateur</h3>
               <button
                 onClick={() => setShowInviteModal(false)}
                 className="text-muted-foreground hover:text-foreground"
@@ -356,7 +356,7 @@ const UserManagementPage = () => {
                 {actionLoading === "invite" && (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 )}
-                Envoyer l'invitation
+                Créer l'utilisateur
               </button>
             </div>
           </div>
@@ -402,7 +402,7 @@ const CredentialsModal = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
-          <h3 className="text-lg font-bold text-foreground">Identifiants temporaires</h3>
+          <h3 className="text-lg font-bold text-foreground">Utilisateur créé avec succès</h3>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
