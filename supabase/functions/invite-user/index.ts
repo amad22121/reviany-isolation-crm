@@ -171,7 +171,7 @@ Deno.serve(async (req) => {
         {
           user_id: userId,
           full_name,
-          role,
+          role: dbRole,
           tenant_id: effectiveTenantId,
         },
         { onConflict: "user_id" }
