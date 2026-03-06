@@ -12,10 +12,10 @@ export interface Membership {
 }
 
 async function fetchMembership(userId: string): Promise<Membership | null> {
-  // Select real DB columns; cast needed because generated types lag behind actual schema
+  // Use select("*") + cast to handle schema drift (full_name vs display_name)
   const { data, error } = await supabase
     .from("profiles")
-    .select("user_id, role, tenant_id, display_name")
+    .select("*")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -34,7 +34,7 @@ async function fetchMembership(userId: string): Promise<Membership | null> {
     role,
     rep_id: role === "representant" ? userId : null,
     manager_id: role === "gestionnaire" ? userId : null,
-    display_name: (profile as any).full_name ?? "",
+    display_name: profile.full_name || profile.display_name || "",
   };
 }
 
