@@ -50,7 +50,6 @@ function getDateRange(range: DateRange, customStart?: string, customEnd?: string
 
 const StatisticsPage = () => {
   const { data: appointments = [] } = useAppointments();
-  const { hotCalls } = useCrm();
   const { role, currentRepId, currentManagerId } = useAuth();
   const { data: leads = [] } = useMarketingLeadsQuery();
   const { data: teamMembers = [] } = useTeamMembers();

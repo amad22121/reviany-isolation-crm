@@ -154,7 +154,13 @@ const AppointmentsPage = () => {
                         onChange={(e) => {
                           const newStatus = e.target.value as AppointmentStatus;
                           if (allowedStatuses.includes(newStatus)) {
-                            updateStatus(a.id, newStatus, role || "system");
+                            updateStatusMutation.mutate({
+                              id: a.id,
+                              status: newStatus,
+                              userId: role || "system",
+                              currentStatusLog: a.statusLog || [],
+                              previousStatus: a.status,
+                            });
                           }
                         }}
                         className={`px-2 py-1 rounded-full text-xs font-medium border-0 cursor-pointer ${statusColors[a.status]}`}
