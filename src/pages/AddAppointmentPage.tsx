@@ -38,13 +38,14 @@ const INITIAL_PREQUAL: PreQualState = {
 };
 
 const AddAppointmentPage = () => {
-  const { addAppointment, appointments, convertBacklogToAppointment } = useCrm();
+  const { data: allAppointments = [] } = useAppointments();
+  const addAppointmentMutation = useAddAppointment();
   const { role, currentRepId } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   const backlogId = searchParams.get("backlog");
-  const backlogItem = backlogId ? appointments.find((a) => a.id === backlogId && a.status === "Backlog") : null;
+  const backlogItem = backlogId ? allAppointments.find((a) => a.id === backlogId && a.status === "Backlog") : null;
 
   const [fullName, setFullName] = useState(backlogItem?.fullName || "");
   const [phone, setPhone] = useState(backlogItem?.phone || "");
@@ -108,7 +109,7 @@ const AddAppointmentPage = () => {
     return parts.filter(Boolean).join(" | ");
   };
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate(false)) return;
 
@@ -129,38 +130,40 @@ const AddAppointmentPage = () => {
       status: "Planifié" as const,
     };
 
-    if (backlogItem) {
-      convertBacklogToAppointment(backlogItem.id, payload);
-      toast.success("Rendez-vous créé depuis le backlog.");
-    } else {
-      addAppointment(payload);
-      toast.success("Rendez-vous créé.");
+    try {
+      await addAppointmentMutation.mutateAsync(payload);
+      toast.success(backlogItem ? "Rendez-vous créé depuis le backlog." : "Rendez-vous créé.");
+      if (role === "representant") navigate("/rep");
+      else navigate("/appointments");
+    } catch (err: any) {
+      toast.error("Erreur lors de la création: " + (err.message || "Erreur inconnue"));
     }
-    // TODO: navigate to created appointment's fiche client once we have client routing
-    if (role === "representant") navigate("/rep");
-    else navigate("/appointments");
   };
 
-  const handleBacklog = () => {
+  const handleBacklog = async () => {
     if (!validate(true)) return;
-    addAppointment({
-      fullName,
-      phone,
-      address: adresseComplete || address,
-      city,
-      origin: effectiveLeadSource || undefined,
-      culturalOrigin: culturalOrigin || undefined,
-      leadSource: effectiveLeadSource || undefined,
-      date: date || "",
-      time: time || "",
-      repId,
-      preQual1: buildPreQualString(),
-      preQual2: "",
-      notes,
-      status: "Backlog",
-    });
-    toast.success("Ajouté au backlog.");
-    navigate("/backlog");
+    try {
+      await addAppointmentMutation.mutateAsync({
+        fullName,
+        phone,
+        address: adresseComplete || address,
+        city,
+        origin: effectiveLeadSource || undefined,
+        culturalOrigin: culturalOrigin || undefined,
+        leadSource: effectiveLeadSource || undefined,
+        date: date || "",
+        time: time || "",
+        repId,
+        preQual1: buildPreQualString(),
+        preQual2: "",
+        notes,
+        status: "Backlog",
+      });
+      toast.success("Ajouté au backlog.");
+      navigate("/backlog");
+    } catch (err: any) {
+      toast.error("Erreur: " + (err.message || "Erreur inconnue"));
+    }
   };
 
   const updatePreQual = (field: keyof PreQualState, value: string) => {
