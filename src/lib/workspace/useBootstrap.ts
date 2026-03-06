@@ -12,13 +12,15 @@ export interface Membership {
 }
 
 async function fetchMembership(userId: string): Promise<Membership | null> {
-  const { data: profile, error } = await supabase
+  // Use select("*") + cast to handle schema drift (full_name vs display_name)
+  const { data, error } = await supabase
     .from("profiles")
-    .select("display_name, role, user_id, tenant_id")
+    .select("*")
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (error || !profile) return null;
+  if (error || !data) return null;
+  const profile = data as any;
 
   const role = mapDbRole(profile.role);
   if (!role) {
@@ -32,7 +34,7 @@ async function fetchMembership(userId: string): Promise<Membership | null> {
     role,
     rep_id: role === "representant" ? userId : null,
     manager_id: role === "gestionnaire" ? userId : null,
-    display_name: profile.display_name ?? "",
+    display_name: profile.full_name || profile.display_name || "",
   };
 }
 

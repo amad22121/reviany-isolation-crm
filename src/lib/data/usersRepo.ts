@@ -22,7 +22,6 @@ import { mapDbRole } from "@/lib/roles/mapDbRole";
 
 export const usersRepo = {
   async listTeamUsers(tenantId: string): Promise<TeamUser[]> {
-    // tenant_id is a new column not yet in generated types, use filter
     const { data: profiles, error } = await supabase
       .from("profiles")
       .select("*")
@@ -30,25 +29,18 @@ export const usersRepo = {
 
     if (error || !profiles) return [];
 
-    return profiles.map((p) => {
-      const hasConfirmed = !p.invited_at || p.updated_at > p.invited_at;
-      let status: TeamUser["status"] = "actif";
-      if (p.disabled_at) status = "désactivé";
-      else if (p.invited_at && !hasConfirmed) status = "invité";
-
-      return {
-        id: p.id,
-        user_id: p.user_id,
-        display_name: p.display_name,
-        email: "",
-        phone: p.phone,
-        role: mapDbRole(p.role) ?? "representant",
-        status,
-        disabled_at: p.disabled_at,
-        invited_at: p.invited_at,
-        created_at: p.created_at,
-      };
-    });
+    return profiles.map((p: any) => ({
+      id: p.user_id,
+      user_id: p.user_id,
+      display_name: p.full_name || p.display_name || "",
+      email: "",
+      phone: p.phone ?? null,
+      role: mapDbRole(p.role) ?? "representant",
+      status: "actif" as const,
+      disabled_at: null,
+      invited_at: null,
+      created_at: p.created_at,
+    }));
   },
 
   async inviteUser(payload: {
