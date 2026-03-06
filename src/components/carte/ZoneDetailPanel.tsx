@@ -50,8 +50,8 @@ const ZoneDetailPanel = ({
   onDelete,
 }: ZoneDetailPanelProps) => {
   const { data: teamMembers = [] } = useTeamMembers();
-}: ZoneDetailPanelProps) => {
   const [editingNotes, setEditingNotes] = useState(false);
+  const [notesInput, setNotesInput] = useState(zone.notes || "");
   const [notesInput, setNotesInput] = useState(zone.notes || "");
   const canEdit = canManage || (isRep && zone.rep_id === currentRepId);
 
