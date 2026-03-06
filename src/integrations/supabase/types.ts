@@ -18,21 +18,30 @@ export type Database = {
         Row: {
           address: string
           city: string
+          client_id: string | null
+          close_amount: number | null
           closed_at: string | null
           closed_by: string | null
           closed_value: number | null
           created_at: string
           cultural_origin: string | null
           date: string
+          decision_timeline: string | null
           full_name: string
+          had_inspection_report: string | null
           id: string
+          industry: string | null
+          inspection_by: string | null
           lead_source: string | null
           notes: string
           origin: string | null
           phone: string
           pre_qual_1: string
           pre_qual_2: string
+          property_duration_years: number | null
+          recent_or_future_work: string | null
           rep_id: string
+          scheduled_at: string | null
           sms_scheduled: boolean
           source: string | null
           status: string
@@ -41,25 +50,35 @@ export type Database = {
           time: string
           updated_at: string
           was_recovered: boolean | null
+          work_already_done: string | null
         }
         Insert: {
           address?: string
           city?: string
+          client_id?: string | null
+          close_amount?: number | null
           closed_at?: string | null
           closed_by?: string | null
           closed_value?: number | null
           created_at?: string
           cultural_origin?: string | null
           date: string
+          decision_timeline?: string | null
           full_name: string
+          had_inspection_report?: string | null
           id?: string
+          industry?: string | null
+          inspection_by?: string | null
           lead_source?: string | null
           notes?: string
           origin?: string | null
           phone: string
           pre_qual_1?: string
           pre_qual_2?: string
+          property_duration_years?: number | null
+          recent_or_future_work?: string | null
           rep_id?: string
+          scheduled_at?: string | null
           sms_scheduled?: boolean
           source?: string | null
           status?: string
@@ -68,25 +87,35 @@ export type Database = {
           time?: string
           updated_at?: string
           was_recovered?: boolean | null
+          work_already_done?: string | null
         }
         Update: {
           address?: string
           city?: string
+          client_id?: string | null
+          close_amount?: number | null
           closed_at?: string | null
           closed_by?: string | null
           closed_value?: number | null
           created_at?: string
           cultural_origin?: string | null
           date?: string
+          decision_timeline?: string | null
           full_name?: string
+          had_inspection_report?: string | null
           id?: string
+          industry?: string | null
+          inspection_by?: string | null
           lead_source?: string | null
           notes?: string
           origin?: string | null
           phone?: string
           pre_qual_1?: string
           pre_qual_2?: string
+          property_duration_years?: number | null
+          recent_or_future_work?: string | null
           rep_id?: string
+          scheduled_at?: string | null
           sms_scheduled?: boolean
           source?: string | null
           status?: string
@@ -95,8 +124,17 @@ export type Database = {
           time?: string
           updated_at?: string
           was_recovered?: boolean | null
+          work_already_done?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "appointments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       client_photos: {
         Row: {
@@ -125,6 +163,48 @@ export type Database = {
           file_type?: string
           id?: string
           uploaded_by?: string
+        }
+        Relationships: []
+      }
+      clients: {
+        Row: {
+          address: string
+          city: string
+          created_at: string
+          cultural_origin: string | null
+          full_name: string
+          id: string
+          lead_source: string | null
+          origin: string | null
+          phone: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string
+          city?: string
+          created_at?: string
+          cultural_origin?: string | null
+          full_name: string
+          id?: string
+          lead_source?: string | null
+          origin?: string | null
+          phone: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          city?: string
+          created_at?: string
+          cultural_origin?: string | null
+          full_name?: string
+          id?: string
+          lead_source?: string | null
+          origin?: string | null
+          phone?: string
+          tenant_id?: string
+          updated_at?: string
         }
         Relationships: []
       }
