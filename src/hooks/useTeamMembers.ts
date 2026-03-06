@@ -6,22 +6,13 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { mapDbRole } from "@/lib/roles/mapDbRole";
 
 export interface TeamMember {
   id: string;       // user_id — matches repId fields in appointments, hot_calls, etc.
   name: string;
   role: string;
   avatar?: string;
-}
-
-/** Map DB role to French AppRole label */
-function mapDbRole(dbRole: string): string {
-  switch (dbRole) {
-    case "owner": return "proprietaire";
-    case "manager": return "gestionnaire";
-    case "rep": return "representant";
-    default: return dbRole; // already French or unknown
-  }
 }
 
 export function useTeamMembers() {
