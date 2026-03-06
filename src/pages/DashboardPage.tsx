@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
-import { SALES_REPS, Appointment } from "@/data/crm-data";
+import { Appointment } from "@/data/crm-data";
+import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import FicheClient from "@/components/FicheClient";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -61,12 +62,11 @@ const DashboardPage = () => {
     return today;
   }, [dayPreset, customDate, today, yesterday, beforeYesterday]);
 
+  const { data: teamMembers = [] } = useTeamMembers();
+
   const teamReps = useMemo(() => {
-    if (role === "gestionnaire" && currentManagerId) {
-      return SALES_REPS.filter((r) => r.managerId === currentManagerId);
-    }
-    return SALES_REPS;
-  }, [role, currentManagerId]);
+    return teamMembers.map(m => ({ id: m.id, name: m.name, avatar: (m.name || "??").slice(0, 2).toUpperCase(), managerId: undefined }));
+  }, [teamMembers]);
 
   const teamRepIds = useMemo(() => new Set(teamReps.map((r) => r.id)), [teamReps]);
 
@@ -174,7 +174,7 @@ const DashboardPage = () => {
     [teamAppts]
   );
 
-  const getRepName = (repId: string) => SALES_REPS.find((r) => r.id === repId)?.name || repId;
+  const getRepName = (repId: string) => getRepNameFromList(teamMembers, repId);
 
   const handleSaveDailyTarget = () => {
     const val = parseInt(dailyTargetInput);

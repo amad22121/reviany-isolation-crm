@@ -7,8 +7,6 @@
  * updated to import from @/domain and @/lib/data.
  */
 
-import { USE_MOCK } from "@/lib/data/config";
-import { MOCK_SALES_REPS, MOCK_MANAGERS, MOCK_APPOINTMENTS, MOCK_HOT_CALLS } from "@/lib/data/mock-data";
 
 // ─── Re-export types (kept for 31+ consumer files) ───────────────────────────
 
@@ -180,14 +178,13 @@ export interface HotCall {
   callHistory: CallLogEntry[];
 }
 
-// ─── Data constants — sourced from centralized mock-data ─────────────────────
+// ─── Data constants — empty, Supabase-ready ─────────────────────────────────
 
-export const MANAGERS = USE_MOCK ? MOCK_MANAGERS : [];
-export const SALES_REPS: SalesRep[] = USE_MOCK ? MOCK_SALES_REPS : [];
-export const INITIAL_APPOINTMENTS: Appointment[] = USE_MOCK ? MOCK_APPOINTMENTS : [];
-
-/**
- * @deprecated Use repos from @/lib/data instead.
- * These constants are kept for backward compatibility only.
- */
-export const INITIAL_HOT_CALLS: HotCall[] = USE_MOCK ? MOCK_HOT_CALLS : [];
+/** @deprecated Use useTeamMembers hook instead */
+export const MANAGERS: { id: string; name: string }[] = [];
+/** @deprecated Use useTeamMembers hook instead */
+export const SALES_REPS: SalesRep[] = [];
+/** @deprecated Use repos from @/lib/data instead */
+export const INITIAL_APPOINTMENTS: Appointment[] = [];
+/** @deprecated Use repos from @/lib/data instead */
+export const INITIAL_HOT_CALLS: HotCall[] = [];

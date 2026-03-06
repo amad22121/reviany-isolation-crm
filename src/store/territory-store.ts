@@ -1,6 +1,4 @@
 import { create } from "zustand";
-import { USE_MOCK } from "@/lib/data/config";
-import { MOCK_TERRITORIES, MOCK_MAP_ZONES } from "@/lib/data/mock-data";
 
 export type TerritoryStatus = "À faire" | "Planifié aujourd'hui" | "En cours" | "Fait";
 
@@ -53,9 +51,9 @@ interface TerritoryState {
 }
 
 
-const INITIAL_TERRITORIES: Territory[] = USE_MOCK ? MOCK_TERRITORIES : [];
+const INITIAL_TERRITORIES: Territory[] = [];
 
-const INITIAL_MAP_ZONES: MapZone[] = USE_MOCK ? MOCK_MAP_ZONES : [];
+const INITIAL_MAP_ZONES: MapZone[] = [];
 
 const createTerritoryLog = (prev: string, next: string, userId: string): TerritoryLog => {
   const now = new Date();
