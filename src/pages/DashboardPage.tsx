@@ -65,7 +65,7 @@ const DashboardPage = () => {
   const { data: teamMembers = [] } = useTeamMembers();
 
   const teamReps = useMemo(() => {
-    return teamMembers.map(m => ({ id: m.user_id, name: m.display_name, avatar: (m.display_name || "??").slice(0, 2).toUpperCase(), managerId: undefined }));
+    return teamMembers.map(m => ({ id: m.id, name: m.name, avatar: (m.name || "??").slice(0, 2).toUpperCase(), managerId: undefined }));
   }, [teamMembers]);
 
   const teamRepIds = useMemo(() => new Set(teamReps.map((r) => r.id)), [teamReps]);
