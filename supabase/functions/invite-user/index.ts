@@ -170,7 +170,9 @@ Deno.serve(async (req) => {
       .upsert(
         {
           user_id: userId,
-          full_name,
+          display_name: full_name,
+          email: email || "",
+          phone: phone || null,
           role: dbRole,
           tenant_id: effectiveTenantId,
         },
