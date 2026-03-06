@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { AppRole } from "./WorkspaceProvider";
+import { mapDbRole } from "@/lib/roles/mapDbRole";
 
 export interface Membership {
   tenant_id: string;
@@ -8,22 +9,6 @@ export interface Membership {
   rep_id: string | null;
   manager_id: string | null;
   display_name: string;
-}
-
-/** Map DB role strings (owner|manager|rep or legacy French) to AppRole */
-function mapDbRole(dbRole: string | null | undefined): AppRole {
-  switch (dbRole) {
-    case "owner":
-    case "proprietaire":
-      return "proprietaire";
-    case "manager":
-    case "gestionnaire":
-      return "gestionnaire";
-    case "rep":
-    case "representant":
-    default:
-      return "representant";
-  }
 }
 
 async function fetchMembership(userId: string): Promise<Membership | null> {
@@ -36,7 +21,11 @@ async function fetchMembership(userId: string): Promise<Membership | null> {
   if (error || !profile) return null;
 
   const role = mapDbRole(profile.role);
-  const tenantId = (profile as any).tenant_id ?? "default";
+  if (!role) {
+    console.warn(`[useBootstrap] Unknown DB role "${profile.role}" for user ${userId}`);
+    return null;
+  }
+  const tenantId = profile.tenant_id ?? "default";
 
   return {
     tenant_id: tenantId,

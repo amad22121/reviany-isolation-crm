@@ -17,15 +17,8 @@ export interface TeamUser {
   created_at: string;
 }
 
-/** Map DB role (owner|manager|rep) to French AppRole */
-function mapDbRole(dbRole: string): TeamUser["role"] {
-  switch (dbRole) {
-    case "owner": return "proprietaire";
-    case "manager": return "gestionnaire";
-    case "rep": return "representant";
-    default: return dbRole as TeamUser["role"];
-  }
-}
+import { mapDbRole } from "@/lib/roles/mapDbRole";
+
 
 export const usersRepo = {
   async listTeamUsers(tenantId: string): Promise<TeamUser[]> {
@@ -49,7 +42,7 @@ export const usersRepo = {
         display_name: p.display_name,
         email: "",
         phone: p.phone,
-        role: mapDbRole(p.role),
+        role: mapDbRole(p.role) ?? "representant",
         status,
         disabled_at: p.disabled_at,
         invited_at: p.invited_at,

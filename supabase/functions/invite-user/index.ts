@@ -67,11 +67,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Permission checks — use both English and French role names
-    const isRep = callerRole === "representant" || callerRole === "rep";
-    const isManager = callerRole === "gestionnaire" || callerRole === "manager";
-    const targetIsRep = role === "representant" || role === "rep";
-    const targetIsOwner = role === "proprietaire" || role === "owner";
+    // Permission checks — DB stores English roles (owner|manager|rep)
+    const isRep = callerRole === "rep";
+    const isManager = callerRole === "manager";
+    const targetIsRep = role === "rep";
+    const targetIsOwner = role === "owner";
 
     if (isRep) {
       return new Response(JSON.stringify({ error: "Accès refusé" }), {
