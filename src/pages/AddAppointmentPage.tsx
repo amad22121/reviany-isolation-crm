@@ -80,7 +80,6 @@ const AddAppointmentPage = () => {
     if (leadSource === "Autre" && !leadSourceOther.trim()) e.leadSourceOther = "Requis";
     if (!isBacklog && !date) e.date = "Requis";
     if (!isBacklog && !time) e.time = "Requis";
-    // Prequalification
     if (!preQual.prior_work_done) e.prior_work_done = "Requis";
     if (!preQual.years_at_address) e.years_at_address = "Requis";
     else {
@@ -96,42 +95,36 @@ const AddAppointmentPage = () => {
     return Object.keys(e).length === 0;
   };
 
-  const buildPreQualString = () => {
-    const parts = [
-      `Travail réalisé: ${preQual.prior_work_done}`,
-      preQual.job_sector ? `Secteur: ${preQual.job_sector}` : null,
-      `Années propriétaire: ${preQual.years_at_address}`,
-      preQual.recent_or_future_work ? `Travaux: ${preQual.recent_or_future_work}` : null,
-      `Inspection: ${preQual.inspection_report}`,
-      preQual.inspection_report === "Oui" ? `Inspecteur: ${preQual.inspection_by}` : null,
-      preQual.inspection_report === "Oui" ? `Délai décision: ${preQual.decision_timeline}` : null,
-    ];
-    return parts.filter(Boolean).join(" | ");
-  };
+  const buildPayload = (status: string) => ({
+    fullName,
+    phone,
+    address: adresseComplete || address,
+    city,
+    origin: effectiveLeadSource || undefined,
+    culturalOrigin: culturalOrigin || undefined,
+    leadSource: effectiveLeadSource || undefined,
+    date,
+    time,
+    repId,
+    notes,
+    status,
+    source: effectiveLeadSource || undefined,
+    // Individual pre-qual fields for the new schema
+    workAlreadyDone: preQual.prior_work_done || undefined,
+    industry: preQual.job_sector || undefined,
+    propertyDurationYears: preQual.years_at_address ? Number(preQual.years_at_address) : null,
+    recentOrFutureWork: preQual.recent_or_future_work || undefined,
+    hadInspectionReport: preQual.inspection_report || undefined,
+    inspectionBy: preQual.inspection_by || undefined,
+    decisionTimeline: preQual.decision_timeline || undefined,
+  });
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate(false)) return;
 
-    const payload = {
-      fullName,
-      phone,
-      address: adresseComplete || address,
-      city,
-      origin: effectiveLeadSource || undefined,
-      culturalOrigin: culturalOrigin || undefined,
-      leadSource: effectiveLeadSource || undefined,
-      date,
-      time,
-      repId,
-      preQual1: buildPreQualString(),
-      preQual2: "",
-      notes,
-      status: "Planifié" as const,
-    };
-
     try {
-      await addAppointmentMutation.mutateAsync(payload);
+      await addAppointmentMutation.mutateAsync(buildPayload("Planifié"));
       toast.success(backlogItem ? "Rendez-vous créé depuis le backlog." : "Rendez-vous créé.");
       if (role === "representant") navigate("/rep");
       else navigate("/appointments");
@@ -143,22 +136,7 @@ const AddAppointmentPage = () => {
   const handleBacklog = async () => {
     if (!validate(true)) return;
     try {
-      await addAppointmentMutation.mutateAsync({
-        fullName,
-        phone,
-        address: adresseComplete || address,
-        city,
-        origin: effectiveLeadSource || undefined,
-        culturalOrigin: culturalOrigin || undefined,
-        leadSource: effectiveLeadSource || undefined,
-        date: date || "",
-        time: time || "",
-        repId,
-        preQual1: buildPreQualString(),
-        preQual2: "",
-        notes,
-        status: "Backlog",
-      });
+      await addAppointmentMutation.mutateAsync(buildPayload("Backlog"));
       toast.success("Ajouté au backlog.");
       navigate("/backlog");
     } catch (err: any) {
@@ -195,7 +173,6 @@ const AddAppointmentPage = () => {
         <div className="glass-card p-4 space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Informations client</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* Nom */}
             <div className="space-y-1">
               <Label className="text-xs">Nom complet *</Label>
               <Input
@@ -206,7 +183,6 @@ const AddAppointmentPage = () => {
               />
               {fieldError("fullName")}
             </div>
-            {/* Téléphone */}
             <div className="space-y-1">
               <Label className="text-xs">Téléphone *</Label>
               <Input
@@ -218,7 +194,6 @@ const AddAppointmentPage = () => {
               />
               {fieldError("phone")}
             </div>
-            {/* Adresse */}
             <div className="space-y-1">
               <Label className="text-xs">Adresse civique *</Label>
               <Input
@@ -229,7 +204,6 @@ const AddAppointmentPage = () => {
               />
               {fieldError("address")}
             </div>
-            {/* Ville */}
             <div className="space-y-1">
               <Label className="text-xs">Ville *</Label>
               <Input
@@ -258,7 +232,6 @@ const AddAppointmentPage = () => {
             </div>
           </div>
 
-          {/* Adresse complète calculée */}
           {adresseComplete && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/50 rounded-md px-3 py-1.5">
               <MapPin className="h-3 w-3 shrink-0" />
@@ -274,7 +247,6 @@ const AddAppointmentPage = () => {
             </div>
           )}
 
-          {/* Origine culturelle + Source du lead */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Origine / profil culturel</Label>
@@ -348,7 +320,6 @@ const AddAppointmentPage = () => {
         {/* ── Section 3: Préqualification ── */}
         <div className="glass-card p-4 space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Préqualification</h2>
-          {/* BLOCK 1 – Primary triggers */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Est-ce que ce travail a déjà été réalisé ? *</Label>
@@ -376,7 +347,6 @@ const AddAppointmentPage = () => {
             </div>
           </div>
 
-          {/* BLOCK 2 – Conditional inspection details */}
           {preQual.inspection_report === "Oui" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-1">
@@ -404,7 +374,6 @@ const AddAppointmentPage = () => {
             </div>
           )}
 
-          {/* BLOCK 3 – Owner profile */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Durée de propriété à cette adresse (années) *</Label>
@@ -430,7 +399,6 @@ const AddAppointmentPage = () => {
             </div>
           </div>
 
-          {/* BLOCK 4 – Context */}
           <div className="space-y-1">
             <Label className="text-xs">Ont-ils effectué des travaux dans les dernières années ou prévoient-ils des investissements futurs ?</Label>
             <Textarea
@@ -451,7 +419,6 @@ const AddAppointmentPage = () => {
             placeholder="Note rapide..."
             className="min-h-[60px]"
           />
-          {/* TODO: Historique des notes — sera alimenté depuis Supabase */}
         </div>
 
         {/* ── Actions ── */}

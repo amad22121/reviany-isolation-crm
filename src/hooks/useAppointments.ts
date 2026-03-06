@@ -1,6 +1,7 @@
 /**
- * useAppointments — React Query hook for appointments CRUD via Supabase.
- * Returns data in legacy camelCase Appointment shape for backward compatibility.
+ * useAppointments — React Query hooks for appointments CRUD via Supabase.
+ * Appointments reference clients via client_id. Data is joined and mapped
+ * to the legacy camelCase Appointment shape for backward compatibility.
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -10,28 +11,35 @@ import type { Appointment, AppointmentStatus } from "@/data/crm-data";
 
 const QUERY_KEY = "appointments";
 
-/** Map a Supabase row to the legacy Appointment shape */
+/** Map a Supabase row (with joined client) to the legacy Appointment shape */
 function mapRow(row: any): Appointment {
+  const client = row.clients ?? {};
+  const scheduledAt = row.scheduled_at ? new Date(row.scheduled_at) : null;
+
   return {
     id: row.id,
-    fullName: row.full_name,
-    phone: row.phone,
-    address: row.address,
-    city: row.city,
-    origin: row.origin ?? undefined,
-    culturalOrigin: row.cultural_origin ?? undefined,
-    leadSource: row.lead_source ?? undefined,
-    date: row.date,
-    time: row.time,
+    fullName: client.full_name || row.full_name || "",
+    phone: client.phone || row.phone || "",
+    address: client.address || row.address || "",
+    city: client.city || row.city || "",
+    origin: (client.origin || row.origin) ?? undefined,
+    culturalOrigin: (client.cultural_origin || row.cultural_origin) ?? undefined,
+    leadSource: (client.lead_source || row.lead_source) ?? undefined,
+    date: scheduledAt
+      ? scheduledAt.toISOString().split("T")[0]
+      : row.date || "",
+    time: scheduledAt
+      ? `${String(scheduledAt.getHours()).padStart(2, "0")}:${String(scheduledAt.getMinutes()).padStart(2, "0")}`
+      : row.time || "",
     repId: row.rep_id,
-    preQual1: row.pre_qual_1 ?? "",
+    preQual1: row.pre_qual_1 ?? buildPreQualFromColumns(row),
     preQual2: row.pre_qual_2 ?? "",
     notes: row.notes ?? "",
     status: row.status as AppointmentStatus,
     source: row.source ?? undefined,
     smsScheduled: row.sms_scheduled ?? false,
     createdAt: row.created_at,
-    closedValue: row.closed_value ?? undefined,
+    closedValue: row.close_amount ?? row.closed_value ?? undefined,
     closedAt: row.closed_at ?? undefined,
     closedBy: row.closed_by ?? undefined,
     wasRecovered: row.was_recovered ?? undefined,
@@ -48,7 +56,20 @@ function mapRow(row: any): Appointment {
   };
 }
 
-/** Fetch all appointments for the current tenant */
+/** Build a preQual1-style string from individual columns (for new appointments) */
+function buildPreQualFromColumns(row: any): string {
+  const parts: string[] = [];
+  if (row.work_already_done) parts.push(`Travail réalisé: ${row.work_already_done}`);
+  if (row.industry) parts.push(`Secteur: ${row.industry}`);
+  if (row.property_duration_years != null) parts.push(`Années propriétaire: ${row.property_duration_years}`);
+  if (row.recent_or_future_work) parts.push(`Travaux: ${row.recent_or_future_work}`);
+  if (row.had_inspection_report) parts.push(`Inspection: ${row.had_inspection_report}`);
+  if (row.inspection_by) parts.push(`Inspecteur: ${row.inspection_by}`);
+  if (row.decision_timeline) parts.push(`Délai décision: ${row.decision_timeline}`);
+  return parts.join(" | ");
+}
+
+/** Fetch all appointments for the current tenant (joined with clients) */
 export function useAppointments() {
   const { workspaceId } = useWorkspaceContext();
 
@@ -58,9 +79,9 @@ export function useAppointments() {
       if (!workspaceId) return [];
       const { data, error } = await supabase
         .from("appointments")
-        .select("*")
+        .select("*, clients(*)")
         .eq("tenant_id", workspaceId)
-        .order("date", { ascending: false });
+        .order("scheduled_at", { ascending: false });
 
       if (error) {
         console.error("Error fetching appointments:", error);
@@ -73,7 +94,7 @@ export function useAppointments() {
   });
 }
 
-/** Insert a new appointment */
+/** Insert a new appointment (upserts client first, then creates appointment) */
 export function useAddAppointment() {
   const queryClient = useQueryClient();
   const { workspaceId } = useWorkspaceContext();
@@ -90,35 +111,78 @@ export function useAddAppointment() {
       date: string;
       time: string;
       repId: string;
-      preQual1: string;
-      preQual2: string;
       notes: string;
       status: string;
       source?: string;
+      workAlreadyDone?: string;
+      industry?: string;
+      propertyDurationYears?: number | null;
+      recentOrFutureWork?: string;
+      hadInspectionReport?: string;
+      inspectionBy?: string;
+      decisionTimeline?: string;
     }) => {
+      const tenantId = workspaceId || "default";
+
+      // 1. Upsert client
+      const { data: client, error: clientError } = await supabase
+        .from("clients")
+        .upsert(
+          {
+            tenant_id: tenantId,
+            full_name: payload.fullName,
+            phone: payload.phone,
+            address: payload.address,
+            city: payload.city,
+            cultural_origin: payload.culturalOrigin || null,
+            lead_source: payload.leadSource || null,
+            origin: payload.origin || null,
+          },
+          { onConflict: "tenant_id,phone" }
+        )
+        .select()
+        .single();
+
+      if (clientError) throw clientError;
+
+      // 2. Build scheduled_at from date + time
+      const scheduledAt =
+        payload.date && payload.time
+          ? `${payload.date}T${payload.time}:00`
+          : null;
+
+      // 3. Insert appointment
       const { data, error } = await supabase
         .from("appointments")
         .insert({
-          tenant_id: workspaceId || "default",
+          tenant_id: tenantId,
+          client_id: client.id,
+          scheduled_at: scheduledAt,
+          rep_id: payload.repId,
+          status: payload.status,
+          notes: payload.notes,
+          work_already_done: payload.workAlreadyDone || null,
+          industry: payload.industry || null,
+          property_duration_years: payload.propertyDurationYears ?? null,
+          recent_or_future_work: payload.recentOrFutureWork || null,
+          had_inspection_report: payload.hadInspectionReport || null,
+          inspection_by: payload.inspectionBy || null,
+          decision_timeline: payload.decisionTimeline || null,
+          source: payload.source || null,
+          // Keep legacy columns populated for backward compat
           full_name: payload.fullName,
           phone: payload.phone,
           address: payload.address,
           city: payload.city,
-          origin: payload.origin || null,
-          cultural_origin: payload.culturalOrigin || null,
-          lead_source: payload.leadSource || null,
           date: payload.date,
           time: payload.time,
-          rep_id: payload.repId,
-          pre_qual_1: payload.preQual1,
-          pre_qual_2: payload.preQual2,
-          notes: payload.notes,
-          status: payload.status,
-          source: payload.source || null,
+          cultural_origin: payload.culturalOrigin || null,
+          lead_source: payload.leadSource || null,
+          origin: payload.origin || null,
           sms_scheduled: false,
           status_log: [],
         })
-        .select()
+        .select("*, clients(*)")
         .single();
 
       if (error) throw error;
@@ -154,14 +218,12 @@ export function useUpdateAppointmentStatus() {
 
       const updatedLog = [...(params.currentStatusLog || []), newLog];
 
-      const updatePayload: Record<string, any> = {
-        status: params.status,
-        status_log: updatedLog,
-      };
-
       const { error } = await supabase
         .from("appointments")
-        .update(updatePayload)
+        .update({
+          status: params.status,
+          status_log: updatedLog,
+        })
         .eq("id", params.id);
 
       if (error) throw error;
@@ -217,6 +279,7 @@ export function useCloseAppointment() {
         .from("appointments")
         .update({
           status: "Closé",
+          close_amount: params.closedValue,
           closed_value: params.closedValue,
           closed_at: now.toISOString(),
           closed_by: params.userId,

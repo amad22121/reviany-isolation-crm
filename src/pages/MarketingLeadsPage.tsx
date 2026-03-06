@@ -201,8 +201,6 @@ const MarketingLeadsPage = () => {
         date: bookForm.date,
         time: bookForm.time,
         repId: bookForm.repId,
-        preQual1: "",
-        preQual2: "",
         notes: bookingLead.notes || "",
         status: "Planifié",
         source: "Referral",
