@@ -8,7 +8,8 @@ import { useNavigate } from "react-router-dom";
 import { CalendarCheck, Target, Plus, MapPin, Bell, Users, Trophy } from "lucide-react";
 
 const RepViewPage = () => {
-  const { appointments, dailyTarget, repGoals } = useCrm();
+  const { dailyTarget, repGoals } = useCrm();
+  const { data: appointments = [] } = useAppointments();
   const { currentRepId } = useAuth();
   const navigate = useNavigate();
   const today = new Date().toISOString().split("T")[0];

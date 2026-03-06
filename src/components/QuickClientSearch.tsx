@@ -24,7 +24,8 @@ const QuickClientSearch = () => {
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const { appointments, hotCalls } = useCrm();
+  const { hotCalls } = useCrm();
+  const { data: appointments = [] } = useAppointments();
   const { data: marketingLeads = [] } = useMarketingLeadsQuery();
 
   useEffect(() => {

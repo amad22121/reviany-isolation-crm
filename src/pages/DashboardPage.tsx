@@ -31,7 +31,8 @@ type DayPreset = "today" | "yesterday" | "before" | "custom";
 const toDateStr = (d: Date) => d.toISOString().split("T")[0];
 
 const DashboardPage = () => {
-  const { appointments, dailyTarget, setDailyTarget, repGoals, setRepGoal } = useCrm();
+  const { dailyTarget, setDailyTarget, repGoals, setRepGoal } = useCrm();
+  const { data: appointments = [] } = useAppointments();
   const { role, currentManagerId } = useAuth();
 
   const [period, setPeriod] = useState<Period>("7d");

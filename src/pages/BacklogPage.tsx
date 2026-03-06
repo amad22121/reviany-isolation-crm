@@ -6,7 +6,8 @@ import { useNavigate } from "react-router-dom";
 import { Phone, Search, Archive, ArrowRight, Trash2 } from "lucide-react";
 
 const BacklogPage = () => {
-  const { appointments, deleteAppointment } = useCrm();
+  const { data: appointments = [] } = useAppointments();
+  const deleteAppointmentMutation = useDeleteApptMutation();
   const { role, currentRepId } = useAuth();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
