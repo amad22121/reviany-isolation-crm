@@ -572,6 +572,8 @@ const LeadDetailPanel = ({
   onIncrement,
   onDelete,
 }: LeadDetailPanelProps) => {
+  const { data: teamMembers = [] } = useTeamMembers();
+  const getRepName = (repId: string | null) => getRepNameFromList(teamMembers, repId);
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesInput, setNotesInput] = useState(lead.notes || "");
 
