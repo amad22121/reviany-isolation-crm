@@ -1,6 +1,7 @@
 import { useMemo, useState, useCallback } from "react";
-import { useCrm, useAuth } from "@/store/crm-store";
+import { useAuth } from "@/store/crm-store";
 import { Appointment, AppointmentStatus, APPOINTMENT_STATUSES } from "@/data/crm-data";
+import { useAppointments, useUpdateAppointmentStatus } from "@/hooks/useAppointments";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import FicheClient from "@/components/FicheClient";
 import CalendarFilters from "@/components/calendar/CalendarFilters";
@@ -27,7 +28,8 @@ function getMonday(d: Date) {
 function addDays(d: Date, n: number) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
 
 const CalendarPage = () => {
-  const { appointments, updateStatus } = useCrm();
+  const { data: allAppointments = [] } = useAppointments();
+  const updateStatusMutation = useUpdateAppointmentStatus();
   const { role, currentRepId, currentManagerId } = useAuth();
   const isRep = role === "representant";
 
@@ -50,7 +52,7 @@ const CalendarPage = () => {
   // All visible appointments (role-filtered, no status/rep filter yet for stats)
   // Also apply "À risque" auto-detection: Non confirmé + within 12h → À risque (UI mock)
   const roleFilteredAppointments = useMemo(() => {
-    let appts = appointments.filter((a) => a.status !== "Backlog");
+    let appts = allAppointments.filter((a) => a.status !== "Backlog");
     if (isRep) appts = appts.filter((a) => a.repId === currentRepId);
     else if (role === "gestionnaire" && teamMembers.length > 0) {
       const repIds = new Set(teamMembers.filter((r) => r.role === "representant").map((r) => r.id));
@@ -68,7 +70,7 @@ const CalendarPage = () => {
       }
       return a;
     });
-  }, [appointments, role, currentRepId, currentManagerId, isRep]);
+  }, [allAppointments, role, currentRepId, currentManagerId, isRep]);
 
   // Fully filtered appointments (rep + status)
   const filteredAppointments = useMemo(() => {
@@ -173,8 +175,15 @@ const CalendarPage = () => {
   }, [canGenerateRoute, confirmedDailyAppts]);
 
   const handleUpdateStatus = useCallback((id: string, status: AppointmentStatus) => {
-    updateStatus(id, status, role || "system");
-  }, [updateStatus, role]);
+    const appt = allAppointments.find((a) => a.id === id);
+    updateStatusMutation.mutate({
+      id,
+      status,
+      userId: role || "system",
+      currentStatusLog: appt?.statusLog || [],
+      previousStatus: appt?.status || "",
+    });
+  }, [updateStatusMutation, role, allAppointments]);
 
   const dateLabel = today.toLocaleDateString("fr-CA", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 

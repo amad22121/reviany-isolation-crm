@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
+import { useAppointments } from "@/hooks/useAppointments";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { Trophy, Medal } from "lucide-react";
 
 const LeaderboardPage = () => {
-  const { appointments, dailyTarget } = useCrm();
+  const { dailyTarget } = useCrm();
+  const { data: appointments = [] } = useAppointments();
   const { role, currentManagerId } = useAuth();
   const [tab, setTab] = useState<"daily" | "weekly" | "monthly" | "alltime">("daily");
 

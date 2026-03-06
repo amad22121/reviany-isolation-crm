@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
+import { useAppointments, useDeleteAppointment as useDeleteApptMutation } from "@/hooks/useAppointments";
 import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import { useNavigate } from "react-router-dom";
 import { Phone, Search, Archive, ArrowRight, Trash2 } from "lucide-react";
 
 const BacklogPage = () => {
-  const { appointments, deleteAppointment } = useCrm();
+  const { data: appointments = [] } = useAppointments();
+  const deleteAppointmentMutation = useDeleteApptMutation();
   const { role, currentRepId } = useAuth();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
@@ -82,7 +84,7 @@ const BacklogPage = () => {
                       {canDelete && (
                         deleteConfirm === a.id ? (
                           <div className="flex items-center gap-1">
-                            <button onClick={() => { deleteAppointment(a.id); setDeleteConfirm(null); }} className="text-xs text-destructive font-medium">Oui</button>
+                            <button onClick={() => { deleteAppointmentMutation.mutate(a.id); setDeleteConfirm(null); }} className="text-xs text-destructive font-medium">Oui</button>
                             <button onClick={() => setDeleteConfirm(null)} className="text-xs text-muted-foreground">Non</button>
                           </div>
                         ) : (

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { useCrm, useAuth } from "@/store/crm-store";
+import { useAuth } from "@/store/crm-store";
 import { Appointment, APPOINTMENT_STATUSES, AppointmentStatus } from "@/data/crm-data";
+import { useAppointments, useUpdateAppointmentStatus, useUpdateAppointmentNotes } from "@/hooks/useAppointments";
 import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import { Search, MapPin, Bell, Check, Plus, CalendarPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -15,7 +16,9 @@ const STATUS_PERMISSIONS: Record<string, AppointmentStatus[]> = {
 
 const AppointmentsPage = () => {
   const navigate = useNavigate();
-  const { appointments, updateStatus, updateNotes } = useCrm();
+  const { data: appointments = [] } = useAppointments();
+  const updateStatusMutation = useUpdateAppointmentStatus();
+  const updateNotesMutation = useUpdateAppointmentNotes();
   const { role, currentManagerId } = useAuth();
   const { data: teamMembers = [] } = useTeamMembers();
   const [search, setSearch] = useState("");
@@ -27,7 +30,7 @@ const AppointmentsPage = () => {
   const [savedNoteId, setSavedNoteId] = useState<string | null>(null);
 
   const handleSaveNote = (id: string) => {
-    updateNotes(id, noteInput);
+    updateNotesMutation.mutate({ id, notes: noteInput });
     setEditingNoteId(null);
     setSavedNoteId(id);
     setTimeout(() => setSavedNoteId(null), 1200);
@@ -151,7 +154,13 @@ const AppointmentsPage = () => {
                         onChange={(e) => {
                           const newStatus = e.target.value as AppointmentStatus;
                           if (allowedStatuses.includes(newStatus)) {
-                            updateStatus(a.id, newStatus, role || "system");
+                            updateStatusMutation.mutate({
+                              id: a.id,
+                              status: newStatus,
+                              userId: role || "system",
+                              currentStatusLog: a.statusLog || [],
+                              previousStatus: a.status,
+                            });
                           }
                         }}
                         className={`px-2 py-1 rounded-full text-xs font-medium border-0 cursor-pointer ${statusColors[a.status]}`}

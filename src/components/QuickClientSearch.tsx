@@ -4,6 +4,7 @@ import { useCrm } from "@/store/crm-store";
 import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import { useNavigate } from "react-router-dom";
 import { useMarketingLeadsQuery } from "@/hooks/useMarketingLeads";
+import { useAppointments } from "@/hooks/useAppointments";
 
 interface ClientResult {
   id: string;
@@ -23,7 +24,8 @@ const QuickClientSearch = () => {
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const { appointments, hotCalls } = useCrm();
+  const { hotCalls } = useCrm();
+  const { data: appointments = [] } = useAppointments();
   const { data: marketingLeads = [] } = useMarketingLeadsQuery();
 
   useEffect(() => {

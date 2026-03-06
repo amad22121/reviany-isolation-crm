@@ -1,13 +1,15 @@
 import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
 import { Appointment } from "@/data/crm-data";
+import { useAppointments } from "@/hooks/useAppointments";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import FicheClient from "@/components/FicheClient";
 import { useNavigate } from "react-router-dom";
 import { CalendarCheck, Target, Plus, MapPin, Bell, Users, Trophy } from "lucide-react";
 
 const RepViewPage = () => {
-  const { appointments, dailyTarget, repGoals } = useCrm();
+  const { dailyTarget, repGoals } = useCrm();
+  const { data: appointments = [] } = useAppointments();
   const { currentRepId } = useAuth();
   const navigate = useNavigate();
   const today = new Date().toISOString().split("T")[0];

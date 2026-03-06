@@ -14,6 +14,90 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointments: {
+        Row: {
+          address: string
+          city: string
+          closed_at: string | null
+          closed_by: string | null
+          closed_value: number | null
+          created_at: string
+          cultural_origin: string | null
+          date: string
+          full_name: string
+          id: string
+          lead_source: string | null
+          notes: string
+          origin: string | null
+          phone: string
+          pre_qual_1: string
+          pre_qual_2: string
+          rep_id: string
+          sms_scheduled: boolean
+          source: string | null
+          status: string
+          status_log: Json
+          tenant_id: string
+          time: string
+          updated_at: string
+          was_recovered: boolean | null
+        }
+        Insert: {
+          address?: string
+          city?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          closed_value?: number | null
+          created_at?: string
+          cultural_origin?: string | null
+          date: string
+          full_name: string
+          id?: string
+          lead_source?: string | null
+          notes?: string
+          origin?: string | null
+          phone: string
+          pre_qual_1?: string
+          pre_qual_2?: string
+          rep_id?: string
+          sms_scheduled?: boolean
+          source?: string | null
+          status?: string
+          status_log?: Json
+          tenant_id?: string
+          time?: string
+          updated_at?: string
+          was_recovered?: boolean | null
+        }
+        Update: {
+          address?: string
+          city?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          closed_value?: number | null
+          created_at?: string
+          cultural_origin?: string | null
+          date?: string
+          full_name?: string
+          id?: string
+          lead_source?: string | null
+          notes?: string
+          origin?: string | null
+          phone?: string
+          pre_qual_1?: string
+          pre_qual_2?: string
+          rep_id?: string
+          sms_scheduled?: boolean
+          source?: string | null
+          status?: string
+          status_log?: Json
+          tenant_id?: string
+          time?: string
+          updated_at?: string
+          was_recovered?: boolean | null
+        }
+        Relationships: []
+      }
       client_photos: {
         Row: {
           client_name: string

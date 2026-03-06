@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
 import { Appointment } from "@/data/crm-data";
+import { useAppointments } from "@/hooks/useAppointments";
 import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import FicheClient from "@/components/FicheClient";
 import { format } from "date-fns";
@@ -30,7 +31,8 @@ type DayPreset = "today" | "yesterday" | "before" | "custom";
 const toDateStr = (d: Date) => d.toISOString().split("T")[0];
 
 const DashboardPage = () => {
-  const { appointments, dailyTarget, setDailyTarget, repGoals, setRepGoal } = useCrm();
+  const { dailyTarget, setDailyTarget, repGoals, setRepGoal } = useCrm();
+  const { data: appointments = [] } = useAppointments();
   const { role, currentManagerId } = useAuth();
 
   const [period, setPeriod] = useState<Period>("7d");

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useAuth } from "@/store/crm-store";
-import { useCrm } from "@/store/crm-store";
+import { useAddAppointment } from "@/hooks/useAppointments";
 import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import ClientPhotosSection from "@/components/ClientPhotosSection";
 import {
@@ -72,7 +72,7 @@ const STATUS_LABELS: Record<LeadStatus, string> = {
 
 const MarketingLeadsPage = () => {
   const { role } = useAuth();
-  const { addAppointment } = useCrm();
+  const addAppointmentMutation = useAddAppointment();
   const { data: leads = [], isLoading } = useMarketingLeadsQuery();
   const { data: teamMembers = [] } = useTeamMembers();
   const getRepName = (repId: string | null) => getRepNameFromList(teamMembers, repId);
@@ -192,30 +192,33 @@ const MarketingLeadsPage = () => {
 
   const handleBookAppointment = async () => {
     if (!bookingLead || !bookForm.date || !bookForm.repId) return;
-    const apptId = `a${Date.now()}`;
-    addAppointment({
-      fullName: bookingLead.full_name,
-      phone: bookingLead.phone,
-      address: bookingLead.address || "",
-      city: bookingLead.city || "",
-      date: bookForm.date,
-      time: bookForm.time,
-      repId: bookForm.repId,
-      preQual1: "",
-      preQual2: "",
-      notes: bookingLead.notes || "",
-      status: "Planifié",
-      source: "Referral",
-    });
-    await updateLead.mutateAsync({
-      id: bookingLead.id,
-      updates: {
-        status: "Appointment Booked",
-        converted_appointment_id: apptId,
-        assigned_rep_id: bookForm.repId,
-      },
-    });
-    setBookingLead(null);
+    try {
+      const created = await addAppointmentMutation.mutateAsync({
+        fullName: bookingLead.full_name,
+        phone: bookingLead.phone,
+        address: bookingLead.address || "",
+        city: bookingLead.city || "",
+        date: bookForm.date,
+        time: bookForm.time,
+        repId: bookForm.repId,
+        preQual1: "",
+        preQual2: "",
+        notes: bookingLead.notes || "",
+        status: "Planifié",
+        source: "Referral",
+      });
+      await updateLead.mutateAsync({
+        id: bookingLead.id,
+        updates: {
+          status: "Appointment Booked",
+          converted_appointment_id: created.id,
+          assigned_rep_id: bookForm.repId,
+        },
+      });
+      setBookingLead(null);
+    } catch (err) {
+      console.error("Error booking appointment:", err);
+    }
   };
 
   const handleDelete = async (id: string) => {

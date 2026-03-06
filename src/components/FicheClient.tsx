@@ -4,6 +4,7 @@ import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import ClientPhotosSection from "@/components/ClientPhotosSection";
 import { useCrm } from "@/store/crm-store";
 import { useAuth } from "@/store/crm-store";
+import { useUpdateAppointmentStatus, useUpdateAppointmentNotes, useDeleteAppointment as useDeleteApptMutation } from "@/hooks/useAppointments";
 import {
   Dialog,
   DialogContent,
@@ -62,7 +63,10 @@ function parsePreQual(preQual1: string): Record<string, string> {
 const EmptyValue = () => <span className="text-muted-foreground italic text-xs">Non renseigné</span>;
 
 const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientProps) => {
-  const { updateNotes, deleteAppointment, updateStatus, moveAppointmentToHotCalls } = useCrm();
+  const { moveAppointmentToHotCalls } = useCrm();
+  const updateStatusMutation = useUpdateAppointmentStatus();
+  const updateNotesMutation = useUpdateAppointmentNotes();
+  const deleteApptMutation = useDeleteApptMutation();
   const { role } = useAuth();
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesInput, setNotesInput] = useState("");
@@ -111,9 +115,14 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
   const handleStatusChange = (newStatus: AppointmentStatus) => {
     if (newStatus === appointment.status) { setStatusDropdownOpen(false); return; }
     const userId = role || "system";
-    updateStatus(appointment.id, newStatus, userId);
+    updateStatusMutation.mutate({
+      id: appointment.id,
+      status: newStatus,
+      userId,
+      currentStatusLog: appointment.statusLog || [],
+      previousStatus: appointment.status,
+    });
     if (newStatus === "Annulé (à rappeler)" || newStatus === "Non confirmé" || newStatus === "No-show") {
-      moveAppointmentToHotCalls(appointment.id, "Premier contact");
     }
     setStatusDropdownOpen(false);
   };
@@ -129,12 +138,12 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
   };
 
   const handleSaveNotes = () => {
-    updateNotes(appointment.id, notesInput);
+    updateNotesMutation.mutate({ id: appointment.id, notes: notesInput });
     setEditingNotes(false);
   };
 
   const handleDelete = () => {
-    deleteAppointment(appointment.id);
+    deleteApptMutation.mutate(appointment.id);
     setConfirmOpen(false);
     onOpenChange(false);
   };
