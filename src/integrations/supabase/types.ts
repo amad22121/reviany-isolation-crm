@@ -301,6 +301,7 @@ export type Database = {
           invited_at: string | null
           phone: string | null
           role: string
+          tenant_id: string
           updated_at: string
           user_id: string
         }
@@ -313,6 +314,7 @@ export type Database = {
           invited_at?: string | null
           phone?: string | null
           role?: string
+          tenant_id?: string
           updated_at?: string
           user_id: string
         }
@@ -325,6 +327,7 @@ export type Database = {
           invited_at?: string | null
           phone?: string | null
           role?: string
+          tenant_id?: string
           updated_at?: string
           user_id?: string
         }
