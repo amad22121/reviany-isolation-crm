@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { TrendingUp } from "lucide-react";
 import { useCrm, useAuth } from "@/store/crm-store";
-import { SALES_REPS, Appointment } from "@/data/crm-data";
+import { Appointment } from "@/data/crm-data";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { useMarketingLeadsQuery, MarketingLead } from "@/hooks/useMarketingLeads";
 import { can } from "@/lib/permissions/can";
 import { getPreviousPeriod, computeRepPerf, RepPerf, pct } from "@/lib/statistics/statsHelpers";
@@ -50,6 +51,7 @@ const StatisticsPage = () => {
   const { appointments, hotCalls } = useCrm();
   const { role, currentRepId, currentManagerId } = useAuth();
   const { data: leads = [] } = useMarketingLeadsQuery();
+  const { data: teamMembers = [] } = useTeamMembers();
   const isRep = role === "representant";
   const canSeeRevenue = can(role, "view_all_appointments"); // owner/manager
 
@@ -71,8 +73,8 @@ const StatisticsPage = () => {
   const roleFilteredAppts = useMemo(() => {
     let appts = appointments.filter((a) => a.status !== "Backlog");
     if (isRep) return appts.filter((a) => a.repId === currentRepId);
-    if (role === "gestionnaire" && currentManagerId) {
-      const reps = new Set(SALES_REPS.filter((r) => r.managerId === currentManagerId).map((r) => r.id));
+    if (role === "gestionnaire" && teamMembers.length > 0) {
+      const reps = new Set(teamMembers.filter((r) => r.role === "representant").map((r) => r.id));
       return appts.filter((a) => reps.has(a.repId));
     }
     return appts;
@@ -90,8 +92,8 @@ const StatisticsPage = () => {
   const filterLeads = (l: MarketingLead[], start: string, end: string) => {
     let filtered = l;
     if (isRep) filtered = filtered.filter((lead) => lead.assigned_rep_id === currentRepId);
-    else if (role === "gestionnaire" && currentManagerId) {
-      const reps = new Set(SALES_REPS.filter((r) => r.managerId === currentManagerId).map((r) => r.id));
+    else if (role === "gestionnaire" && teamMembers.length > 0) {
+      const reps = new Set(teamMembers.filter((r) => r.role === "representant").map((r) => r.id));
       filtered = filtered.filter((lead) => lead.assigned_rep_id && reps.has(lead.assigned_rep_id));
     }
     return filtered
@@ -104,7 +106,7 @@ const StatisticsPage = () => {
   const prevLeads = useMemo(() => filterLeads(leads as MarketingLead[], prevStart, prevEnd), [leads, prevStart, prevEnd, selectedRepId, selectedSource, isRep, currentRepId, role, currentManagerId]);
 
   // Team averages for rep detail panel
-  const repPerfs = useMemo(() => computeRepPerf(filteredAppts, prevAppts), [filteredAppts, prevAppts]);
+  const repPerfs = useMemo(() => computeRepPerf(filteredAppts, prevAppts, teamMembers), [filteredAppts, prevAppts, teamMembers]);
   const teamAvg = useMemo(() => {
     const active = repPerfs.filter((r) => r.total > 0);
     if (active.length === 0) return { confirmRate: 0, closingRate: 0, cancelRate: 0, noShowRate: 0 };

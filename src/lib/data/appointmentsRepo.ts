@@ -16,7 +16,6 @@ import type { Appointment, StatusChangeLog } from "@/domain/types";
 import type { AppointmentStatus } from "@/domain/enums";
 import { fromLegacyStatus } from "@/domain/enums";
 import { USE_MOCK } from "./config";
-import { MOCK_APPOINTMENTS, MOCK_SALES_REPS } from "./mock-data";
 
 interface ListFilters {
   workspaceId: string;
@@ -74,13 +73,8 @@ export const appointmentsRepo = {
       return [];
     }
 
-    await new Promise((r) => setTimeout(r, 100));
-    let results = MOCK_APPOINTMENTS.map(mapLegacy);
-
-    if (filters.role === "representant" && filters.userId) {
-      const repId = MOCK_SALES_REPS.find((r) => r.id === filters.userId)?.id;
-      if (repId) results = results.filter((a) => a.rep_id === repId);
-    }
+    // Mock branch — returns empty (no mock data)
+    return [];
     if (filters.repId) results = results.filter((a) => a.rep_id === filters.repId);
     if (filters.status) results = results.filter((a) => a.status === filters.status);
     if (filters.dateFrom) results = results.filter((a) => a.date >= filters.dateFrom!);
@@ -98,8 +92,7 @@ export const appointmentsRepo = {
       // TODO: Supabase query
       return null;
     }
-    const a = MOCK_APPOINTMENTS.find((x) => x.id === params.appointmentId);
-    return a ? mapLegacy(a) : null;
+    return null;
   },
 
   /**

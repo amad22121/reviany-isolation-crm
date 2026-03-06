@@ -5,7 +5,7 @@ import "leaflet-draw";
 import "leaflet-draw/dist/leaflet.draw.css";
 import { useAuth } from "@/store/crm-store";
 import { TerritoryStatus, TERRITORY_STATUSES } from "@/store/territory-store";
-import { SALES_REPS } from "@/data/crm-data";
+import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import { useMapZonesQuery, useZoneLogsQuery, useCreateZone, useUpdateZone, useDeleteZone, DbMapZone } from "@/hooks/useMapZones";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,7 +46,7 @@ const getPolygonCenter = (polygon: [number, number][]): [number, number] => {
   return [lat, lng];
 };
 
-const getRepName = (id: string) => SALES_REPS.find((r) => r.id === id)?.name || id;
+// getRepName moved inside component
 
 const TerritoiresPage = () => {
   const { role, currentRepId } = useAuth();
@@ -54,6 +54,8 @@ const TerritoiresPage = () => {
   const canManage = role === "proprietaire" || role === "gestionnaire";
 
   const { data: zones = [], isLoading } = useMapZonesQuery();
+  const { data: teamMembers = [] } = useTeamMembers();
+  const getRepName = (id: string) => getRepNameFromList(teamMembers, id);
   const createZone = useCreateZone();
   const updateZone = useUpdateZone();
   const deleteZone = useDeleteZone();
@@ -400,7 +402,7 @@ const TerritoiresPage = () => {
               <SelectContent className="z-[9999] bg-popover">
                 <SelectItem value="all">Tous les reps</SelectItem>
                 <SelectItem value="unassigned">Non assigné</SelectItem>
-                {SALES_REPS.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+                {teamMembers.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
               </SelectContent>
             </Select>
           )}

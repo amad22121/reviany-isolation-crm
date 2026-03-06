@@ -2,7 +2,8 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useCrm, useAuth } from "@/store/crm-store";
-import { SALES_REPS, Appointment } from "@/data/crm-data";
+import { Appointment } from "@/data/crm-data";
+import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -29,6 +30,7 @@ const RouteDuJourPage = () => {
   const [selectedRepId, setSelectedRepId] = useState<string>(isRep ? (currentRepId || "") : "all");
   const [ficheAppt, setFicheAppt] = useState<Appointment | null>(null);
   const [ficheOpen, setFicheOpen] = useState(false);
+  const { data: teamMembers = [] } = useTeamMembers();
 
   const dateStr = format(selectedDate, "yyyy-MM-dd");
 
@@ -59,7 +61,7 @@ const RouteDuJourPage = () => {
     window.open(url, "_blank");
   };
 
-  const getRepName = (id: string) => SALES_REPS.find((r) => r.id === id)?.name || id;
+  const getRepName = (id: string) => getRepNameFromList(teamMembers, id);
 
   return (
     <div className="space-y-6">
@@ -88,7 +90,7 @@ const RouteDuJourPage = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tous les reps</SelectItem>
-              {SALES_REPS.map((r) => (
+              {teamMembers.map((r) => (
                 <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
               ))}
             </SelectContent>

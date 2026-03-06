@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
-import { SALES_REPS } from "@/data/crm-data";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -54,7 +54,8 @@ const AddAppointmentPage = () => {
   const [leadSourceOther, setLeadSourceOther] = useState("");
   const [date, setDate] = useState(backlogItem?.date || new Date().toISOString().split("T")[0]);
   const [time, setTime] = useState(backlogItem?.time || "09:00");
-  const [repId, setRepId] = useState(backlogItem?.repId || (role === "representant" ? currentRepId || SALES_REPS[0]?.id || "" : SALES_REPS[0]?.id || ""));
+  const { data: teamMembers = [] } = useTeamMembers();
+  const [repId, setRepId] = useState(backlogItem?.repId || (role === "representant" ? currentRepId || teamMembers[0]?.id || "" : teamMembers[0]?.id || ""));
   const [notes, setNotes] = useState(backlogItem?.notes || "");
   const [preQual, setPreQual] = useState<PreQualState>(INITIAL_PREQUAL);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -332,7 +333,7 @@ const AddAppointmentPage = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {SALES_REPS.map((r) => (
+              {teamMembers.map((r) => (
                   <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                 ))}
               </SelectContent>

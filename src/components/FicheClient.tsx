@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Appointment, AppointmentStatus, SALES_REPS, HotCall, CallLogEntry } from "@/data/crm-data";
+import { Appointment, AppointmentStatus, HotCall, CallLogEntry } from "@/data/crm-data";
+import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import ClientPhotosSection from "@/components/ClientPhotosSection";
 import { useCrm } from "@/store/crm-store";
 import { useAuth } from "@/store/crm-store";
@@ -95,7 +96,8 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
 
   if (!appointment) return null;
 
-  const rep = SALES_REPS.find((r) => r.id === appointment.repId);
+  const { data: teamMembers = [] } = useTeamMembers();
+  const rep = teamMembers.find((r) => r.id === appointment.repId);
   const canDelete = role === "proprietaire" || role === "gestionnaire";
 
   const allowedStatuses: AppointmentStatus[] = (() => {
@@ -137,7 +139,7 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
     onOpenChange(false);
   };
 
-  const getRepName = (repId: string) => SALES_REPS.find((r) => r.id === repId)?.name || repId;
+  const getRepName = (repId: string) => getRepNameFromList(teamMembers, repId);
 
   const displayStatus = hotCall ? hotCall.status : appointment.status;
 

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { SALES_REPS } from "@/data/crm-data";
+import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import { TerritoryStatus, TERRITORY_STATUSES } from "@/store/territory-store";
 import { X, History, ExternalLink, Trash2 } from "lucide-react";
 import { DbMapZone, DbStatusLog } from "@/hooks/useMapZones";
@@ -15,7 +15,7 @@ const STATUS_BADGE: Record<TerritoryStatus, string> = {
   "Fait": "bg-green-500/20 text-green-400 border-green-500/30",
 };
 
-const getRepName = (id: string) => SALES_REPS.find((r) => r.id === id)?.name || id;
+// getRepName moved inside component
 const getPolygonCenter = (polygon: [number, number][]): [number, number] => {
   const lat = polygon.reduce((s, p) => s + p[0], 0) / polygon.length;
   const lng = polygon.reduce((s, p) => s + p[1], 0) / polygon.length;

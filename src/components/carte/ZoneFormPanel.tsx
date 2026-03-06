@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SALES_REPS } from "@/data/crm-data";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { TerritoryStatus, TERRITORY_STATUSES } from "@/store/territory-store";
 import { X } from "lucide-react";
 
@@ -23,10 +23,11 @@ interface ZoneFormPanelProps {
 }
 
 const ZoneFormPanel = ({ onSubmit, onCancel }: ZoneFormPanelProps) => {
+  const { data: teamMembers = [] } = useTeamMembers();
   const [name, setName] = useState("");
   const [city, setCity] = useState("Montréal");
   const [status, setStatus] = useState<TerritoryStatus>("À faire");
-  const [repId, setRepId] = useState(SALES_REPS[0]?.id ?? "");
+  const [repId, setRepId] = useState(teamMembers[0]?.id ?? "");
   const [plannedDate, setPlannedDate] = useState("");
   const [notes, setNotes] = useState("");
   const [dateFait, setDateFait] = useState("");
@@ -85,7 +86,7 @@ const ZoneFormPanel = ({ onSubmit, onCancel }: ZoneFormPanelProps) => {
           <Select value={repId} onValueChange={setRepId}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent className="z-[9999]">
-              {SALES_REPS.map((r) => (
+              {teamMembers.map((r) => (
                 <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
               ))}
             </SelectContent>

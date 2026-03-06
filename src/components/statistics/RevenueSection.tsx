@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { Appointment, SALES_REPS } from "@/data/crm-data";
+import { Appointment } from "@/data/crm-data";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { DollarSign, TrendingUp, TrendingDown, Minus, BarChart3, Repeat } from "lucide-react";
 import { variation } from "@/lib/statistics/statsHelpers";
 
@@ -23,6 +24,7 @@ const VariationBadge = ({ value }: { value: number | undefined }) => {
 const fmt$ = (n: number) => new Intl.NumberFormat("fr-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 }).format(n);
 
 const RevenueSection = ({ appointments, prevAppointments }: Props) => {
+  const { data: teamMembers = [] } = useTeamMembers();
   const stats = useMemo(() => {
     const closed = appointments.filter((a) => a.status === "Closé");
     const prevClosed = prevAppointments.filter((a) => a.status === "Closé");
@@ -37,7 +39,7 @@ const RevenueSection = ({ appointments, prevAppointments }: Props) => {
 
   const repRevenue = useMemo(() => {
     const closed = appointments.filter((a) => a.status === "Closé");
-    return SALES_REPS.map((rep) => {
+    return teamMembers.map((rep) => {
       const ra = closed.filter((a) => a.repId === rep.id);
       const rev = ra.reduce((s, a) => s + (a.closedValue || 0), 0);
       return {

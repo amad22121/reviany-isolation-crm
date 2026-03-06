@@ -1,4 +1,4 @@
-import { SALES_REPS } from "@/data/crm-data";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { DateRange } from "@/pages/StatisticsPage";
 
@@ -43,7 +43,9 @@ const StatisticsFilters = ({
   onRepChange,
   selectedSource,
   onSourceChange,
-}: Props) => (
+}: Props) => {
+  const { data: teamMembers = [] } = useTeamMembers();
+  return (
   <div className="flex flex-wrap items-end gap-3">
     <Select value={dateRange} onValueChange={(v) => onDateRangeChange(v as DateRange)}>
       <SelectTrigger className="w-[180px] h-9 text-xs">
@@ -81,7 +83,7 @@ const StatisticsFilters = ({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">Tous les reps</SelectItem>
-          {SALES_REPS.map((r) => (
+          {teamMembers.map((r) => (
             <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
           ))}
         </SelectContent>

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
-import { SALES_REPS } from "@/data/crm-data";
+import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import { useNavigate } from "react-router-dom";
 import { Phone, Search, Archive, ArrowRight, Trash2 } from "lucide-react";
 
@@ -26,7 +26,8 @@ const BacklogPage = () => {
     return items;
   }, [appointments, role, currentRepId, search]);
 
-  const getRepName = (repId: string) => SALES_REPS.find((r) => r.id === repId)?.name || repId;
+  const { data: teamMembers = [] } = useTeamMembers();
+  const getRepName = (repId: string) => getRepNameFromList(teamMembers, repId);
   const canDelete = role === "proprietaire" || role === "gestionnaire";
 
   return (

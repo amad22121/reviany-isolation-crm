@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
-import { SALES_REPS, Appointment } from "@/data/crm-data";
+import { Appointment } from "@/data/crm-data";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
 import FicheClient from "@/components/FicheClient";
 import { useNavigate } from "react-router-dom";
 import { CalendarCheck, Target, Plus, MapPin, Bell, Users, Trophy } from "lucide-react";
@@ -11,7 +12,8 @@ const RepViewPage = () => {
   const navigate = useNavigate();
   const today = new Date().toISOString().split("T")[0];
 
-  const rep = SALES_REPS.find((r) => r.id === currentRepId);
+  const { data: teamMembers = [] } = useTeamMembers();
+  const rep = teamMembers.find((r) => r.id === currentRepId);
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
 
   const myGoal = repGoals[currentRepId || ""] || 0;

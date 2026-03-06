@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Appointment, SALES_REPS } from "@/data/crm-data";
+import { Appointment } from "@/data/crm-data";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { computeRepPerf, RepPerf } from "@/lib/statistics/statsHelpers";
 
@@ -15,7 +16,8 @@ const RepPerformanceTable = ({ appointments, prevAppointments, onRepClick }: Pro
   const [sortKey, setSortKey] = useState<SortKey>("closingRate");
   const [sortAsc, setSortAsc] = useState(false);
 
-  const data = useMemo(() => computeRepPerf(appointments, prevAppointments), [appointments, prevAppointments]);
+  const { data: teamMembers = [] } = useTeamMembers();
+  const data = useMemo(() => computeRepPerf(appointments, prevAppointments, teamMembers), [appointments, prevAppointments, teamMembers]);
 
   const sorted = useMemo(() => {
     return [...data].sort((a, b) => {

@@ -1,4 +1,5 @@
-import { Appointment, AppointmentStatus, SALES_REPS } from "@/data/crm-data";
+import { Appointment, AppointmentStatus } from "@/data/crm-data";
+import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MapPin, Phone, Eye, MoreVertical, Check, XCircle, CalendarClock, Lock } from "lucide-react";
@@ -35,9 +36,9 @@ interface DailyViewProps {
   onUpdateStatus: (id: string, status: AppointmentStatus) => void;
 }
 
-const getRepName = (id: string) => SALES_REPS.find((r) => r.id === id)?.name || id;
-
 const DailyView = ({ appointments, role, currentRepId, onOpenFiche, onUpdateStatus }: DailyViewProps) => {
+  const { data: teamMembers = [] } = useTeamMembers();
+  const getRepName = (id: string) => getRepNameFromList(teamMembers, id);
   const isRep = role === "representant";
   const containerRef = useRef<HTMLDivElement>(null);
 

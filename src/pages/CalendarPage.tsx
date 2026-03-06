@@ -1,6 +1,7 @@
 import { useMemo, useState, useCallback } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
-import { SALES_REPS, Appointment, AppointmentStatus, APPOINTMENT_STATUSES } from "@/data/crm-data";
+import { Appointment, AppointmentStatus, APPOINTMENT_STATUSES } from "@/data/crm-data";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
 import FicheClient from "@/components/FicheClient";
 import CalendarFilters from "@/components/calendar/CalendarFilters";
 import CalendarStats from "@/components/calendar/CalendarStats";
@@ -35,6 +36,7 @@ const CalendarPage = () => {
   const [selectedRepId, setSelectedRepId] = useState<string>(isRep ? (currentRepId || "") : "all");
   const [selectedStatuses, setSelectedStatuses] = useState<AppointmentStatus[]>([...APPOINTMENT_STATUSES]);
   const [ficheAppt, setFicheAppt] = useState<Appointment | null>(null);
+  const { data: teamMembers = [] } = useTeamMembers();
 
   const today = new Date();
   const todayKey = formatDateKey(today);
@@ -50,9 +52,9 @@ const CalendarPage = () => {
   const roleFilteredAppointments = useMemo(() => {
     let appts = appointments.filter((a) => a.status !== "Backlog");
     if (isRep) appts = appts.filter((a) => a.repId === currentRepId);
-    else if (role === "gestionnaire" && currentManagerId) {
-      const managerReps = new Set(SALES_REPS.filter((r) => r.managerId === currentManagerId).map((r) => r.id));
-      appts = appts.filter((a) => managerReps.has(a.repId));
+    else if (role === "gestionnaire" && teamMembers.length > 0) {
+      const repIds = new Set(teamMembers.filter((r) => r.role === "representant").map((r) => r.id));
+      appts = appts.filter((a) => repIds.has(a.repId));
     }
     // Auto-detect À risque: Non confirmé + appointment within 12 hours
     const now = Date.now();
