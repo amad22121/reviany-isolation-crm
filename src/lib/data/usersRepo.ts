@@ -29,10 +29,11 @@ function mapDbRole(dbRole: string): TeamUser["role"] {
 
 export const usersRepo = {
   async listTeamUsers(tenantId: string): Promise<TeamUser[]> {
+    // tenant_id is a new column not yet in generated types, use filter
     const { data: profiles, error } = await supabase
       .from("profiles")
       .select("*")
-      .eq("tenant_id" as any, tenantId);
+      .filter("tenant_id", "eq", tenantId);
 
     if (error || !profiles) return [];
 
