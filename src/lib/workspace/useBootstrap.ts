@@ -14,7 +14,7 @@ export interface Membership {
 async function fetchMembership(userId: string): Promise<Membership | null> {
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("display_name, role, user_id, tenant_id")
+    .select("full_name, role, user_id, tenant_id")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -32,7 +32,7 @@ async function fetchMembership(userId: string): Promise<Membership | null> {
     role,
     rep_id: role === "representant" ? userId : null,
     manager_id: role === "gestionnaire" ? userId : null,
-    display_name: profile.display_name ?? "",
+    display_name: (profile as any).full_name ?? "",
   };
 }
 

@@ -30,18 +30,18 @@ export function useTeamMembers() {
     queryFn: async (): Promise<TeamMember[]> => {
       const { data: profiles, error } = await supabase
         .from("profiles")
-        .select("id, user_id, display_name, avatar_url, role");
+        .select("user_id, full_name, role");
 
       if (error || !profiles) return [];
 
-      return profiles.map((p) => ({
+      return profiles.map((p: any) => ({
         id: String(p.user_id),
-        name: p.display_name,
-        role: mapDbRole(p.role),
-        avatar: p.avatar_url || undefined,
+        name: p.full_name ?? "",
+        role: mapDbRole(p.role) ?? "representant",
+        avatar: undefined,
       }));
     },
-    staleTime: 5 * 60 * 1000, // 5 min cache
+    staleTime: 5 * 60 * 1000,
   });
 }
 
