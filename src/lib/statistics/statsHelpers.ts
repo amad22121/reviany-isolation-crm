@@ -1,4 +1,5 @@
 import { Appointment } from "@/data/crm-data";
+import { AppointmentStatus } from "@/domain/enums";
 import type { TeamMember } from "@/hooks/useTeamMembers";
 
 /** Period shift: given [start, end], compute [prevStart, prevEnd] of equal length. */
@@ -23,14 +24,14 @@ export interface KpiDef {
 
 export function computeStatusCounts(appts: Appointment[]) {
   const total = appts.length;
-  const confirmed = appts.filter((a) => a.status === "Confirmé").length;
-  const unconfirmed = appts.filter((a) => a.status === "Non confirmé").length;
-  const atRisk = appts.filter((a) => a.status === "À risque").length;
-  const postponed = appts.filter((a) => a.status === "Reporté").length;
-  const cancelledCb = appts.filter((a) => a.status === "Annulé (à rappeler)").length;
-  const cancelledFinal = appts.filter((a) => a.status === "Annulé (définitif)").length;
-  const noShow = appts.filter((a) => a.status === "No-show").length;
-  const closed = appts.filter((a) => a.status === "Closé").length;
+  const confirmed = appts.filter((a) => a.status === AppointmentStatus.CONFIRMED).length;
+  const unconfirmed = appts.filter((a) => a.status === AppointmentStatus.UNCONFIRMED).length;
+  const atRisk = appts.filter((a) => a.status === AppointmentStatus.AT_RISK).length;
+  const postponed = appts.filter((a) => a.status === AppointmentStatus.POSTPONED).length;
+  const cancelledCb = appts.filter((a) => a.status === AppointmentStatus.CANCELLED_CALLBACK).length;
+  const cancelledFinal = appts.filter((a) => a.status === AppointmentStatus.CANCELLED_FINAL).length;
+  const noShow = appts.filter((a) => a.status === AppointmentStatus.NO_SHOW).length;
+  const closed = appts.filter((a) => a.status === AppointmentStatus.CLOSED).length;
   return { total, confirmed, unconfirmed, atRisk, postponed, cancelledCb, cancelledFinal, noShow, closed };
 }
 
@@ -69,26 +70,31 @@ export function computeRepPerf(appts: Appointment[], prevAppts: Appointment[], r
     const ra = appts.filter((a) => a.repId === rep.id);
     const pra = prevAppts.filter((a) => a.repId === rep.id);
     const total = ra.length;
-    const confirmed = ra.filter((a) => a.status === "Confirmé").length;
-    const closed = ra.filter((a) => a.status === "Closé").length;
-    const cancelled = ra.filter((a) => a.status === "Annulé (à rappeler)" || a.status === "Annulé (définitif)").length;
-    const noShow = ra.filter((a) => a.status === "No-show").length;
+    const confirmed = ra.filter((a) => a.status === AppointmentStatus.CONFIRMED).length;
+    const closed = ra.filter((a) => a.status === AppointmentStatus.CLOSED).length;
+    const cancelled = ra.filter((a) =>
+      a.status === AppointmentStatus.CANCELLED_CALLBACK ||
+      a.status === AppointmentStatus.CANCELLED_FINAL
+    ).length;
+    const noShow = ra.filter((a) => a.status === AppointmentStatus.NO_SHOW).length;
     const confirmRate = pct(confirmed, total);
     const closingRate = pct(closed, total);
     const cancelRate = pct(cancelled, total);
     const noShowRate = pct(noShow, total);
     const revenue = ra.reduce((s, a) => s + (a.closedValue || 0), 0);
-    const closedAppts = ra.filter((a) => a.status === "Closé" && a.closedValue);
+    const closedAppts = ra.filter((a) => a.status === AppointmentStatus.CLOSED && a.closedValue);
     const avgDeal = closedAppts.length > 0 ? Math.round(revenue / closedAppts.length) : 0;
 
-    // Previous
+    // Previous period
     const pTotal = pra.length;
-    const pConfirmed = pra.filter((a) => a.status === "Confirmé").length;
-    const pClosed = pra.filter((a) => a.status === "Closé").length;
-    const pCancelled = pra.filter((a) => a.status === "Annulé (à rappeler)" || a.status === "Annulé (définitif)").length;
-    const pNoShow = pra.filter((a) => a.status === "No-show").length;
+    const pConfirmed = pra.filter((a) => a.status === AppointmentStatus.CONFIRMED).length;
+    const pClosed = pra.filter((a) => a.status === AppointmentStatus.CLOSED).length;
+    const pCancelled = pra.filter((a) =>
+      a.status === AppointmentStatus.CANCELLED_CALLBACK ||
+      a.status === AppointmentStatus.CANCELLED_FINAL
+    ).length;
+    const pNoShow = pra.filter((a) => a.status === AppointmentStatus.NO_SHOW).length;
 
-    // Score
     let score: "elite" | "stable" | "improve" = "stable";
     if (closingRate >= 30 && confirmRate >= 60) score = "elite";
     else if (closingRate < 15 || confirmRate < 30) score = "improve";

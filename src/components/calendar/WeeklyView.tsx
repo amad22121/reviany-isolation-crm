@@ -1,27 +1,27 @@
-import { Appointment } from "@/data/crm-data";
+import { Appointment, AppointmentStatus, APPOINTMENT_STATUS_LABELS } from "@/data/crm-data";
 
 const STATUS_COLORS: Record<string, string> = {
-  "Planifié": "border-l-warning bg-warning/10",
-  "Confirmé": "border-l-green-500 bg-green-500/10",
-  "Non confirmé": "border-l-orange-300 bg-orange-300/10",
-  "À risque": "border-l-orange-400 bg-orange-400/10",
-  "Reporté": "border-l-blue-400 bg-blue-400/10",
-  "Annulé (à rappeler)": "border-l-amber-500 bg-amber-500/10",
-  "Annulé (définitif)": "border-l-muted-foreground bg-muted/30",
-  "No-show": "border-l-red-400 bg-red-400/10",
-  "Closé": "border-l-info bg-info/10",
+  [AppointmentStatus.PLANNED]: "border-l-warning bg-warning/10",
+  [AppointmentStatus.CONFIRMED]: "border-l-green-500 bg-green-500/10",
+  [AppointmentStatus.UNCONFIRMED]: "border-l-orange-300 bg-orange-300/10",
+  [AppointmentStatus.AT_RISK]: "border-l-orange-400 bg-orange-400/10",
+  [AppointmentStatus.POSTPONED]: "border-l-blue-400 bg-blue-400/10",
+  [AppointmentStatus.CANCELLED_CALLBACK]: "border-l-amber-500 bg-amber-500/10",
+  [AppointmentStatus.CANCELLED_FINAL]: "border-l-muted-foreground bg-muted/30",
+  [AppointmentStatus.NO_SHOW]: "border-l-red-400 bg-red-400/10",
+  [AppointmentStatus.CLOSED]: "border-l-info bg-info/10",
 };
 
 const STATUS_BADGE: Record<string, string> = {
-  "Planifié": "bg-warning/20 text-warning",
-  "Confirmé": "bg-green-500/20 text-green-400",
-  "Non confirmé": "bg-orange-300/20 text-orange-300",
-  "À risque": "bg-orange-400/20 text-orange-400",
-  "Reporté": "bg-blue-400/20 text-blue-400",
-  "Annulé (à rappeler)": "bg-amber-500/20 text-amber-400",
-  "Annulé (définitif)": "bg-muted text-muted-foreground",
-  "No-show": "bg-red-400/20 text-red-400",
-  "Closé": "bg-info/20 text-info",
+  [AppointmentStatus.PLANNED]: "bg-warning/20 text-warning",
+  [AppointmentStatus.CONFIRMED]: "bg-green-500/20 text-green-400",
+  [AppointmentStatus.UNCONFIRMED]: "bg-orange-300/20 text-orange-300",
+  [AppointmentStatus.AT_RISK]: "bg-orange-400/20 text-orange-400",
+  [AppointmentStatus.POSTPONED]: "bg-blue-400/20 text-blue-400",
+  [AppointmentStatus.CANCELLED_CALLBACK]: "bg-amber-500/20 text-amber-400",
+  [AppointmentStatus.CANCELLED_FINAL]: "bg-muted text-muted-foreground",
+  [AppointmentStatus.NO_SHOW]: "bg-red-400/20 text-red-400",
+  [AppointmentStatus.CLOSED]: "bg-info/20 text-info",
 };
 
 const WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -77,7 +77,7 @@ const WeeklyView = ({ currentDate, apptsByDate, onSelectAppt }: WeeklyViewProps)
                   <div className="flex items-center justify-between gap-1">
                     <span className="text-xs font-medium text-foreground truncate">{a.fullName}</span>
                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 ${STATUS_BADGE[a.status] || "bg-secondary text-secondary-foreground"}`}>
-                      {a.status}
+                      {APPOINTMENT_STATUS_LABELS[a.status] ?? a.status}
                     </span>
                   </div>
                   <span className="text-[11px] text-muted-foreground">{a.time}</span>

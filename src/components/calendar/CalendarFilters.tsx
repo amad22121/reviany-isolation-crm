@@ -1,4 +1,4 @@
-import { APPOINTMENT_STATUSES, AppointmentStatus } from "@/data/crm-data";
+import { APPOINTMENT_STATUSES, AppointmentStatus, APPOINTMENT_STATUS_LABELS } from "@/data/crm-data";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -6,15 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Navigation, ChevronLeft, ChevronRight } from "lucide-react";
 
 const STATUS_BADGE_COLORS: Record<string, string> = {
-  "Planifié": "bg-warning/20 text-warning hover:bg-warning/30",
-  "Confirmé": "bg-green-500/20 text-green-400 hover:bg-green-500/30",
-  "Non confirmé": "bg-orange-300/20 text-orange-300 hover:bg-orange-300/30",
-  "À risque": "bg-orange-400/20 text-orange-400 hover:bg-orange-400/30",
-  "Reporté": "bg-blue-400/20 text-blue-400 hover:bg-blue-400/30",
-  "Annulé (à rappeler)": "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30",
-  "Annulé (définitif)": "bg-muted text-muted-foreground hover:bg-muted/80",
-  "No-show": "bg-red-400/20 text-red-400 hover:bg-red-400/30",
-  "Closé": "bg-info/20 text-info hover:bg-info/30",
+  [AppointmentStatus.PLANNED]: "bg-warning/20 text-warning hover:bg-warning/30",
+  [AppointmentStatus.CONFIRMED]: "bg-green-500/20 text-green-400 hover:bg-green-500/30",
+  [AppointmentStatus.UNCONFIRMED]: "bg-orange-300/20 text-orange-300 hover:bg-orange-300/30",
+  [AppointmentStatus.AT_RISK]: "bg-orange-400/20 text-orange-400 hover:bg-orange-400/30",
+  [AppointmentStatus.POSTPONED]: "bg-blue-400/20 text-blue-400 hover:bg-blue-400/30",
+  [AppointmentStatus.CANCELLED_CALLBACK]: "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30",
+  [AppointmentStatus.CANCELLED_FINAL]: "bg-muted text-muted-foreground hover:bg-muted/80",
+  [AppointmentStatus.NO_SHOW]: "bg-red-400/20 text-red-400 hover:bg-red-400/30",
+  [AppointmentStatus.CLOSED]: "bg-info/20 text-info hover:bg-info/30",
 };
 
 interface CalendarFiltersProps {
@@ -122,7 +122,7 @@ const CalendarFilters = ({
                     : "border-border text-muted-foreground hover:text-foreground"
                 } ${active ? "border-transparent" : ""}`}
               >
-                {status}
+                {APPOINTMENT_STATUS_LABELS[status] ?? status}
               </button>
             );
           })}

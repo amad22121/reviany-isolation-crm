@@ -1,15 +1,15 @@
-import { Appointment } from "@/data/crm-data";
+import { Appointment, AppointmentStatus } from "@/data/crm-data";
 
 const STATUS_COLORS: Record<string, string> = {
-  "Planifié": "border-l-warning bg-warning/10",
-  "Confirmé": "border-l-green-500 bg-green-500/10",
-  "Non confirmé": "border-l-orange-300 bg-orange-300/10",
-  "À risque": "border-l-orange-400 bg-orange-400/10",
-  "Reporté": "border-l-blue-400 bg-blue-400/10",
-  "Annulé (à rappeler)": "border-l-amber-500 bg-amber-500/10",
-  "Annulé (définitif)": "border-l-muted-foreground bg-muted/30",
-  "No-show": "border-l-red-400 bg-red-400/10",
-  "Closé": "border-l-info bg-info/10",
+  [AppointmentStatus.PLANNED]: "border-l-warning bg-warning/10",
+  [AppointmentStatus.CONFIRMED]: "border-l-green-500 bg-green-500/10",
+  [AppointmentStatus.UNCONFIRMED]: "border-l-orange-300 bg-orange-300/10",
+  [AppointmentStatus.AT_RISK]: "border-l-orange-400 bg-orange-400/10",
+  [AppointmentStatus.POSTPONED]: "border-l-blue-400 bg-blue-400/10",
+  [AppointmentStatus.CANCELLED_CALLBACK]: "border-l-amber-500 bg-amber-500/10",
+  [AppointmentStatus.CANCELLED_FINAL]: "border-l-muted-foreground bg-muted/30",
+  [AppointmentStatus.NO_SHOW]: "border-l-red-400 bg-red-400/10",
+  [AppointmentStatus.CLOSED]: "border-l-info bg-info/10",
 };
 
 const WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];

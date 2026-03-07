@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback } from "react";
 import { useAuth } from "@/store/crm-store";
-import { Appointment, AppointmentStatus, APPOINTMENT_STATUSES } from "@/data/crm-data";
+import { Appointment, AppointmentStatus, APPOINTMENT_STATUSES, APPOINTMENT_STATUS_LABELS } from "@/data/crm-data";
 import { useAppointments, useUpdateAppointmentStatus } from "@/hooks/useAppointments";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import FicheClient from "@/components/FicheClient";
@@ -52,7 +52,7 @@ const CalendarPage = () => {
   // All visible appointments (role-filtered, no status/rep filter yet for stats)
   // Also apply "À risque" auto-detection: Non confirmé + within 12h → À risque (UI mock)
   const roleFilteredAppointments = useMemo(() => {
-    let appts = allAppointments.filter((a) => a.status !== "Backlog");
+    let appts = allAppointments.filter((a) => a.status !== AppointmentStatus.BACKLOG);
     if (isRep) appts = appts.filter((a) => a.repId === currentRepId);
     else if (role === "gestionnaire" && teamMembers.length > 0) {
       const repIds = new Set(teamMembers.filter((r) => r.role === "representant").map((r) => r.id));
@@ -61,11 +61,11 @@ const CalendarPage = () => {
     // Auto-detect À risque: Non confirmé + appointment within 12 hours
     const now = Date.now();
     return appts.map((a) => {
-      if (a.status === "Non confirmé") {
+      if (a.status === AppointmentStatus.UNCONFIRMED) {
         const apptTime = new Date(`${a.date}T${a.time || "00:00"}`).getTime();
         const hoursUntil = (apptTime - now) / (1000 * 60 * 60);
         if (hoursUntil <= 12 && hoursUntil > -2) {
-          return { ...a, status: "À risque" as const };
+          return { ...a, status: AppointmentStatus.AT_RISK };
         }
       }
       return a;
@@ -86,14 +86,14 @@ const CalendarPage = () => {
   // Stats for today
   const stats = useMemo(() => {
     const todayAppts = roleFilteredAppointments.filter((a) => a.date === todayKey);
-    const confirmed = todayAppts.filter((a) => a.status === "Confirmé").length;
-    const atRisk = todayAppts.filter((a) => a.status === "À risque" || a.status === "Annulé (à rappeler)").length;
+    const confirmed = todayAppts.filter((a) => a.status === AppointmentStatus.CONFIRMED).length;
+    const atRisk = todayAppts.filter((a) => a.status === AppointmentStatus.AT_RISK || a.status === AppointmentStatus.CANCELLED_CALLBACK).length;
 
     const weekStart = getMonday(today);
     const weekStartKey = formatDateKey(weekStart);
     const weekEndKey = formatDateKey(addDays(weekStart, 6));
     const weekAppts = roleFilteredAppointments.filter((a) => a.date >= weekStartKey && a.date <= weekEndKey);
-    const weekClosed = weekAppts.filter((a) => a.status === "Closé" || a.status === "Confirmé").length;
+    const weekClosed = weekAppts.filter((a) => a.status === AppointmentStatus.CLOSED || a.status === AppointmentStatus.CONFIRMED).length;
     const closingRate = weekAppts.length > 0 ? Math.round((weekClosed / weekAppts.length) * 100) : 0;
 
     return { total: todayAppts.length, confirmed, atRisk, closingRate };
@@ -149,7 +149,7 @@ const CalendarPage = () => {
 
   // Only confirmed appointments for route
   const confirmedDailyAppts = useMemo(() => {
-    return dailyAppts.filter((a) => a.status === "Confirmé");
+    return dailyAppts.filter((a) => a.status === AppointmentStatus.CONFIRMED);
   }, [dailyAppts]);
 
   const canGenerateRoute = useMemo(() => {

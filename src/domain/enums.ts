@@ -15,9 +15,11 @@ export const AppointmentStatus = {
   CANCELLED_FINAL: "cancelled_final",
   NO_SHOW: "no_show",
   CLOSED: "closed",
+  BACKLOG: "backlog",
 } as const;
 export type AppointmentStatus = (typeof AppointmentStatus)[keyof typeof AppointmentStatus];
 
+/** Statuses shown in the main pipeline (excludes backlog) */
 export const APPOINTMENT_STATUSES: AppointmentStatus[] = [
   AppointmentStatus.PLANNED,
   AppointmentStatus.CONFIRMED,
@@ -30,7 +32,15 @@ export const APPOINTMENT_STATUSES: AppointmentStatus[] = [
   AppointmentStatus.CLOSED,
 ];
 
-/** Human-readable labels (French UI) */
+/** Statuses that automatically feed into Hot Calls */
+export const HOT_CALL_TRIGGER_STATUSES: AppointmentStatus[] = [
+  AppointmentStatus.UNCONFIRMED,
+  AppointmentStatus.AT_RISK,
+  AppointmentStatus.CANCELLED_CALLBACK,
+  AppointmentStatus.NO_SHOW,
+];
+
+/** Human-readable labels (French UI) — never store these in the DB */
 export const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
   [AppointmentStatus.PLANNED]: "Planifié",
   [AppointmentStatus.CONFIRMED]: "Confirmé",
@@ -41,6 +51,7 @@ export const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
   [AppointmentStatus.CANCELLED_FINAL]: "Annulé (définitif)",
   [AppointmentStatus.NO_SHOW]: "No-show",
   [AppointmentStatus.CLOSED]: "Closé",
+  [AppointmentStatus.BACKLOG]: "Backlog",
 };
 
 /**
@@ -50,16 +61,27 @@ export const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
 export const LEGACY_STATUS_MAP: Record<string, AppointmentStatus> = {
   "Planifié": AppointmentStatus.PLANNED,
   "En attente": AppointmentStatus.PLANNED,
+  "planned": AppointmentStatus.PLANNED,
   "Confirmé": AppointmentStatus.CONFIRMED,
+  "confirmed": AppointmentStatus.CONFIRMED,
   "Non confirmé": AppointmentStatus.UNCONFIRMED,
+  "unconfirmed": AppointmentStatus.UNCONFIRMED,
   "À risque": AppointmentStatus.AT_RISK,
+  "at_risk": AppointmentStatus.AT_RISK,
   "Reporté": AppointmentStatus.POSTPONED,
+  "postponed": AppointmentStatus.POSTPONED,
   "Annulé (à rappeler)": AppointmentStatus.CANCELLED_CALLBACK,
+  "cancelled_callback": AppointmentStatus.CANCELLED_CALLBACK,
   "Annulé (définitif)": AppointmentStatus.CANCELLED_FINAL,
+  "cancelled_final": AppointmentStatus.CANCELLED_FINAL,
   "No-show": AppointmentStatus.NO_SHOW,
+  "no_show": AppointmentStatus.NO_SHOW,
   "Closed": AppointmentStatus.CLOSED,
   "Closé": AppointmentStatus.CLOSED,
+  "closed": AppointmentStatus.CLOSED,
   "Annulé": AppointmentStatus.CANCELLED_CALLBACK,
+  "Backlog": AppointmentStatus.BACKLOG,
+  "backlog": AppointmentStatus.BACKLOG,
 };
 
 export function toLegacyStatus(s: AppointmentStatus): string {
@@ -223,6 +245,13 @@ export const AppRole = {
   REP: "representant",
 } as const;
 export type AppRole = (typeof AppRole)[keyof typeof AppRole];
+
+/** Human-readable role labels (French UI) */
+export const APP_ROLE_LABELS: Record<AppRole, string> = {
+  [AppRole.OWNER]: "Propriétaire",
+  [AppRole.MANAGER]: "Gestionnaire",
+  [AppRole.REP]: "Représentant",
+};
 
 // ─── Lead Sources ─────────────────────────────────────────────────────────────
 

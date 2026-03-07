@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useAuth } from "@/store/crm-store";
 import { useAppointments, useAddAppointment } from "@/hooks/useAppointments";
+import { AppointmentStatus } from "@/data/crm-data";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -45,7 +46,7 @@ const AddAppointmentPage = () => {
   const [searchParams] = useSearchParams();
 
   const backlogId = searchParams.get("backlog");
-  const backlogItem = backlogId ? allAppointments.find((a) => a.id === backlogId && a.status === "Backlog") : null;
+  const backlogItem = backlogId ? allAppointments.find((a) => a.id === backlogId && a.status === AppointmentStatus.BACKLOG) : null;
 
   const [fullName, setFullName] = useState(backlogItem?.fullName || "");
   const [phone, setPhone] = useState(backlogItem?.phone || "");
@@ -124,7 +125,7 @@ const AddAppointmentPage = () => {
     if (!validate(false)) return;
 
     try {
-      await addAppointmentMutation.mutateAsync(buildPayload("Planifié"));
+      await addAppointmentMutation.mutateAsync(buildPayload(AppointmentStatus.PLANNED));
       toast.success(backlogItem ? "Rendez-vous créé depuis le backlog." : "Rendez-vous créé.");
       if (role === "representant") navigate("/rep");
       else navigate("/appointments");
@@ -136,7 +137,7 @@ const AddAppointmentPage = () => {
   const handleBacklog = async () => {
     if (!validate(true)) return;
     try {
-      await addAppointmentMutation.mutateAsync(buildPayload("Backlog"));
+      await addAppointmentMutation.mutateAsync(buildPayload(AppointmentStatus.BACKLOG));
       toast.success("Ajouté au backlog.");
       navigate("/backlog");
     } catch (err: any) {

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
+import { AppointmentStatus } from "@/data/crm-data";
 import { useAppointments, useDeleteAppointment as useDeleteApptMutation } from "@/hooks/useAppointments";
 import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import { useNavigate } from "react-router-dom";
@@ -14,7 +15,7 @@ const BacklogPage = () => {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const backlogItems = useMemo(() => {
-    let items = appointments.filter((a) => a.status === "Backlog");
+    let items = appointments.filter((a) => a.status === AppointmentStatus.BACKLOG);
     if (role === "representant") items = items.filter((a) => a.repId === currentRepId);
     if (search) {
       const q = search.toLowerCase();

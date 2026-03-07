@@ -1,8 +1,11 @@
 import { create } from "zustand";
-import { Appointment, AppointmentStatus, HotCall, HotCallStatus, HotCallPhase, HotCallFeedback, CallLogEntry, StatusChangeLog, HOT_CALL_TRIGGER_STATUSES } from "@/data/crm-data";
-// Mock data removed — store starts empty, ready for Supabase
+import {
+  Appointment, AppointmentStatus, HotCall, HotCallStatus, HotCallPhase,
+  HotCallFeedback, CallLogEntry, StatusChangeLog, HOT_CALL_TRIGGER_STATUSES
+} from "@/data/crm-data";
+import { AppointmentStatus as AS } from "@/domain/enums";
 
-// Re-export AppRole from new workspace system
+// Re-export AppRole from workspace system
 export type { AppRole } from "@/lib/workspace/WorkspaceProvider";
 
 // Re-export useAuth as backward-compatible shim
@@ -14,9 +17,9 @@ interface CrmState {
   dailyTarget: number;
   weeklyTarget: number;
   repGoals: Record<string, number>;
-  addAppointment: (appt: Omit<Appointment, "id" | "smsScheduled" | "createdAt" | "statusLog">) => void;
+  addAppointment: (appt: Omit<Appointment, "id" | "createdAt" | "statusLog">) => void;
   updateStatus: (id: string, status: AppointmentStatus, userId?: string) => void;
-  closeAppointment: (id: string, closedValue: number, userId?: string, wasRecovered?: boolean) => void;
+  closeAppointment: (id: string, closedValue: number, userId?: string) => void;
   deleteAppointment: (id: string) => void;
   updateNotes: (id: string, notes: string) => void;
   setDailyTarget: (target: number) => void;
@@ -43,18 +46,6 @@ interface CrmState {
 }
 
 const today = new Date().toISOString().split("T")[0];
-const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
-
-const INITIAL_HOT_CALLS: HotCall[] = [];
-
-const computeFollowUpDate = (status: HotCallStatus, fromDate: string): string => {
-  const d = new Date(fromDate);
-  if (status === "Follow-up 3 months") { d.setMonth(d.getMonth() + 3); return d.toISOString().split("T")[0]; }
-  if (status === "Follow-up 6 months") { d.setMonth(d.getMonth() + 6); return d.toISOString().split("T")[0]; }
-  if (status === "Follow-up 9 months") { d.setMonth(d.getMonth() + 9); return d.toISOString().split("T")[0]; }
-  if (status === "Follow-up 12 months") { d.setMonth(d.getMonth() + 12); return d.toISOString().split("T")[0]; }
-  return fromDate;
-};
 
 const createLogEntry = (prev: string, next: string, userId: string): StatusChangeLog => {
   const now = new Date();
@@ -68,12 +59,22 @@ const createLogEntry = (prev: string, next: string, userId: string): StatusChang
   };
 };
 
+const computeFollowUpDate = (status: HotCallStatus, fromDate: string): string => {
+  const d = new Date(fromDate);
+  if (status === "Follow-up 3 months") { d.setMonth(d.getMonth() + 3); return d.toISOString().split("T")[0]; }
+  if (status === "Follow-up 6 months") { d.setMonth(d.getMonth() + 6); return d.toISOString().split("T")[0]; }
+  if (status === "Follow-up 9 months") { d.setMonth(d.getMonth() + 9); return d.toISOString().split("T")[0]; }
+  if (status === "Follow-up 12 months") { d.setMonth(d.getMonth() + 12); return d.toISOString().split("T")[0]; }
+  return fromDate;
+};
+
 export const useCrm = create<CrmState>((set, get) => ({
   appointments: [],
-  hotCalls: INITIAL_HOT_CALLS,
+  hotCalls: [],
   repGoals: {},
   dailyTarget: 15,
   weeklyTarget: 75,
+
   addAppointment: (appt) =>
     set((state) => ({
       appointments: [
@@ -81,12 +82,12 @@ export const useCrm = create<CrmState>((set, get) => ({
         {
           ...appt,
           id: `a${Date.now()}`,
-          smsScheduled: false,
           createdAt: new Date().toISOString().split("T")[0],
           statusLog: [],
         },
       ],
     })),
+
   updateStatus: (id, status, userId = "system") =>
     set((state) => ({
       appointments: state.appointments.map((a) => {
@@ -95,38 +96,42 @@ export const useCrm = create<CrmState>((set, get) => ({
         return { ...a, status, statusLog: [...a.statusLog, log] };
       }),
     })),
-  closeAppointment: (id, closedValue, userId = "system", wasRecovered = false) =>
+
+  closeAppointment: (id, closedValue, userId = "system") =>
     set((state) => ({
       appointments: state.appointments.map((a) => {
         if (a.id !== id) return a;
-        const log = createLogEntry(a.status, "Closé", userId);
+        const log = createLogEntry(a.status, AS.CLOSED, userId);
         return {
           ...a,
-          status: "Closé" as const,
+          status: AS.CLOSED,
           closedValue,
           closedAt: new Date().toISOString(),
-          closedBy: userId,
-          wasRecovered,
           statusLog: [...a.statusLog, log],
         };
       }),
     })),
+
   deleteAppointment: (id) =>
     set((state) => ({
       appointments: state.appointments.filter((a) => a.id !== id),
     })),
+
   updateNotes: (id, notes) =>
     set((state) => ({
       appointments: state.appointments.map((a) =>
         a.id === id ? { ...a, notes } : a
       ),
     })),
+
   setDailyTarget: (target) => set({ dailyTarget: target }),
   setWeeklyTarget: (target) => set({ weeklyTarget: target }),
+
   setRepGoal: (repId, goal) =>
     set((state) => ({
       repGoals: { ...state.repGoals, [repId]: goal },
     })),
+
   addHotCall: (hc) =>
     set((state) => ({
       hotCalls: [
@@ -134,6 +139,7 @@ export const useCrm = create<CrmState>((set, get) => ({
         { ...hc, id: `hc${Date.now()}`, attempts: 0, createdAt: new Date().toISOString().split("T")[0], tags: [], callHistory: [] },
       ],
     })),
+
   updateHotCallStatus: (id, status) =>
     set((state) => {
       const todayStr = new Date().toISOString().split("T")[0];
@@ -157,9 +163,7 @@ export const useCrm = create<CrmState>((set, get) => ({
                 preQual1: "",
                 preQual2: "",
                 notes: hc.notes,
-                status: "Planifié" as const,
-                source: hc.source,
-                smsScheduled: false,
+                status: AS.PLANNED,
                 createdAt: todayStr,
                 statusLog: [],
               },
@@ -180,12 +184,14 @@ export const useCrm = create<CrmState>((set, get) => ({
         ),
       };
     }),
+
   updateHotCallPhase: (id, phase) =>
     set((state) => ({
       hotCalls: state.hotCalls.map((h) =>
         h.id === id ? { ...h, phase } : h
       ),
     })),
+
   updateHotCallFeedback: (id, feedback) =>
     set((state) => {
       const todayStr = new Date().toISOString().split("T")[0];
@@ -202,40 +208,47 @@ export const useCrm = create<CrmState>((set, get) => ({
         ),
       };
     }),
+
   updateHotCallNotes: (id, notes) =>
     set((state) => ({
       hotCalls: state.hotCalls.map((h) =>
         h.id === id ? { ...h, notes } : h
       ),
     })),
+
   deleteHotCall: (id) =>
     set((state) => ({
       hotCalls: state.hotCalls.filter((h) => h.id !== id),
     })),
+
   incrementHotCallAttempts: (id) =>
     set((state) => ({
       hotCalls: state.hotCalls.map((h) =>
         h.id === id ? { ...h, attempts: h.attempts + 1 } : h
       ),
     })),
+
   updateHotCallFollowUpDate: (id, date) =>
     set((state) => ({
       hotCalls: state.hotCalls.map((h) =>
         h.id === id ? { ...h, followUpDate: date } : h
       ),
     })),
+
   updateHotCallTags: (id, tags) =>
     set((state) => ({
       hotCalls: state.hotCalls.map((h) =>
         h.id === id ? { ...h, tags } : h
       ),
     })),
+
   addHotCallLog: (id, entry) =>
     set((state) => ({
       hotCalls: state.hotCalls.map((h) =>
         h.id === id ? { ...h, callHistory: [...h.callHistory, entry] } : h
       ),
     })),
+
   logCallAndUpdate: (id, status, note, followUpDate, repId) =>
     set((state) => {
       const todayStr = new Date().toISOString().split("T")[0];
@@ -262,9 +275,7 @@ export const useCrm = create<CrmState>((set, get) => ({
                 preQual1: "",
                 preQual2: "",
                 notes: note || hc.notes,
-                status: "Planifié" as const,
-                source: hc.source,
-                smsScheduled: false,
+                status: AS.PLANNED,
                 createdAt: todayStr,
                 statusLog: [],
               },
@@ -289,12 +300,14 @@ export const useCrm = create<CrmState>((set, get) => ({
         ),
       };
     }),
+
   reassignHotCall: (id, repId) =>
     set((state) => ({
       hotCalls: state.hotCalls.map((h) =>
         h.id === id ? { ...h, repId } : h
       ),
     })),
+
   rebookHotCall: (id, date, time) =>
     set((state) => {
       const hc = state.hotCalls.find((h) => h.id === id);
@@ -316,16 +329,15 @@ export const useCrm = create<CrmState>((set, get) => ({
             preQual1: "",
             preQual2: "",
             notes: hc.notes,
-            status: "Planifié" as const,
-            source: hc.source,
-            smsScheduled: false,
+            status: AS.PLANNED,
             createdAt: new Date().toISOString().split("T")[0],
             statusLog: [],
           },
         ],
       };
     }),
-  moveAppointmentToHotCalls: (appointmentId, status = "No answer") =>
+
+  moveAppointmentToHotCalls: (appointmentId, status = "Premier contact") =>
     set((state) => {
       const appt = state.appointments.find((a) => a.id === appointmentId);
       if (!appt) return state;
@@ -340,8 +352,8 @@ export const useCrm = create<CrmState>((set, get) => ({
             fullName: appt.fullName,
             phone: appt.phone,
             address: appt.address,
-            city: appt.city || "Montréal",
-            source: appt.source || "Door-to-door",
+            city: appt.city || "",
+            source: "Door-to-door",
             repId: appt.repId,
             status,
             phase: "pool" as HotCallPhase,
@@ -359,32 +371,33 @@ export const useCrm = create<CrmState>((set, get) => ({
         ],
       };
     }),
+
   autoTriggerHotCalls: () => {
     const state = get();
-
     state.appointments.forEach((appt) => {
-      if (appt.status === "Backlog") return;
+      if (appt.status === AS.BACKLOG) return;
       const alreadyInHotCalls = state.hotCalls.some((h) => h.originalAppointmentId === appt.id);
       if (alreadyInHotCalls) return;
-
-      // Hot Call trigger statuses → automatically move to Hot Calls
       if (HOT_CALL_TRIGGER_STATUSES.includes(appt.status)) {
         state.moveAppointmentToHotCalls(appt.id, "Premier contact");
       }
     });
   },
+
   convertBacklogToAppointment: (id, updates) =>
     set((state) => ({
       appointments: state.appointments.map((a) =>
-        a.id === id ? { ...a, ...updates, status: "Planifié" as const } : a
+        a.id === id ? { ...a, ...updates, status: AS.PLANNED } : a
       ),
     })),
+
   decrementHotCallAttempts: (id) =>
     set((state) => ({
       hotCalls: state.hotCalls.map((h) =>
         h.id === id ? { ...h, attempts: Math.max(0, h.attempts - 1) } : h
       ),
     })),
+
   rescheduleHotCall: (id, date, time) =>
     set((state) => {
       const hc = state.hotCalls.find((h) => h.id === id);
@@ -396,7 +409,7 @@ export const useCrm = create<CrmState>((set, get) => ({
         return {
           hotCalls: state.hotCalls.filter((h) => h.id !== id),
           appointments: state.appointments.map((a) =>
-            a.id === appt.id ? { ...a, date, time: time || "09:00", status: "Planifié" as const } : a
+            a.id === appt.id ? { ...a, date, time: time || "09:00", status: AS.PLANNED } : a
           ),
         };
       }
@@ -417,9 +430,7 @@ export const useCrm = create<CrmState>((set, get) => ({
             preQual1: "",
             preQual2: "",
             notes: hc.notes,
-            status: "Planifié" as const,
-            source: hc.source,
-            smsScheduled: false,
+            status: AS.PLANNED,
             createdAt: new Date().toISOString().split("T")[0],
             statusLog: [],
           },

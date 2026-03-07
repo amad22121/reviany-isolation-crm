@@ -1,4 +1,4 @@
-import { Appointment, AppointmentStatus } from "@/data/crm-data";
+import { Appointment, AppointmentStatus, APPOINTMENT_STATUS_LABELS } from "@/data/crm-data";
 import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -7,15 +7,15 @@ import { AppRole } from "@/store/crm-store";
 import { useRef, useMemo } from "react";
 
 const STATUS_COLORS: Record<string, string> = {
-  "Planifié": "bg-warning/20 border-warning/40 text-warning",
-  "Confirmé": "bg-green-500/20 border-green-500/40 text-green-300",
-  "Non confirmé": "bg-orange-300/20 border-orange-300/40 text-orange-300",
-  "À risque": "bg-orange-400/20 border-orange-400/40 text-orange-300",
-  "Reporté": "bg-blue-400/20 border-blue-400/40 text-blue-300",
-  "Annulé (à rappeler)": "bg-amber-500/20 border-amber-500/40 text-amber-400",
-  "Annulé (définitif)": "bg-muted/40 border-muted-foreground/30 text-muted-foreground",
-  "No-show": "bg-red-400/20 border-red-400/40 text-red-300",
-  "Closé": "bg-info/20 border-info/40 text-info",
+  [AppointmentStatus.PLANNED]: "bg-warning/20 border-warning/40 text-warning",
+  [AppointmentStatus.CONFIRMED]: "bg-green-500/20 border-green-500/40 text-green-300",
+  [AppointmentStatus.UNCONFIRMED]: "bg-orange-300/20 border-orange-300/40 text-orange-300",
+  [AppointmentStatus.AT_RISK]: "bg-orange-400/20 border-orange-400/40 text-orange-300",
+  [AppointmentStatus.POSTPONED]: "bg-blue-400/20 border-blue-400/40 text-blue-300",
+  [AppointmentStatus.CANCELLED_CALLBACK]: "bg-amber-500/20 border-amber-500/40 text-amber-400",
+  [AppointmentStatus.CANCELLED_FINAL]: "bg-muted/40 border-muted-foreground/30 text-muted-foreground",
+  [AppointmentStatus.NO_SHOW]: "bg-red-400/20 border-red-400/40 text-red-300",
+  [AppointmentStatus.CLOSED]: "bg-info/20 border-info/40 text-info",
 };
 
 const HOUR_HEIGHT = 72; // px per hour
@@ -214,24 +214,24 @@ const DailyView = ({ appointments, role, currentRepId, onOpenFiche, onUpdateStat
                             <DropdownMenuItem onClick={() => onOpenFiche(appt)}>
                               <Eye className="h-3.5 w-3.5 mr-2" /> Fiche client
                             </DropdownMenuItem>
-                            {appt.status !== "Confirmé" && (
-                              <DropdownMenuItem onClick={() => onUpdateStatus(appt.id, "Confirmé")}>
+                            {appt.status !== AppointmentStatus.CONFIRMED && (
+                              <DropdownMenuItem onClick={() => onUpdateStatus(appt.id, AppointmentStatus.CONFIRMED)}>
                                 <Check className="h-3.5 w-3.5 mr-2 text-green-400" /> Confirmer
                               </DropdownMenuItem>
                             )}
-                            {appt.status !== "Closé" && (role === "proprietaire" || role === "gestionnaire") && (
-                              <DropdownMenuItem onClick={() => onUpdateStatus(appt.id, "Closé")}>
-                                <Lock className="h-3.5 w-3.5 mr-2 text-info" /> Closé
+                            {appt.status !== AppointmentStatus.CLOSED && (role === "proprietaire" || role === "gestionnaire") && (
+                              <DropdownMenuItem onClick={() => onUpdateStatus(appt.id, AppointmentStatus.CLOSED)}>
+                                <Lock className="h-3.5 w-3.5 mr-2 text-info" /> {APPOINTMENT_STATUS_LABELS[AppointmentStatus.CLOSED]}
                               </DropdownMenuItem>
                             )}
-                            {appt.status !== "Planifié" && (
-                              <DropdownMenuItem onClick={() => onUpdateStatus(appt.id, "Planifié")}>
+                            {appt.status !== AppointmentStatus.PLANNED && (
+                              <DropdownMenuItem onClick={() => onUpdateStatus(appt.id, AppointmentStatus.PLANNED)}>
                                 <CalendarClock className="h-3.5 w-3.5 mr-2 text-warning" /> Replanifier
                               </DropdownMenuItem>
                             )}
-                            {appt.status !== "Annulé (à rappeler)" && (role === "proprietaire" || role === "gestionnaire") && (
-                              <DropdownMenuItem onClick={() => onUpdateStatus(appt.id, "Annulé (à rappeler)")}>
-                                <XCircle className="h-3.5 w-3.5 mr-2 text-amber-400" /> Annulé (à rappeler)
+                            {appt.status !== AppointmentStatus.CANCELLED_CALLBACK && (role === "proprietaire" || role === "gestionnaire") && (
+                              <DropdownMenuItem onClick={() => onUpdateStatus(appt.id, AppointmentStatus.CANCELLED_CALLBACK)}>
+                                <XCircle className="h-3.5 w-3.5 mr-2 text-amber-400" /> {APPOINTMENT_STATUS_LABELS[AppointmentStatus.CANCELLED_CALLBACK]}
                               </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>

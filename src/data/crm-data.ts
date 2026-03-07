@@ -1,14 +1,23 @@
 /**
- * Legacy CRM data — thin re-export layer.
- * Types are kept here for backward compatibility with existing consumer files.
- * Mock data is sourced from the centralized mock-data module.
- * 
- * When Supabase is wired, this file can be removed and consumers
- * updated to import from @/domain and @/lib/data.
+ * CRM data — re-export layer.
+ * AppointmentStatus and related constants are sourced from @/domain/enums (single source of truth).
+ * The Appointment interface is a VIEW MODEL (camelCase) for backward compat with pages/components.
+ * It is NOT the DB schema — DB schema lives in @/domain/types.ts.
  */
 
+// ─── AppointmentStatus: re-exported from domain/enums ─────────────────────────
+// DB values: "planned" | "confirmed" | "unconfirmed" | "at_risk" | "postponed"
+//           | "cancelled_callback" | "cancelled_final" | "no_show" | "closed" | "backlog"
+export {
+  AppointmentStatus,
+  APPOINTMENT_STATUSES,
+  APPOINTMENT_STATUS_LABELS,
+  HOT_CALL_TRIGGER_STATUSES,
+} from "@/domain/enums";
 
-// ─── Re-export types (kept for 31+ consumer files) ───────────────────────────
+import type { AppointmentStatus } from "@/domain/enums";
+
+// ─── View model types ─────────────────────────────────────────────────────────
 
 export interface SalesRep {
   id: string;
@@ -17,38 +26,6 @@ export interface SalesRep {
   managerId?: string;
   zone?: string;
 }
-
-export type AppointmentStatus =
-  | "Planifié"
-  | "Confirmé"
-  | "Non confirmé"
-  | "À risque"
-  | "Reporté"
-  | "Annulé (à rappeler)"
-  | "Annulé (définitif)"
-  | "No-show"
-  | "Closé"
-  | "Backlog";
-
-export const APPOINTMENT_STATUSES: AppointmentStatus[] = [
-  "Planifié",
-  "Confirmé",
-  "Non confirmé",
-  "À risque",
-  "Reporté",
-  "Annulé (à rappeler)",
-  "Annulé (définitif)",
-  "No-show",
-  "Closé",
-];
-
-/** Statuses that automatically feed into Hot Calls */
-export const HOT_CALL_TRIGGER_STATUSES: AppointmentStatus[] = [
-  "Non confirmé",
-  "À risque",
-  "Annulé (à rappeler)",
-  "No-show",
-];
 
 export interface StatusChangeLog {
   date: string;
@@ -59,8 +36,15 @@ export interface StatusChangeLog {
   userId: string;
 }
 
+/**
+ * Appointment VIEW MODEL — camelCase, consumed by pages/components.
+ * Populated by useAppointments mapRow() which joins appointments + clients.
+ * date/time/preQual1 are DERIVED from real DB columns in mapRow.
+ * Never write this shape directly to Supabase.
+ */
 export interface Appointment {
   id: string;
+  // Client identity (from public.clients join)
   fullName: string;
   phone: string;
   address: string;
@@ -68,23 +52,23 @@ export interface Appointment {
   origin?: string;
   culturalOrigin?: string;
   leadSource?: string;
-  date: string;
-  time: string;
+  // Appointment workflow (from public.appointments)
+  date: string;        // derived from scheduled_at
+  time: string;        // derived from scheduled_at
   repId: string;
+  // Pre-qualification (derived from individual DB columns via buildPreQualFromColumns)
   preQual1: string;
   preQual2: string;
   notes: string;
-  status: AppointmentStatus;
-  source?: "Door-to-door" | "Referral" | "Facebook" | "Autre";
-  smsScheduled: boolean;
+  status: AppointmentStatus;  // stored in DB as snake_case English: "planned", "closed", etc.
   createdAt: string;
-  statusLog: StatusChangeLog[];
-  /** Revenue fields – populated when status = "Closé" */
+  statusLog: StatusChangeLog[];  // will be populated from appointment_status_logs table (future)
+  // Revenue (from appointments.close_amount)
   closedValue?: number;
   closedAt?: string;
-  closedBy?: string;
-  wasRecovered?: boolean;
 }
+
+// ─── Hot Call view model types ─────────────────────────────────────────────────
 
 export type HotCallStatus =
   | "Premier contact"
@@ -178,13 +162,13 @@ export interface HotCall {
   callHistory: CallLogEntry[];
 }
 
-// ─── Data constants — empty, Supabase-ready ─────────────────────────────────
+// ─── Empty data constants ─────────────────────────────────────────────────────
 
 /** @deprecated Use useTeamMembers hook instead */
 export const MANAGERS: { id: string; name: string }[] = [];
 /** @deprecated Use useTeamMembers hook instead */
 export const SALES_REPS: SalesRep[] = [];
-/** @deprecated Use repos from @/lib/data instead */
+/** @deprecated Use useAppointments hook instead */
 export const INITIAL_APPOINTMENTS: Appointment[] = [];
-/** @deprecated Use repos from @/lib/data instead */
+/** @deprecated Use useHotCallsQuery hook instead */
 export const INITIAL_HOT_CALLS: HotCall[] = [];

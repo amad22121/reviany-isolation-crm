@@ -1,17 +1,17 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "@/store/crm-store";
-import { Appointment, APPOINTMENT_STATUSES, AppointmentStatus } from "@/data/crm-data";
+import { Appointment, APPOINTMENT_STATUSES, AppointmentStatus, APPOINTMENT_STATUS_LABELS } from "@/data/crm-data";
 import { useAppointments, useUpdateAppointmentStatus, useUpdateAppointmentNotes } from "@/hooks/useAppointments";
 import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
-import { Search, MapPin, Bell, Check, Plus, CalendarPlus } from "lucide-react";
+import { Search, MapPin, Check, Plus, CalendarPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import FicheClient from "@/components/FicheClient";
 
 const STATUS_PERMISSIONS: Record<string, AppointmentStatus[]> = {
-  representant: ["Planifié", "Confirmé"],
-  gestionnaire: ["Planifié", "Confirmé", "Non confirmé", "À risque", "Reporté", "Annulé (à rappeler)", "Annulé (définitif)", "No-show", "Closé"],
-  proprietaire: ["Planifié", "Confirmé", "Non confirmé", "À risque", "Reporté", "Annulé (à rappeler)", "Annulé (définitif)", "No-show", "Closé"],
+  representant: [AppointmentStatus.PLANNED, AppointmentStatus.CONFIRMED],
+  gestionnaire: [AppointmentStatus.PLANNED, AppointmentStatus.CONFIRMED, AppointmentStatus.UNCONFIRMED, AppointmentStatus.AT_RISK, AppointmentStatus.POSTPONED, AppointmentStatus.CANCELLED_CALLBACK, AppointmentStatus.CANCELLED_FINAL, AppointmentStatus.NO_SHOW, AppointmentStatus.CLOSED],
+  proprietaire: [AppointmentStatus.PLANNED, AppointmentStatus.CONFIRMED, AppointmentStatus.UNCONFIRMED, AppointmentStatus.AT_RISK, AppointmentStatus.POSTPONED, AppointmentStatus.CANCELLED_CALLBACK, AppointmentStatus.CANCELLED_FINAL, AppointmentStatus.NO_SHOW, AppointmentStatus.CLOSED],
 };
 
 const AppointmentsPage = () => {
@@ -48,7 +48,7 @@ const AppointmentsPage = () => {
   const filtered = useMemo(() => {
     return appointments.filter((a) => {
       if (role === "gestionnaire" && teamRepIds.size > 0 && !teamRepIds.has(a.repId)) return false;
-      if (a.status === "Backlog") return false;
+      if (a.status === AppointmentStatus.BACKLOG) return false;
       const matchSearch =
         !search ||
         a.fullName.toLowerCase().includes(search.toLowerCase()) ||
@@ -63,15 +63,15 @@ const AppointmentsPage = () => {
   const getRepName = (repId: string) => getRepNameFromList(teamMembers, repId);
 
   const statusColors: Record<string, string> = {
-    "Planifié": "bg-warning/20 text-warning",
-    "Confirmé": "bg-green-500/20 text-green-400",
-    "Non confirmé": "bg-orange-300/20 text-orange-300",
-    "À risque": "bg-destructive/20 text-destructive",
-    "Reporté": "bg-blue-400/20 text-blue-400",
-    "Annulé (à rappeler)": "bg-amber-500/20 text-amber-400",
-    "Annulé (définitif)": "bg-muted text-muted-foreground",
-    "No-show": "bg-red-400/20 text-red-400",
-    "Closé": "bg-info/20 text-info",
+    [AppointmentStatus.PLANNED]: "bg-warning/20 text-warning",
+    [AppointmentStatus.CONFIRMED]: "bg-green-500/20 text-green-400",
+    [AppointmentStatus.UNCONFIRMED]: "bg-orange-300/20 text-orange-300",
+    [AppointmentStatus.AT_RISK]: "bg-destructive/20 text-destructive",
+    [AppointmentStatus.POSTPONED]: "bg-blue-400/20 text-blue-400",
+    [AppointmentStatus.CANCELLED_CALLBACK]: "bg-amber-500/20 text-amber-400",
+    [AppointmentStatus.CANCELLED_FINAL]: "bg-muted text-muted-foreground",
+    [AppointmentStatus.NO_SHOW]: "bg-red-400/20 text-red-400",
+    [AppointmentStatus.CLOSED]: "bg-info/20 text-info",
   };
 
   const allowedStatuses = role ? STATUS_PERMISSIONS[role] || [] : [];
@@ -113,7 +113,7 @@ const AppointmentsPage = () => {
         >
           <option value="all">Tous les statuts</option>
           {APPOINTMENT_STATUSES.map((s) => (
-            <option key={s} value={s}>{s}</option>
+            <option key={s} value={s}>{APPOINTMENT_STATUS_LABELS[s]}</option>
           ))}
         </select>
       </div>
@@ -166,12 +166,12 @@ const AppointmentsPage = () => {
                         className={`px-2 py-1 rounded-full text-xs font-medium border-0 cursor-pointer ${statusColors[a.status]}`}
                       >
                         {APPOINTMENT_STATUSES.map((s) => (
-                          <option key={s} value={s} disabled={!allowedStatuses.includes(s)}>{s}</option>
+                          <option key={s} value={s} disabled={!allowedStatuses.includes(s)}>{APPOINTMENT_STATUS_LABELS[s]}</option>
                         ))}
                       </select>
                     ) : (
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[a.status]}`}>
-                        {a.status}
+                        {APPOINTMENT_STATUS_LABELS[a.status] ?? a.status}
                       </span>
                     )}
                   </td>
@@ -201,11 +201,6 @@ const AppointmentsPage = () => {
                       >
                         {savedNoteId === a.id ? "✓ Sauvegardé" : (a.notes || "Ajouter une note…")}
                       </button>
-                    )}
-                    {a.smsScheduled && (
-                      <span className="ml-2 inline-flex items-center gap-1 text-primary">
-                        <Bell className="h-3 w-3" />
-                      </span>
                     )}
                   </td>
                 </tr>

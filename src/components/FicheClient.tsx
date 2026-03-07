@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Appointment, AppointmentStatus, HotCall, CallLogEntry } from "@/data/crm-data";
+import { Appointment, AppointmentStatus, HotCall, CallLogEntry, APPOINTMENT_STATUS_LABELS } from "@/data/crm-data";
 import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import ClientPhotosSection from "@/components/ClientPhotosSection";
-import { useCrm } from "@/store/crm-store";
 import { useAuth } from "@/store/crm-store";
 import { useUpdateAppointmentStatus, useUpdateAppointmentNotes, useDeleteAppointment as useDeleteApptMutation } from "@/hooks/useAppointments";
 import {
@@ -24,15 +23,15 @@ import {
 import { MapPin, Phone, Calendar, Clock, User, StickyNote, Pencil, Check, Trash2, BadgeCheck, History, Briefcase, ClipboardCheck, Tag } from "lucide-react";
 
 const statusColors: Record<string, string> = {
-  "Planifié": "bg-warning/20 text-warning border-warning/30",
-  "Confirmé": "bg-green-500/20 text-green-400 border-green-500/30",
-  "Non confirmé": "bg-orange-300/20 text-orange-300 border-orange-300/30",
-  "À risque": "bg-destructive/20 text-destructive border-destructive/30",
-  "Reporté": "bg-blue-400/20 text-blue-400 border-blue-400/30",
-  "Annulé (à rappeler)": "bg-amber-500/20 text-amber-400 border-amber-500/30",
-  "Annulé (définitif)": "bg-muted text-muted-foreground border-border",
-  "No-show": "bg-red-400/20 text-red-400 border-red-400/30",
-  "Closé": "bg-info/20 text-info border-info/30",
+  [AppointmentStatus.PLANNED]: "bg-warning/20 text-warning border-warning/30",
+  [AppointmentStatus.CONFIRMED]: "bg-green-500/20 text-green-400 border-green-500/30",
+  [AppointmentStatus.UNCONFIRMED]: "bg-orange-300/20 text-orange-300 border-orange-300/30",
+  [AppointmentStatus.AT_RISK]: "bg-destructive/20 text-destructive border-destructive/30",
+  [AppointmentStatus.POSTPONED]: "bg-blue-400/20 text-blue-400 border-blue-400/30",
+  [AppointmentStatus.CANCELLED_CALLBACK]: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+  [AppointmentStatus.CANCELLED_FINAL]: "bg-muted text-muted-foreground border-border",
+  [AppointmentStatus.NO_SHOW]: "bg-red-400/20 text-red-400 border-red-400/30",
+  [AppointmentStatus.CLOSED]: "bg-info/20 text-info border-info/30",
 };
 
 interface FicheClientProps {
@@ -42,7 +41,7 @@ interface FicheClientProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const ALL_STATUSES: AppointmentStatus[] = ["Planifié", "Confirmé", "Non confirmé", "À risque", "Reporté", "Annulé (à rappeler)", "Annulé (définitif)", "No-show", "Closé"];
+const ALL_STATUSES: AppointmentStatus[] = [AppointmentStatus.PLANNED, AppointmentStatus.CONFIRMED, AppointmentStatus.UNCONFIRMED, AppointmentStatus.AT_RISK, AppointmentStatus.POSTPONED, AppointmentStatus.CANCELLED_CALLBACK, AppointmentStatus.CANCELLED_FINAL, AppointmentStatus.NO_SHOW, AppointmentStatus.CLOSED];
 
 // ── Helper: parse preQual1 pipe-delimited string into structured data ──
 function parsePreQual(preQual1: string): Record<string, string> {
@@ -63,7 +62,6 @@ function parsePreQual(preQual1: string): Record<string, string> {
 const EmptyValue = () => <span className="text-muted-foreground italic text-xs">Non renseigné</span>;
 
 const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientProps) => {
-  const { moveAppointmentToHotCalls } = useCrm();
   const updateStatusMutation = useUpdateAppointmentStatus();
   const updateNotesMutation = useUpdateAppointmentNotes();
   const deleteApptMutation = useDeleteApptMutation();
@@ -107,7 +105,7 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
   const allowedStatuses: AppointmentStatus[] = (() => {
     if (role === "proprietaire") return ALL_STATUSES;
     if (role === "gestionnaire") return ALL_STATUSES;
-    return ["Planifié", "Confirmé"] as AppointmentStatus[];
+    return [AppointmentStatus.PLANNED, AppointmentStatus.CONFIRMED];
   })();
 
   const canEditStatus = !hotCall && allowedStatuses.length > 0;
@@ -122,14 +120,12 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
       currentStatusLog: appointment.statusLog || [],
       previousStatus: appointment.status,
     });
-    if (newStatus === "Annulé (à rappeler)" || newStatus === "Non confirmé" || newStatus === "No-show") {
-    }
     setStatusDropdownOpen(false);
   };
 
   // Resolve cultural origin and lead source
   const culturalOrigin = appointment.culturalOrigin || null;
-  const leadSource = appointment.leadSource || appointment.origin || appointment.source || null;
+  const leadSource = appointment.leadSource || appointment.origin || null;
   const callHistory = hotCall?.callHistory || [];
 
   const handleEditNotes = () => {
@@ -174,7 +170,7 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
                     onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
                     className={`px-3 py-1 rounded-full text-xs font-medium border cursor-pointer hover:brightness-110 transition-colors ${statusColors[appointment.status] || "bg-secondary text-secondary-foreground border-border"}`}
                   >
-                    {appointment.status} ▾
+                    {APPOINTMENT_STATUS_LABELS[appointment.status] ?? appointment.status} ▾
                   </button>
                   {statusDropdownOpen && (
                     <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[160px]">
@@ -194,16 +190,16 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
                             }`}
                           >
                             <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
-                              s === "Planifié" ? "bg-warning" :
-                              s === "Confirmé" ? "bg-green-500" :
-                              s === "Non confirmé" ? "bg-orange-300" :
-                              s === "À risque" ? "bg-destructive" :
-                              s === "Reporté" ? "bg-blue-400" :
-                              s === "Annulé (à rappeler)" ? "bg-amber-400" :
-                              s === "No-show" ? "bg-red-400" :
-                              s === "Closé" ? "bg-info" : "bg-muted-foreground"
+                              s === AppointmentStatus.PLANNED ? "bg-warning" :
+                              s === AppointmentStatus.CONFIRMED ? "bg-green-500" :
+                              s === AppointmentStatus.UNCONFIRMED ? "bg-orange-300" :
+                              s === AppointmentStatus.AT_RISK ? "bg-destructive" :
+                              s === AppointmentStatus.POSTPONED ? "bg-blue-400" :
+                              s === AppointmentStatus.CANCELLED_CALLBACK ? "bg-amber-400" :
+                              s === AppointmentStatus.NO_SHOW ? "bg-red-400" :
+                              s === AppointmentStatus.CLOSED ? "bg-info" : "bg-muted-foreground"
                             }`} />
-                            {s}
+                            {APPOINTMENT_STATUS_LABELS[s] ?? s}
                           </button>
                         );
                       })}
@@ -212,7 +208,7 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
                 </div>
               ) : (
                 <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[appointment.status] || "bg-secondary text-secondary-foreground border-border"}`}>
-                  {displayStatus}
+                  {hotCall ? displayStatus : (APPOINTMENT_STATUS_LABELS[appointment.status] ?? appointment.status)}
                 </span>
               )}
             </div>
