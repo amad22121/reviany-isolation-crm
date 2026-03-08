@@ -6,15 +6,15 @@
 // ─── Appointment ──────────────────────────────────────────────────────────────
 
 export const AppointmentStatus = {
-  PLANNED: "planned",
-  CONFIRMED: "confirmed",
-  UNCONFIRMED: "unconfirmed",
-  AT_RISK: "at_risk",
-  POSTPONED: "postponed",
-  CANCELLED_CALLBACK: "cancelled_callback",
-  CANCELLED_FINAL: "cancelled_final",
+  PLANNED: "planifie",
+  CONFIRMED: "confirme",
+  UNCONFIRMED: "non_confirme",
+  AT_RISK: "a_risque",
+  POSTPONED: "reporte",
+  CANCELLED_CALLBACK: "annule_rappeler",
+  CANCELLED_FINAL: "annule_definitif",
   NO_SHOW: "no_show",
-  CLOSED: "closed",
+  CLOSED: "close",
   BACKLOG: "backlog",
 } as const;
 export type AppointmentStatus = (typeof AppointmentStatus)[keyof typeof AppointmentStatus];
@@ -59,29 +59,40 @@ export const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
  * Use this when reading data from existing mock/zustand stores.
  */
 export const LEGACY_STATUS_MAP: Record<string, AppointmentStatus> = {
+  // French UI labels
   "Planifié": AppointmentStatus.PLANNED,
   "En attente": AppointmentStatus.PLANNED,
-  "planned": AppointmentStatus.PLANNED,
   "Confirmé": AppointmentStatus.CONFIRMED,
-  "confirmed": AppointmentStatus.CONFIRMED,
   "Non confirmé": AppointmentStatus.UNCONFIRMED,
-  "unconfirmed": AppointmentStatus.UNCONFIRMED,
   "À risque": AppointmentStatus.AT_RISK,
-  "at_risk": AppointmentStatus.AT_RISK,
   "Reporté": AppointmentStatus.POSTPONED,
-  "postponed": AppointmentStatus.POSTPONED,
   "Annulé (à rappeler)": AppointmentStatus.CANCELLED_CALLBACK,
-  "cancelled_callback": AppointmentStatus.CANCELLED_CALLBACK,
-  "Annulé (définitif)": AppointmentStatus.CANCELLED_FINAL,
-  "cancelled_final": AppointmentStatus.CANCELLED_FINAL,
-  "No-show": AppointmentStatus.NO_SHOW,
-  "no_show": AppointmentStatus.NO_SHOW,
-  "Closed": AppointmentStatus.CLOSED,
-  "Closé": AppointmentStatus.CLOSED,
-  "closed": AppointmentStatus.CLOSED,
   "Annulé": AppointmentStatus.CANCELLED_CALLBACK,
+  "Annulé (définitif)": AppointmentStatus.CANCELLED_FINAL,
+  "No-show": AppointmentStatus.NO_SHOW,
+  "Closé": AppointmentStatus.CLOSED,
+  "Closed": AppointmentStatus.CLOSED,
   "Backlog": AppointmentStatus.BACKLOG,
+  // Real DB enum values (passthrough — so mapRow cast works if raw value is returned)
+  "planifie": AppointmentStatus.PLANNED,
+  "confirme": AppointmentStatus.CONFIRMED,
+  "non_confirme": AppointmentStatus.UNCONFIRMED,
+  "a_risque": AppointmentStatus.AT_RISK,
+  "reporte": AppointmentStatus.POSTPONED,
+  "annule_rappeler": AppointmentStatus.CANCELLED_CALLBACK,
+  "annule_definitif": AppointmentStatus.CANCELLED_FINAL,
+  "no_show": AppointmentStatus.NO_SHOW,
+  "close": AppointmentStatus.CLOSED,
   "backlog": AppointmentStatus.BACKLOG,
+  // Old English keys (backward-compat for any cached/mock data)
+  "planned": AppointmentStatus.PLANNED,
+  "confirmed": AppointmentStatus.CONFIRMED,
+  "unconfirmed": AppointmentStatus.UNCONFIRMED,
+  "at_risk": AppointmentStatus.AT_RISK,
+  "postponed": AppointmentStatus.POSTPONED,
+  "cancelled_callback": AppointmentStatus.CANCELLED_CALLBACK,
+  "cancelled_final": AppointmentStatus.CANCELLED_FINAL,
+  "closed": AppointmentStatus.CLOSED,
 };
 
 export function toLegacyStatus(s: AppointmentStatus): string {
