@@ -25,35 +25,36 @@ const QUERY_KEY = "appointments";
 
 /** Map a Supabase row (with joined client) to the Appointment view model */
 function mapRow(row: any): Appointment {
+  // Prefer joined client data; fall back to legacy columns stored directly on the appointment row
   const client = row.clients ?? {};
   const scheduledAt = row.scheduled_at ? new Date(row.scheduled_at) : null;
 
   return {
     id: row.id,
-    // Client identity from join
-    fullName: client.full_name ?? "",
-    phone: client.phone ?? "",
-    address: client.address ?? "",
-    city: client.city ?? "",
-    origin: client.origin ?? undefined,
-    culturalOrigin: client.cultural_origin ?? undefined,
-    leadSource: client.lead_source ?? undefined,
-    // Appointment time derived from scheduled_at
-    date: scheduledAt ? scheduledAt.toISOString().split("T")[0] : "",
+    // Client identity: join result takes precedence; fall back to direct columns (legacy rows)
+    fullName: client.full_name ?? row.full_name ?? "",
+    phone: client.phone ?? row.phone ?? "",
+    address: client.address ?? row.address ?? "",
+    city: client.city ?? row.city ?? "",
+    origin: client.origin ?? row.origin ?? undefined,
+    culturalOrigin: client.cultural_origin ?? row.cultural_origin ?? undefined,
+    leadSource: client.lead_source ?? row.lead_source ?? undefined,
+    // Appointment time: prefer scheduled_at; fall back to legacy date/time columns
+    date: scheduledAt ? scheduledAt.toISOString().split("T")[0] : (row.date ?? ""),
     time: scheduledAt
       ? `${String(scheduledAt.getHours()).padStart(2, "0")}:${String(scheduledAt.getMinutes()).padStart(2, "0")}`
-      : "",
+      : (row.time ?? ""),
     repId: row.rep_id ?? "",
-    // Pre-qualification derived from individual columns
-    preQual1: buildPreQualFromColumns(row),
-    preQual2: "",
+    // Pre-qualification: prefer structured columns; fall back to legacy pre_qual_1/2 columns
+    preQual1: buildPreQualFromColumns(row) || (row.pre_qual_1 ?? ""),
+    preQual2: row.pre_qual_2 ?? "",
     notes: row.notes ?? "",
     status: (row.status ?? AppointmentStatus.PLANNED) as AppointmentStatus,
     createdAt: row.created_at ?? "",
-    // Status log: will come from appointment_status_logs table (future module)
-    statusLog: [],
-    // Revenue
-    closedValue: row.close_amount ?? undefined,
+    // Status log: parse if array (legacy), else empty
+    statusLog: Array.isArray(row.status_log) ? row.status_log : [],
+    // Revenue: close_amount is the canonical column; closed_value is a legacy alias
+    closedValue: row.close_amount ?? row.closed_value ?? undefined,
     closedAt: row.closed_at ?? undefined,
   };
 }
