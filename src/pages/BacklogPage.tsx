@@ -36,7 +36,8 @@ const BacklogPage = () => {
   const canDelete = role === "proprietaire" || role === "gestionnaire";
 
   return (
-    <div className="space-y-6">
+    <>
+      <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Archive className="h-6 w-6 text-muted-foreground" />
         <h1 className="text-xl font-bold text-foreground">Backlog</h1>
@@ -113,11 +114,12 @@ const BacklogPage = () => {
       </div>
     </div>
 
-    <FicheClient
-      appointment={selectedAppt}
-      open={!!selectedAppt}
-      onOpenChange={(o) => { if (!o) setSelectedAppt(null); }}
-    />
+      <FicheClient
+        appointment={selectedAppt}
+        open={!!selectedAppt}
+        onOpenChange={(o) => { if (!o) setSelectedAppt(null); }}
+      />
+    </>
   );
 };
 
