@@ -96,9 +96,10 @@ const FicheClient = ({ appointment, hotCall, open, onOpenChange }: FicheClientPr
     );
   }, [preQualData]);
 
+  const { data: teamMembers = [] } = useTeamMembers();
+
   if (!appointment) return null;
 
-  const { data: teamMembers = [] } = useTeamMembers();
   const rep = teamMembers.find((r) => r.id === appointment.repId);
   const canDelete = role === "proprietaire" || role === "gestionnaire";
 
