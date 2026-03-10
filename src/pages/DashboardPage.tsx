@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
-import { Appointment } from "@/data/crm-data";
+import { Appointment, AppointmentStatus, APPOINTMENT_STATUS_LABELS } from "@/data/crm-data";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import FicheClient from "@/components/FicheClient";
@@ -201,15 +201,15 @@ const DashboardPage = () => {
   };
 
   const statusColors: Record<string, string> = {
-    "Planifié": "bg-warning/20 text-warning",
-    "Confirmé": "bg-green-500/20 text-green-400",
-    "Non confirmé": "bg-orange-300/20 text-orange-300",
-    "À risque": "bg-destructive/20 text-destructive",
-    "Reporté": "bg-blue-400/20 text-blue-400",
-    "Annulé (à rappeler)": "bg-amber-500/20 text-amber-400",
-    "Annulé (définitif)": "bg-muted text-muted-foreground",
-    "No-show": "bg-red-400/20 text-red-400",
-    "Closé": "bg-info/20 text-info",
+    [AppointmentStatus.PLANNED]: "bg-warning/20 text-warning",
+    [AppointmentStatus.CONFIRMED]: "bg-green-500/20 text-green-400",
+    [AppointmentStatus.UNCONFIRMED]: "bg-orange-300/20 text-orange-300",
+    [AppointmentStatus.AT_RISK]: "bg-destructive/20 text-destructive",
+    [AppointmentStatus.POSTPONED]: "bg-blue-400/20 text-blue-400",
+    [AppointmentStatus.CANCELLED_CALLBACK]: "bg-amber-500/20 text-amber-400",
+    [AppointmentStatus.CANCELLED_FINAL]: "bg-muted text-muted-foreground",
+    [AppointmentStatus.NO_SHOW]: "bg-red-400/20 text-red-400",
+    [AppointmentStatus.CLOSED]: "bg-info/20 text-info",
   };
 
   const periodLabels: Record<Period, string> = { "7d": "7 jours", "30d": "30 jours", month: "Ce mois" };
@@ -511,7 +511,7 @@ const DashboardPage = () => {
                     </td>
                     <td className="px-4 py-3 text-foreground">{getRepName(a.repId)}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[a.status] || ""}`}>{a.status}</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[a.status] || ""}`}>{APPOINTMENT_STATUS_LABELS[a.status] ?? a.status}</span>
                     </td>
                     <td className="px-4 py-3 text-foreground">{a.date}</td>
                     <td className="px-4 py-3 text-foreground">{a.time}</td>

@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
-import { AppointmentStatus } from "@/data/crm-data";
+import { Appointment, AppointmentStatus } from "@/data/crm-data";
 import { useAppointments, useDeleteAppointment as useDeleteApptMutation } from "@/hooks/useAppointments";
 import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
+import FicheClient from "@/components/FicheClient";
 import { useNavigate } from "react-router-dom";
 import { Phone, Search, Archive, ArrowRight, Trash2 } from "lucide-react";
 
@@ -13,6 +14,7 @@ const BacklogPage = () => {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
 
   const backlogItems = useMemo(() => {
     let items = appointments.filter((a) => a.status === AppointmentStatus.BACKLOG);
@@ -64,7 +66,9 @@ const BacklogPage = () => {
             <tbody>
               {backlogItems.map((a) => (
                 <tr key={a.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                  <td className="px-3 py-3 font-medium text-foreground whitespace-nowrap">{a.fullName}</td>
+                  <td className="px-3 py-3 font-medium whitespace-nowrap">
+                    <button onClick={() => setSelectedAppt(a)} className="text-primary hover:underline text-left">{a.fullName}</button>
+                  </td>
                   <td className="px-3 py-3">
                     <a href={`tel:${a.phone.replace(/\D/g, "")}`} className="flex items-center gap-1 text-primary hover:underline whitespace-nowrap">
                       <Phone className="h-3 w-3" /> {a.phone}
@@ -108,6 +112,12 @@ const BacklogPage = () => {
         </div>
       </div>
     </div>
+
+    <FicheClient
+      appointment={selectedAppt}
+      open={!!selectedAppt}
+      onOpenChange={(o) => { if (!o) setSelectedAppt(null); }}
+    />
   );
 };
 

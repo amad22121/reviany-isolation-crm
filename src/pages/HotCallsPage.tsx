@@ -45,7 +45,7 @@ import {
   DbHotCall,
 } from "@/hooks/useHotCalls";
 import { HotCallPhase, HOT_CALL_PHASE_LABELS } from "@/domain/enums";
-import { HOT_CALL_FEEDBACKS, type HotCallFeedback } from "@/data/crm-data";
+import { HOT_CALL_FEEDBACKS, type HotCallFeedback, AppointmentStatus } from "@/data/crm-data";
 import { can } from "@/lib/permissions/can";
 import { getAtRiskToday, getAtRiskThisWeek, type AtRiskAppointment } from "@/lib/atRiskLogic";
 import AtRiskAppointmentsSection from "@/components/hotcalls/AtRiskAppointmentsSection";
@@ -861,9 +861,7 @@ const HotCallsPage = () => {
             preQual1: "",
             preQual2: "",
             notes: selectedHotCallForFiche.notes || "",
-            status: "Planifié",
-            source: (selectedHotCallForFiche.source as "Door-to-door" | "Referral") || "Door-to-door",
-            smsScheduled: false,
+            status: AppointmentStatus.PLANNED,
             createdAt: selectedHotCallForFiche.created_at,
             statusLog: [],
           }}

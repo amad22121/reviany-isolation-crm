@@ -6,8 +6,8 @@
  */
 
 // ─── AppointmentStatus: re-exported from domain/enums ─────────────────────────
-// DB values: "planned" | "confirmed" | "unconfirmed" | "at_risk" | "postponed"
-//           | "cancelled_callback" | "cancelled_final" | "no_show" | "closed" | "backlog"
+// DB values: "planifie" | "confirme" | "non_confirme" | "a_risque" | "reporte"
+//           | "annule_rappeler" | "annule_definitif" | "no_show" | "close" | "backlog"
 export {
   AppointmentStatus,
   APPOINTMENT_STATUSES,
