@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MapPin, Phone, Eye, MoreVertical, Check, XCircle, CalendarClock, Lock } from "lucide-react";
 import { AppRole } from "@/store/crm-store";
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useEffect } from "react";
 
 const STATUS_COLORS: Record<string, string> = {
   [AppointmentStatus.PLANNED]: "bg-warning/20 border-warning/40 text-warning",
@@ -19,8 +19,8 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const HOUR_HEIGHT = 72; // px per hour
-const START_HOUR = 7;
-const END_HOUR = 20;
+const START_HOUR = 0;
+const END_HOUR = 23;
 const HOURS = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i);
 
 function timeToMinutes(time: string): number {
@@ -40,7 +40,20 @@ const DailyView = ({ appointments, role, currentRepId, onOpenFiche, onUpdateStat
   const { data: teamMembers = [] } = useTeamMembers();
   const getRepName = (id: string) => getRepNameFromList(teamMembers, id);
   const isRep = role === "representant";
-  const containerRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to first appointment (or current hour) when the day changes
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    const targetMin = appointments.length > 0
+      ? timeToMinutes(
+          [...appointments].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time))[0].time
+        )
+      : new Date().getHours() * 60 + new Date().getMinutes();
+    // Scroll so the target slot sits ~80px from the top of the container
+    const scrollTop = Math.max(0, ((targetMin - START_HOUR * 60) / 60) * HOUR_HEIGHT - 80);
+    scrollRef.current.scrollTop = scrollTop;
+  }, [appointments]);
 
   const canChangeStatus = (appt: Appointment) => {
     if (role === "proprietaire" || role === "gestionnaire") return true;
@@ -110,8 +123,8 @@ const DailyView = ({ appointments, role, currentRepId, onOpenFiche, onUpdateStat
 
   return (
     <div className="bg-card/50 rounded-xl border border-border overflow-hidden">
-      <div className="overflow-x-auto">
-        <div ref={containerRef} className="relative flex min-w-[600px]" style={{ height: gridHeight }}>
+      <div ref={scrollRef} className="overflow-x-auto overflow-y-auto max-h-[640px]">
+        <div className="relative flex min-w-[600px]" style={{ height: gridHeight }}>
           {/* Hour labels */}
           <div className="w-16 shrink-0 border-r border-border relative">
             {HOURS.map((hour, i) => (
