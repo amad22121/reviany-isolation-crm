@@ -33,9 +33,11 @@ const HOT_CALL_ENTER_STATUSES: AppointmentStatus[] = [
 
 /** Statuses that exit Hot Calls entirely */
 const HOT_CALL_EXIT_STATUSES: AppointmentStatus[] = [
+  AppointmentStatus.PLANNED,       // planifie (rescheduled/re-planned)
   AppointmentStatus.CONFIRMED,     // confirme
   AppointmentStatus.CANCELLED_FINAL, // annule_definitif
   AppointmentStatus.CLOSED,        // close
+  AppointmentStatus.BACKLOG,       // backlog
 ];
 
 /** Compute the hot_call field patch for a given status change */

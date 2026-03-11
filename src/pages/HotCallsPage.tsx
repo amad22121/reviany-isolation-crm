@@ -101,8 +101,11 @@ const HotCallsPage = () => {
   const [search, setSearch] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  // Fiche client modal
+  // Fiche client modal (post-claim, non-pool only)
   const [selectedHotCallForFiche, setSelectedHotCallForFiche] = useState<DbHotCall | null>(null);
+
+  // Pool preview modal (no contact details)
+  const [previewHotCall, setPreviewHotCall] = useState<DbHotCall | null>(null);
 
   // Post-call popup
   const [postCallId, setPostCallId] = useState<string | null>(null);
@@ -570,8 +573,7 @@ const HotCallsPage = () => {
                 <thead>
                   <tr className="border-b border-border">
                     {[
-                      "Nom",
-                      ...(tab === "pool" ? ["Aperçu"] : []),
+                      tab === "pool" ? "Client" : "Nom",
                       ...(tab !== "pool" ? ["Téléphone"] : []),
                       ...(tab !== "pool" ? ["Adresse"] : []),
                       ...(tab !== "pool" ? ["Phase"] : []),
@@ -591,18 +593,6 @@ const HotCallsPage = () => {
                     const lockRemaining = getLockRemaining(h);
                     const editable = canActOn(h);
 
-                    const prequalParts: string[] = [];
-                    if (tab === "pool") {
-                      if (h.prequal_work_already_done) prequalParts.push(`Travail réalisé: ${h.prequal_work_already_done}`);
-                      if (h.prequal_industry) prequalParts.push(`Secteur: ${h.prequal_industry}`);
-                      if (h.prequal_property_duration_years != null) prequalParts.push(`Années prop.: ${h.prequal_property_duration_years}`);
-                      if (h.prequal_recent_or_future_work) prequalParts.push(`Travaux: ${h.prequal_recent_or_future_work}`);
-                      if (h.prequal_had_inspection_report) prequalParts.push(`Inspection: ${h.prequal_had_inspection_report}`);
-                      if (h.prequal_inspection_by) prequalParts.push(`Inspecteur: ${h.prequal_inspection_by}`);
-                      if (h.prequal_decision_timeline) prequalParts.push(`Délai: ${h.prequal_decision_timeline}`);
-                    }
-                    const prequalSummary = prequalParts.join(" · ");
-
                     return (
                       <tr key={h.id} className={`border-b border-border/50 hover:bg-secondary/30 transition-colors ${isMine ? "bg-primary/5" : ""}`}>
                         {/* Nom */}
@@ -615,23 +605,6 @@ const HotCallsPage = () => {
                             </button>
                           )}
                         </td>
-
-                        {/* Aperçu — pool only: notes + prequal summary */}
-                        {tab === "pool" && (
-                          <td className="px-3 py-3 max-w-[340px]">
-                            <div className="space-y-1">
-                              {h.notes && (
-                                <p className="text-xs text-foreground line-clamp-2">{h.notes}</p>
-                              )}
-                              {prequalSummary && (
-                                <p className="text-[10px] text-muted-foreground line-clamp-3">{prequalSummary}</p>
-                              )}
-                              {!h.notes && !prequalSummary && (
-                                <span className="text-[10px] text-muted-foreground italic">Aucun aperçu disponible</span>
-                              )}
-                            </div>
-                          </td>
-                        )}
 
                         {/* Téléphone — hidden in pool */}
                         {tab !== "pool" && (
@@ -681,7 +654,7 @@ const HotCallsPage = () => {
                         {/* Tentatives */}
                         <td className="px-3 py-3">
                           <div className="flex items-center gap-1">
-                            {canManage && h.attempts > 0 && (
+                            {tab !== "pool" && canManage && h.attempts > 0 && (
                               <button
                                 onClick={() => doAction(h.id, { attempts: h.attempts - 1 })}
                                 className="w-5 h-5 rounded bg-secondary hover:bg-destructive/20 text-muted-foreground hover:text-destructive flex items-center justify-center transition-colors"
@@ -690,7 +663,7 @@ const HotCallsPage = () => {
                               </button>
                             )}
                             <span className="text-sm font-bold text-foreground min-w-[16px] text-center">{h.attempts}</span>
-                            {editable && (
+                            {tab !== "pool" && editable && (
                               <button
                                 onClick={() => doAction(h.id, { attempts: h.attempts + 1 })}
                                 className="w-5 h-5 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-primary flex items-center justify-center transition-colors"
@@ -734,14 +707,14 @@ const HotCallsPage = () => {
                             {(h.tags || []).map((tag) => (
                               <span key={tag} className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent/20 text-accent-foreground">
                                 {tag}
-                                {editable && (
+                                {tab !== "pool" && editable && (
                                   <button onClick={() => removeTag(h.id, tag)} className="hover:text-destructive ml-0.5">
                                     <X className="h-2.5 w-2.5" />
                                   </button>
                                 )}
                               </span>
                             ))}
-                            {editable && (
+                            {tab !== "pool" && editable && (
                               <div className="relative">
                                 <button
                                   onClick={() => setEditingTagsId(editingTagsId === h.id ? null : h.id)}
@@ -797,7 +770,18 @@ const HotCallsPage = () => {
                         {/* Actions */}
                         <td className="px-3 py-3">
                           <div className="flex items-center gap-1">
-                            {/* Pool view: Claim button */}
+                            {/* Pool: preview button — no contact info exposed */}
+                            {tab === "pool" && (
+                              <button
+                                onClick={() => setPreviewHotCall(h)}
+                                className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors text-[10px] border border-border"
+                                title="Voir aperçu"
+                              >
+                                Voir aperçu
+                              </button>
+                            )}
+
+                            {/* Pool: claim button — available to all roles (rep, manager, owner) */}
                             {tab === "pool" && (
                               <Button
                                 size="sm"
@@ -809,7 +793,7 @@ const HotCallsPage = () => {
                               </Button>
                             )}
 
-                            {/* Schedule follow-up */}
+                            {/* Schedule follow-up (non-pool only) */}
                             {editable && tab !== "pool" && (
                               <button
                                 onClick={() => { setScheduleId(h.id); setScheduleDate(h.follow_up_date || ""); setScheduleTime("09:00"); }}
@@ -820,7 +804,7 @@ const HotCallsPage = () => {
                               </button>
                             )}
 
-                            {/* Return to pool (Owner/Manager only) */}
+                            {/* Return to pool (owner/manager, non-pool only) */}
                             {canReassign && tab !== "pool" && h.phase !== HotCallPhase.CLOSED && (
                               <button
                                 onClick={() => handleReturnToPool(h.id)}
@@ -831,8 +815,8 @@ const HotCallsPage = () => {
                               </button>
                             )}
 
-                            {/* Mark dead/closed */}
-                            {editable && h.phase !== HotCallPhase.CLOSED && (
+                            {/* Mark dead/closed (non-pool only) */}
+                            {editable && tab !== "pool" && h.phase !== HotCallPhase.CLOSED && (
                               <button
                                 onClick={() => handleMarkClosed(h.id)}
                                 className="p-1.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
@@ -842,8 +826,8 @@ const HotCallsPage = () => {
                               </button>
                             )}
 
-                            {/* Edit follow-up date */}
-                            {editable && (
+                            {/* Edit follow-up date (non-pool only) */}
+                            {editable && tab !== "pool" && (
                               <button
                                 onClick={() => { setEditDateId(h.id); setEditDateValue(h.follow_up_date || ""); }}
                                 className="p-1.5 rounded hover:bg-info/20 text-muted-foreground hover:text-info transition-colors"
@@ -853,8 +837,8 @@ const HotCallsPage = () => {
                               </button>
                             )}
 
-                            {/* Reassign (manager) */}
-                            {canReassign && (
+                            {/* Reassign (manager, non-pool only) */}
+                            {canReassign && tab !== "pool" && (
                               <button
                                 onClick={() => { setReassignId(h.id); setReassignRepId(h.assigned_to_user_id || ""); }}
                                 className="p-1.5 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
@@ -864,8 +848,8 @@ const HotCallsPage = () => {
                               </button>
                             )}
 
-                            {/* Delete (manager) */}
-                            {canManage && (
+                            {/* Delete (manager, non-pool only) */}
+                            {canManage && tab !== "pool" && (
                               <>
                                 {deleteConfirm === h.id ? (
                                   <div className="flex items-center gap-1">
@@ -894,6 +878,85 @@ const HotCallsPage = () => {
           </div>
         )}
       </div>
+
+      {/* Pool Preview Modal — no contact details */}
+      <Dialog open={!!previewHotCall} onOpenChange={(o) => { if (!o) setPreviewHotCall(null); }}>
+        <DialogContent className="sm:max-w-[480px] bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-foreground">Aperçu du lead</DialogTitle>
+          </DialogHeader>
+          {previewHotCall && (
+            <div className="space-y-4 mt-2 text-sm">
+              {/* Prequalification summary */}
+              {(previewHotCall.prequal_work_already_done ||
+                previewHotCall.prequal_industry ||
+                previewHotCall.prequal_property_duration_years != null ||
+                previewHotCall.prequal_recent_or_future_work ||
+                previewHotCall.prequal_had_inspection_report ||
+                previewHotCall.prequal_inspection_by ||
+                previewHotCall.prequal_decision_timeline) && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Préqualification</p>
+                  <dl className="space-y-1">
+                    {previewHotCall.prequal_work_already_done && (
+                      <div className="flex gap-2"><dt className="text-muted-foreground min-w-[130px] text-xs">Travail réalisé</dt><dd className="text-xs text-foreground">{previewHotCall.prequal_work_already_done}</dd></div>
+                    )}
+                    {previewHotCall.prequal_industry && (
+                      <div className="flex gap-2"><dt className="text-muted-foreground min-w-[130px] text-xs">Secteur</dt><dd className="text-xs text-foreground">{previewHotCall.prequal_industry}</dd></div>
+                    )}
+                    {previewHotCall.prequal_property_duration_years != null && (
+                      <div className="flex gap-2"><dt className="text-muted-foreground min-w-[130px] text-xs">Années propriétaire</dt><dd className="text-xs text-foreground">{previewHotCall.prequal_property_duration_years}</dd></div>
+                    )}
+                    {previewHotCall.prequal_recent_or_future_work && (
+                      <div className="flex gap-2"><dt className="text-muted-foreground min-w-[130px] text-xs">Travaux récents/futurs</dt><dd className="text-xs text-foreground">{previewHotCall.prequal_recent_or_future_work}</dd></div>
+                    )}
+                    {previewHotCall.prequal_had_inspection_report && (
+                      <div className="flex gap-2"><dt className="text-muted-foreground min-w-[130px] text-xs">Rapport d'inspection</dt><dd className="text-xs text-foreground">{previewHotCall.prequal_had_inspection_report}</dd></div>
+                    )}
+                    {previewHotCall.prequal_inspection_by && (
+                      <div className="flex gap-2"><dt className="text-muted-foreground min-w-[130px] text-xs">Inspecté par</dt><dd className="text-xs text-foreground">{previewHotCall.prequal_inspection_by}</dd></div>
+                    )}
+                    {previewHotCall.prequal_decision_timeline && (
+                      <div className="flex gap-2"><dt className="text-muted-foreground min-w-[130px] text-xs">Délai de décision</dt><dd className="text-xs text-foreground">{previewHotCall.prequal_decision_timeline}</dd></div>
+                    )}
+                  </dl>
+                </div>
+              )}
+
+              {/* Notes */}
+              {previewHotCall.notes && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Notes</p>
+                  <p className="text-xs text-foreground whitespace-pre-wrap">{previewHotCall.notes}</p>
+                </div>
+              )}
+
+              {/* Attempt count */}
+              <div className="flex items-center gap-4 pt-1 border-t border-border">
+                <span className="text-xs text-muted-foreground">Tentatives: <span className="font-bold text-foreground">{previewHotCall.attempts}</span></span>
+                {previewHotCall.follow_up_date && (
+                  <span className="text-xs text-muted-foreground">Relance prévue: <span className="font-bold text-foreground">{previewHotCall.follow_up_date}</span></span>
+                )}
+              </div>
+
+              {!previewHotCall.notes && !previewHotCall.prequal_work_already_done && !previewHotCall.prequal_industry && !previewHotCall.prequal_property_duration_years && !previewHotCall.prequal_recent_or_future_work && !previewHotCall.prequal_had_inspection_report && !previewHotCall.prequal_inspection_by && !previewHotCall.prequal_decision_timeline && (
+                <p className="text-xs text-muted-foreground italic">Aucune information de préqualification disponible.</p>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <Button
+                  className="flex-1 gap-1"
+                  onClick={() => { setPreviewHotCall(null); handleClaim(previewHotCall.id); }}
+                  disabled={claimMut.isPending}
+                >
+                  <Hand className="h-3 w-3" /> Prendre ce lead
+                </Button>
+                <Button variant="outline" onClick={() => setPreviewHotCall(null)}>Fermer</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Fiche Client Modal */}
       {selectedHotCallForFiche && (
