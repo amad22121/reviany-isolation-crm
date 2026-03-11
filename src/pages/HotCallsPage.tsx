@@ -571,6 +571,7 @@ const HotCallsPage = () => {
                   <tr className="border-b border-border">
                     {[
                       "Nom",
+                      ...(tab === "pool" ? ["Aperçu"] : []),
                       ...(tab !== "pool" ? ["Téléphone"] : []),
                       ...(tab !== "pool" ? ["Adresse"] : []),
                       ...(tab !== "pool" ? ["Phase"] : []),
@@ -590,6 +591,18 @@ const HotCallsPage = () => {
                     const lockRemaining = getLockRemaining(h);
                     const editable = canActOn(h);
 
+                    const prequalParts: string[] = [];
+                    if (tab === "pool") {
+                      if (h.prequal_work_already_done) prequalParts.push(`Travail réalisé: ${h.prequal_work_already_done}`);
+                      if (h.prequal_industry) prequalParts.push(`Secteur: ${h.prequal_industry}`);
+                      if (h.prequal_property_duration_years != null) prequalParts.push(`Années prop.: ${h.prequal_property_duration_years}`);
+                      if (h.prequal_recent_or_future_work) prequalParts.push(`Travaux: ${h.prequal_recent_or_future_work}`);
+                      if (h.prequal_had_inspection_report) prequalParts.push(`Inspection: ${h.prequal_had_inspection_report}`);
+                      if (h.prequal_inspection_by) prequalParts.push(`Inspecteur: ${h.prequal_inspection_by}`);
+                      if (h.prequal_decision_timeline) prequalParts.push(`Délai: ${h.prequal_decision_timeline}`);
+                    }
+                    const prequalSummary = prequalParts.join(" · ");
+
                     return (
                       <tr key={h.id} className={`border-b border-border/50 hover:bg-secondary/30 transition-colors ${isMine ? "bg-primary/5" : ""}`}>
                         {/* Nom */}
@@ -602,6 +615,23 @@ const HotCallsPage = () => {
                             </button>
                           )}
                         </td>
+
+                        {/* Aperçu — pool only: notes + prequal summary */}
+                        {tab === "pool" && (
+                          <td className="px-3 py-3 max-w-[340px]">
+                            <div className="space-y-1">
+                              {h.notes && (
+                                <p className="text-xs text-foreground line-clamp-2">{h.notes}</p>
+                              )}
+                              {prequalSummary && (
+                                <p className="text-[10px] text-muted-foreground line-clamp-3">{prequalSummary}</p>
+                              )}
+                              {!h.notes && !prequalSummary && (
+                                <span className="text-[10px] text-muted-foreground italic">Aucun aperçu disponible</span>
+                              )}
+                            </div>
+                          </td>
+                        )}
 
                         {/* Téléphone — hidden in pool */}
                         {tab !== "pool" && (

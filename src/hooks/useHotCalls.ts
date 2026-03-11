@@ -59,6 +59,13 @@ export interface DbHotCall {
   last_contact_date: string | null;
   follow_up_date: string | null;
   notes: string | null;
+  prequal_work_already_done: string | null;
+  prequal_industry: string | null;
+  prequal_property_duration_years: number | null;
+  prequal_recent_or_future_work: string | null;
+  prequal_had_inspection_report: string | null;
+  prequal_inspection_by: string | null;
+  prequal_decision_timeline: string | null;
   tags: string[];
   origin: string | null;
   original_appointment_id: string | null;
@@ -108,6 +115,13 @@ function mapApptToHotCall(row: any): DbHotCall {
       : null,
     follow_up_date: row.hot_call_recall_at ?? null,
     notes: row.notes ?? null,
+    prequal_work_already_done: row.work_already_done ?? null,
+    prequal_industry: row.industry ?? null,
+    prequal_property_duration_years: row.property_duration_years ?? null,
+    prequal_recent_or_future_work: row.recent_or_future_work ?? null,
+    prequal_had_inspection_report: row.had_inspection_report ?? null,
+    prequal_inspection_by: row.inspection_by ?? null,
+    prequal_decision_timeline: row.decision_timeline ?? null,
     tags: row.hot_call_tags ?? [],
     origin: client.origin ?? row.origin ?? null,
     original_appointment_id: row.id, // the appointment IS the source
