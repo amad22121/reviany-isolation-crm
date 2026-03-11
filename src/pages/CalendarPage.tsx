@@ -52,7 +52,7 @@ const CalendarPage = () => {
   // All visible appointments (role-filtered, no status/rep filter yet for stats)
   // Also apply "À risque" auto-detection: Non confirmé + within 12h → À risque (UI mock)
   const roleFilteredAppointments = useMemo(() => {
-    let appts = allAppointments.filter((a) => a.status !== AppointmentStatus.BACKLOG);
+    let appts = allAppointments.filter((a) => !a.isBacklog);
     if (isRep) appts = appts.filter((a) => a.repId === currentRepId);
     else if (role === "gestionnaire" && teamMembers.length > 0) {
       const repIds = new Set(teamMembers.filter((r) => r.role === "representant").map((r) => r.id));

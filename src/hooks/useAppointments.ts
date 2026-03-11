@@ -5,7 +5,7 @@
  *   public.clients: id, tenant_id, full_name, phone, address, city,
  *                   cultural_origin, lead_source, origin, created_at
  *   public.appointments: id, tenant_id, client_id, scheduled_at, rep_id, status,
- *                        work_already_done, industry, property_duration_years,
+ *                        is_backlog, work_already_done, industry, property_duration_years,
  *                        recent_or_future_work, had_inspection_report, inspection_by,
  *                        decision_timeline, notes, close_amount, closed_at,
  *                        created_at, updated_at
@@ -50,6 +50,7 @@ function mapRow(row: any): Appointment {
     preQual2: row.pre_qual_2 ?? "",
     notes: row.notes ?? "",
     status: (row.status ?? AppointmentStatus.PLANNED) as AppointmentStatus,
+    isBacklog: row.is_backlog ?? false,
     createdAt: row.created_at ?? "",
     // Status log: parse if array (legacy), else empty
     statusLog: Array.isArray(row.status_log) ? row.status_log : [],
@@ -120,6 +121,7 @@ export function useAddAppointment() {
       repId: string;
       notes: string;
       status: string;
+      isBacklog?: boolean;
       workAlreadyDone?: string;
       industry?: string;
       propertyDurationYears?: number | null;
@@ -166,6 +168,7 @@ export function useAddAppointment() {
           scheduled_at: scheduledAt,
           rep_id: payload.repId,
           status: payload.status,
+          is_backlog: payload.isBacklog ?? false,
           notes: payload.notes,
           work_already_done: payload.workAlreadyDone || null,
           industry: payload.industry || null,
@@ -258,6 +261,52 @@ export function useCloseAppointment() {
         })
         .eq("id", params.id);
 
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+    },
+  });
+}
+
+/**
+ * Complete a backlog appointment: fill in prequalification fields and clear is_backlog.
+ * This UPDATES the existing appointment rather than creating a new one,
+ * preserving the original client link, rep assignment, and scheduled_at.
+ */
+export function useCompleteBacklogAppointment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: {
+      id: string;
+      scheduledAt: string | null;
+      repId: string;
+      notes: string;
+      workAlreadyDone?: string;
+      industry?: string;
+      propertyDurationYears?: number | null;
+      recentOrFutureWork?: string;
+      hadInspectionReport?: string;
+      inspectionBy?: string;
+      decisionTimeline?: string;
+    }) => {
+      const { error } = await supabase
+        .from("appointments")
+        .update({
+          is_backlog: false,
+          scheduled_at: params.scheduledAt,
+          rep_id: params.repId,
+          notes: params.notes,
+          work_already_done: params.workAlreadyDone || null,
+          industry: params.industry || null,
+          property_duration_years: params.propertyDurationYears ?? null,
+          recent_or_future_work: params.recentOrFutureWork || null,
+          had_inspection_report: params.hadInspectionReport || null,
+          inspection_by: params.inspectionBy || null,
+          decision_timeline: params.decisionTimeline || null,
+        })
+        .eq("id", params.id);
       if (error) throw error;
     },
     onSuccess: () => {

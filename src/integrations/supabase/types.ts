@@ -32,6 +32,7 @@ export type Database = {
           id: string
           industry: string | null
           inspection_by: string | null
+          is_backlog: boolean
           lead_source: string | null
           notes: string
           origin: string | null
@@ -69,6 +70,7 @@ export type Database = {
           id?: string
           industry?: string | null
           inspection_by?: string | null
+          is_backlog?: boolean
           lead_source?: string | null
           notes?: string
           origin?: string | null
@@ -106,6 +108,7 @@ export type Database = {
           id?: string
           industry?: string | null
           inspection_by?: string | null
+          is_backlog?: boolean
           lead_source?: string | null
           notes?: string
           origin?: string | null

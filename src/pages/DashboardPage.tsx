@@ -73,7 +73,7 @@ const DashboardPage = () => {
   const teamRepIds = useMemo(() => new Set(teamReps.map((r) => r.id)), [teamReps]);
 
   const teamAppts = useMemo(
-    () => appointments.filter((a) => teamRepIds.has(a.repId) && a.status !== AppointmentStatus.BACKLOG),
+    () => appointments.filter((a) => teamRepIds.has(a.repId) && !a.isBacklog),
     [appointments, teamRepIds]
   );
 

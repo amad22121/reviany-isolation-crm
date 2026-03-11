@@ -48,7 +48,7 @@ const AppointmentsPage = () => {
   const filtered = useMemo(() => {
     return appointments.filter((a) => {
       if (role === "gestionnaire" && teamRepIds.size > 0 && !teamRepIds.has(a.repId)) return false;
-      if (a.status === AppointmentStatus.BACKLOG) return false;
+      if (a.isBacklog) return false;
       const matchSearch =
         !search ||
         a.fullName.toLowerCase().includes(search.toLowerCase()) ||

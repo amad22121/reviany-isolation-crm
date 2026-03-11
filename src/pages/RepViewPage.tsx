@@ -21,7 +21,7 @@ const RepViewPage = () => {
   const myGoal = repGoals[currentRepId || ""] || 0;
 
   const todayAppts = useMemo(
-    () => appointments.filter((a) => a.repId === currentRepId && a.date === today && a.status !== AppointmentStatus.BACKLOG),
+    () => appointments.filter((a) => a.repId === currentRepId && a.date === today && !a.isBacklog),
     [appointments, currentRepId, today]
   );
 

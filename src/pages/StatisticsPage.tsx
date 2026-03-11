@@ -72,7 +72,7 @@ const StatisticsPage = () => {
 
   // Filter appointments by role
   const roleFilteredAppts = useMemo(() => {
-    let appts = appointments.filter((a) => a.status !== AppointmentStatus.BACKLOG);
+    let appts = appointments.filter((a) => !a.isBacklog);
     if (isRep) return appts.filter((a) => a.repId === currentRepId);
     if (role === "gestionnaire" && teamMembers.length > 0) {
       const reps = new Set(teamMembers.filter((r) => r.role === "representant").map((r) => r.id));

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/store/crm-store";
-import { useAppointments, useAddAppointment } from "@/hooks/useAppointments";
+import { useAppointments, useAddAppointment, useCompleteBacklogAppointment } from "@/hooks/useAppointments";
 import { AppointmentStatus } from "@/data/crm-data";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -41,12 +41,14 @@ const INITIAL_PREQUAL: PreQualState = {
 const AddAppointmentPage = () => {
   const { data: allAppointments = [] } = useAppointments();
   const addAppointmentMutation = useAddAppointment();
+  const completeBacklogMutation = useCompleteBacklogAppointment();
   const { role, currentRepId } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   const backlogId = searchParams.get("backlog");
-  const backlogItem = backlogId ? allAppointments.find((a) => a.id === backlogId && a.status === AppointmentStatus.BACKLOG) : null;
+  // Find by isBacklog flag, not by status — backlog is now a boolean, not a status value
+  const backlogItem = backlogId ? allAppointments.find((a) => a.id === backlogId && a.isBacklog) : null;
 
   const [fullName, setFullName] = useState(backlogItem?.fullName || "");
   const [phone, setPhone] = useState(backlogItem?.phone || "");
@@ -78,27 +80,33 @@ const AddAppointmentPage = () => {
 
   const effectiveLeadSource = leadSource === "Autre" ? leadSourceOther : leadSource;
 
-  const validate = (isBacklog: boolean) => {
+  // isBacklogSubmit=true: only minimum fields required (name, phone, address, date, time)
+  // isBacklogSubmit=false: full validation including prequalification
+  const validate = (isBacklogSubmit: boolean) => {
     const e: Record<string, string> = {};
     if (!fullName.trim()) e.fullName = "Requis";
     if (!phone.trim()) e.phone = "Requis";
     else if (phone.replace(/\D/g, "").length < 10) e.phone = "Min. 10 chiffres";
     if (!address.trim()) e.address = "Requis";
-    if (!city.trim()) e.city = "Requis";
-    if (!leadSource) e.leadSource = "Requis";
-    if (leadSource === "Autre" && !leadSourceOther.trim()) e.leadSourceOther = "Requis";
-    if (!isBacklog && !date) e.date = "Requis";
-    if (!isBacklog && !time) e.time = "Requis";
-    if (!preQual.prior_work_done) e.prior_work_done = "Requis";
-    if (!preQual.years_at_address) e.years_at_address = "Requis";
-    else {
-      const y = Number(preQual.years_at_address);
-      if (isNaN(y) || y < 0 || y > 60) e.years_at_address = "Entre 0 et 60";
-    }
-    if (!preQual.inspection_report) e.inspection_report = "Requis";
-    if (preQual.inspection_report === "Oui") {
-      if (!preQual.inspection_by.trim()) e.inspection_by = "Requis";
-      if (!preQual.decision_timeline) e.decision_timeline = "Requis";
+    // date and time are required in both modes
+    if (!date) e.date = "Requis";
+    if (!time) e.time = "Requis";
+    if (!isBacklogSubmit) {
+      // Additional fields required only for a full appointment
+      if (!city.trim()) e.city = "Requis";
+      if (!leadSource) e.leadSource = "Requis";
+      if (leadSource === "Autre" && !leadSourceOther.trim()) e.leadSourceOther = "Requis";
+      if (!preQual.prior_work_done) e.prior_work_done = "Requis";
+      if (!preQual.years_at_address) e.years_at_address = "Requis";
+      else {
+        const y = Number(preQual.years_at_address);
+        if (isNaN(y) || y < 0 || y > 60) e.years_at_address = "Entre 0 et 60";
+      }
+      if (!preQual.inspection_report) e.inspection_report = "Requis";
+      if (preQual.inspection_report === "Oui") {
+        if (!preQual.inspection_by.trim()) e.inspection_by = "Requis";
+        if (!preQual.decision_timeline) e.decision_timeline = "Requis";
+      }
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -133,8 +141,27 @@ const AddAppointmentPage = () => {
     if (!validate(false)) return;
 
     try {
-      await addAppointmentMutation.mutateAsync(buildPayload(AppointmentStatus.PLANNED));
-      toast.success(backlogItem ? "Rendez-vous créé depuis le backlog." : "Rendez-vous créé.");
+      if (backlogItem) {
+        // Converting a backlog appointment: update the existing row and clear is_backlog
+        const scheduledAt = date && time ? `${date}T${time}:00` : null;
+        await completeBacklogMutation.mutateAsync({
+          id: backlogItem.id,
+          scheduledAt,
+          repId,
+          notes,
+          workAlreadyDone: preQual.prior_work_done || undefined,
+          industry: preQual.job_sector || undefined,
+          propertyDurationYears: preQual.years_at_address ? Number(preQual.years_at_address) : null,
+          recentOrFutureWork: preQual.recent_or_future_work || undefined,
+          hadInspectionReport: preQual.inspection_report || undefined,
+          inspectionBy: preQual.inspection_by || undefined,
+          decisionTimeline: preQual.decision_timeline || undefined,
+        });
+        toast.success("Rendez-vous converti depuis le backlog.");
+      } else {
+        await addAppointmentMutation.mutateAsync(buildPayload(AppointmentStatus.PLANNED));
+        toast.success("Rendez-vous créé.");
+      }
       if (role === "representant") navigate("/rep");
       else navigate("/appointments");
     } catch (err: any) {
@@ -145,7 +172,11 @@ const AddAppointmentPage = () => {
   const handleBacklog = async () => {
     if (!validate(true)) return;
     try {
-      await addAppointmentMutation.mutateAsync(buildPayload(AppointmentStatus.BACKLOG));
+      // Save with status=planifie and is_backlog=true; prequalification to be completed later
+      await addAppointmentMutation.mutateAsync({
+        ...buildPayload(AppointmentStatus.PLANNED),
+        isBacklog: true,
+      });
       toast.success("Ajouté au backlog.");
       navigate("/backlog");
     } catch (err: any) {

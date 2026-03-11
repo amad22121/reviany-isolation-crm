@@ -60,7 +60,8 @@ export interface Appointment {
   preQual1: string;
   preQual2: string;
   notes: string;
-  status: AppointmentStatus;  // stored in DB as snake_case English: "planned", "closed", etc.
+  status: AppointmentStatus;  // stored in DB as snake_case English: "planifie", "close", etc.
+  isBacklog: boolean;          // true = minimum info captured, prequalification pending
   createdAt: string;
   statusLog: StatusChangeLog[];  // will be populated from appointment_status_logs table (future)
   // Revenue (from appointments.close_amount)
