@@ -569,7 +569,13 @@ const HotCallsPage = () => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
-                    {["Nom", "Téléphone", "Adresse", "Phase", "Feedback", "Tentatives", "Relance",
+                    {[
+                      "Nom",
+                      ...(tab !== "pool" ? ["Téléphone"] : []),
+                      ...(tab !== "pool" ? ["Adresse"] : []),
+                      ...(tab !== "pool" ? ["Phase"] : []),
+                      ...(tab !== "pool" ? ["Feedback"] : []),
+                      "Tentatives", "Relance",
                       ...(tab !== "pool" ? ["Assigné à"] : []),
                       ...(tab === "mine" ? ["Lock"] : []),
                       "Tags", "Actions",
@@ -588,47 +594,59 @@ const HotCallsPage = () => {
                       <tr key={h.id} className={`border-b border-border/50 hover:bg-secondary/30 transition-colors ${isMine ? "bg-primary/5" : ""}`}>
                         {/* Nom */}
                         <td className="px-3 py-3 font-medium whitespace-nowrap">
-                          <button onClick={() => setSelectedHotCallForFiche(h)} className="text-primary hover:underline text-left">
-                            {h.full_name}
-                          </button>
+                          {tab === "pool" ? (
+                            <span className="text-foreground">{h.full_name}</span>
+                          ) : (
+                            <button onClick={() => setSelectedHotCallForFiche(h)} className="text-primary hover:underline text-left">
+                              {h.full_name}
+                            </button>
+                          )}
                         </td>
 
-                        {/* Téléphone */}
-                        <td className="px-3 py-3">
-                          <a
-                            href={`tel:${h.phone.replace(/\D/g, "")}`}
-                            onClick={() => { if (isMine || canManage) setTimeout(() => openPostCallPopup(h), 500); }}
-                            className="flex items-center gap-1 text-primary hover:underline whitespace-nowrap"
-                          >
-                            <Phone className="h-3 w-3" /> {h.phone}
-                          </a>
-                        </td>
+                        {/* Téléphone — hidden in pool */}
+                        {tab !== "pool" && (
+                          <td className="px-3 py-3">
+                            <a
+                              href={`tel:${h.phone.replace(/\D/g, "")}`}
+                              onClick={() => { if (isMine || canManage) setTimeout(() => openPostCallPopup(h), 500); }}
+                              className="flex items-center gap-1 text-primary hover:underline whitespace-nowrap"
+                            >
+                              <Phone className="h-3 w-3" /> {h.phone}
+                            </a>
+                          </td>
+                        )}
 
-                        {/* Adresse */}
-                        <td className="px-3 py-3">
-                          <button
-                            onClick={() => openGoogleMaps(h.address, h.city)}
-                            className="flex items-center gap-1 text-info hover:underline text-left text-xs max-w-[200px] truncate"
-                            title={`${h.address}, ${h.city}`}
-                          >
-                            <MapPin className="h-3 w-3 flex-shrink-0" />
-                            <span className="truncate">{h.address}</span>
-                          </button>
-                        </td>
+                        {/* Adresse — hidden in pool */}
+                        {tab !== "pool" && (
+                          <td className="px-3 py-3">
+                            <button
+                              onClick={() => openGoogleMaps(h.address, h.city)}
+                              className="flex items-center gap-1 text-info hover:underline text-left text-xs max-w-[200px] truncate"
+                              title={`${h.address}, ${h.city}`}
+                            >
+                              <MapPin className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate">{h.address}</span>
+                            </button>
+                          </td>
+                        )}
 
-                        {/* Phase */}
-                        <td className="px-3 py-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${phaseColors[h.phase] || "bg-muted text-muted-foreground"}`}>
-                            {getPhaseLabel(h.phase)}
-                          </span>
-                        </td>
+                        {/* Phase — hidden in pool */}
+                        {tab !== "pool" && (
+                          <td className="px-3 py-3">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${phaseColors[h.phase] || "bg-muted text-muted-foreground"}`}>
+                              {getPhaseLabel(h.phase)}
+                            </span>
+                          </td>
+                        )}
 
-                        {/* Feedback */}
-                        <td className="px-3 py-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${feedbackColors[h.last_feedback] || "bg-muted text-muted-foreground"}`}>
-                            {h.last_feedback}
-                          </span>
-                        </td>
+                        {/* Feedback — hidden in pool */}
+                        {tab !== "pool" && (
+                          <td className="px-3 py-3">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${feedbackColors[h.last_feedback] || "bg-muted text-muted-foreground"}`}>
+                              {h.last_feedback}
+                            </span>
+                          </td>
+                        )}
 
                         {/* Tentatives */}
                         <td className="px-3 py-3">
