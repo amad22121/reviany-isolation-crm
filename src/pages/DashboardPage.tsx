@@ -73,7 +73,7 @@ const DashboardPage = () => {
   const teamRepIds = useMemo(() => new Set(teamReps.map((r) => r.id)), [teamReps]);
 
   const teamAppts = useMemo(
-    () => appointments.filter((a) => teamRepIds.has(a.repId) && a.status !== "Backlog"),
+    () => appointments.filter((a) => teamRepIds.has(a.repId) && a.status !== AppointmentStatus.BACKLOG),
     [appointments, teamRepIds]
   );
 
@@ -85,9 +85,9 @@ const DashboardPage = () => {
 
   const dailyKpis = useMemo(() => {
     const total = dayAppts.length;
-    const confirmed = dayAppts.filter((a) => a.status === "Confirmé" || a.status === "Closé").length;
-    const atRisk = dayAppts.filter((a) => a.status === "À risque").length;
-    const closed = dayAppts.filter((a) => a.status === "Closé").length;
+    const confirmed = dayAppts.filter((a) => a.status === AppointmentStatus.CONFIRMED || a.status === AppointmentStatus.CLOSED).length;
+    const atRisk = dayAppts.filter((a) => a.status === AppointmentStatus.AT_RISK).length;
+    const closed = dayAppts.filter((a) => a.status === AppointmentStatus.CLOSED).length;
     return {
       total,
       confirmRate: total > 0 ? Math.round((confirmed / total) * 100) : 0,
@@ -119,10 +119,10 @@ const DashboardPage = () => {
 
   const kpis = useMemo(() => {
     const total = periodAppts.length;
-    const confirmed = periodAppts.filter((a) => a.status === "Confirmé" || a.status === "Closé").length;
-    const atRisk = periodAppts.filter((a) => a.status === "À risque").length;
-    const closed = periodAppts.filter((a) => a.status === "Closé").length;
-    const cancelled = periodAppts.filter((a) => a.status === "Annulé (à rappeler)" || a.status === "Annulé (définitif)").length;
+    const confirmed = periodAppts.filter((a) => a.status === AppointmentStatus.CONFIRMED || a.status === AppointmentStatus.CLOSED).length;
+    const atRisk = periodAppts.filter((a) => a.status === AppointmentStatus.AT_RISK).length;
+    const closed = periodAppts.filter((a) => a.status === AppointmentStatus.CLOSED).length;
+    const cancelled = periodAppts.filter((a) => a.status === AppointmentStatus.CANCELLED_CALLBACK || a.status === AppointmentStatus.CANCELLED_FINAL).length;
     return {
       total,
       confirmRate: total > 0 ? Math.round((confirmed / total) * 100) : 0,
@@ -137,10 +137,10 @@ const DashboardPage = () => {
     return teamReps.map((r) => {
       const ra = periodAppts.filter((a) => a.repId === r.id);
       const generated = ra.length;
-      const confirmed = ra.filter((a) => a.status === "Confirmé" || a.status === "Closé").length;
-      const atRisk = ra.filter((a) => a.status === "À risque").length;
-      const closed = ra.filter((a) => a.status === "Closé").length;
-      const cancelled = ra.filter((a) => a.status === "Annulé (à rappeler)" || a.status === "Annulé (définitif)").length;
+      const confirmed = ra.filter((a) => a.status === AppointmentStatus.CONFIRMED || a.status === AppointmentStatus.CLOSED).length;
+      const atRisk = ra.filter((a) => a.status === AppointmentStatus.AT_RISK).length;
+      const closed = ra.filter((a) => a.status === AppointmentStatus.CLOSED).length;
+      const cancelled = ra.filter((a) => a.status === AppointmentStatus.CANCELLED_CALLBACK || a.status === AppointmentStatus.CANCELLED_FINAL).length;
       return { id: r.id, name: r.name, generated, confirmed, atRisk, closed, cancelled };
     });
   }, [teamReps, periodAppts]);
@@ -158,13 +158,13 @@ const DashboardPage = () => {
   // Alerts
   const alerts = useMemo(() => {
     const items: { label: string; type: "warning" | "danger" }[] = [];
-    const tomorrowAtRisk = teamAppts.filter((a) => a.date === tomorrow && (a.status === "Planifié" || a.status === "Non confirmé" || a.status === "À risque"));
+    const tomorrowAtRisk = teamAppts.filter((a) => a.date === tomorrow && (a.status === AppointmentStatus.PLANNED || a.status === AppointmentStatus.UNCONFIRMED || a.status === AppointmentStatus.AT_RISK));
     if (tomorrowAtRisk.length > 0)
       items.push({ label: `${tomorrowAtRisk.length} RDV à risque demain`, type: "warning" });
-    const atRiskRecent = teamAppts.filter((a) => a.status === "À risque" && a.date >= threeDaysAgo);
+    const atRiskRecent = teamAppts.filter((a) => a.status === AppointmentStatus.AT_RISK && a.date >= threeDaysAgo);
     if (atRiskRecent.length > 0)
       items.push({ label: `${atRiskRecent.length} RDV à risque récents`, type: "danger" });
-    const staleLeads = teamAppts.filter((a) => a.status === "Planifié" && a.date < threeDaysAgo);
+    const staleLeads = teamAppts.filter((a) => a.status === AppointmentStatus.PLANNED && a.date < threeDaysAgo);
     if (staleLeads.length > 0)
       items.push({ label: `${staleLeads.length} leads sans suivi depuis +3 jours`, type: "danger" });
     return items;

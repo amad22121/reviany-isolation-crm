@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { TrendingUp } from "lucide-react";
 import { useAuth } from "@/store/crm-store";
-import { Appointment } from "@/data/crm-data";
+import { Appointment, AppointmentStatus } from "@/data/crm-data";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { useMarketingLeadsQuery, MarketingLead } from "@/hooks/useMarketingLeads";
@@ -72,7 +72,7 @@ const StatisticsPage = () => {
 
   // Filter appointments by role
   const roleFilteredAppts = useMemo(() => {
-    let appts = appointments.filter((a) => a.status !== "Backlog");
+    let appts = appointments.filter((a) => a.status !== AppointmentStatus.BACKLOG);
     if (isRep) return appts.filter((a) => a.repId === currentRepId);
     if (role === "gestionnaire" && teamMembers.length > 0) {
       const reps = new Set(teamMembers.filter((r) => r.role === "representant").map((r) => r.id));

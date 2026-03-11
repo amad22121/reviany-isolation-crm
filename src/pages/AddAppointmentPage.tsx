@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/store/crm-store";
 import { useAppointments, useAddAppointment } from "@/hooks/useAppointments";
 import { AppointmentStatus } from "@/data/crm-data";
@@ -58,7 +58,15 @@ const AddAppointmentPage = () => {
   const [date, setDate] = useState(backlogItem?.date || new Date().toISOString().split("T")[0]);
   const [time, setTime] = useState(backlogItem?.time || "09:00");
   const { data: teamMembers = [] } = useTeamMembers();
-  const [repId, setRepId] = useState(backlogItem?.repId || (role === "representant" ? currentRepId || teamMembers[0]?.id || "" : teamMembers[0]?.id || ""));
+  // repId defaults to currentRepId for reps, or "" for owner/manager (teamMembers not yet loaded at mount).
+  // The useEffect below auto-selects the first rep-role member once the list loads.
+  const [repId, setRepId] = useState(backlogItem?.repId || (role === "representant" ? currentRepId || "" : ""));
+  useEffect(() => {
+    if (role !== "representant" && !repId && teamMembers.length > 0) {
+      const firstRep = teamMembers.find((m) => m.role === "representant") ?? teamMembers[0];
+      setRepId(firstRep.id);
+    }
+  }, [teamMembers]);
   const [notes, setNotes] = useState(backlogItem?.notes || "");
   const [preQual, setPreQual] = useState<PreQualState>(INITIAL_PREQUAL);
   const [errors, setErrors] = useState<Record<string, string>>({});
