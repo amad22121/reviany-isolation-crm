@@ -2,13 +2,12 @@
  * At-Risk Appointment Detection Logic
  *
  * An appointment is considered "at risk" when:
- * 1. status is "Non confirmé" (or domain enum "unconfirmed")
+ * 1. status is non_confirme or a_risque (domain enum values)
  * 2. The appointment datetime is in the future
  * 3. We are within the risk window (default 12h before the appointment)
- *
- * This module is UI-only for now. When Supabase is wired,
- * this logic can be moved to a database view or RPC.
  */
+
+import { AppointmentStatus } from "@/domain/enums";
 
 /** Hours before appointment when it becomes "at risk" */
 export const RISK_WINDOW_HOURS = 12;
@@ -32,9 +31,9 @@ export interface AtRiskAppointment {
  * Returns true if the appointment is unconfirmed and within the risk window.
  */
 export function isAtRisk(appt: AtRiskAppointment, now: Date = new Date()): boolean {
-  // Must be "Non confirmé" or "unconfirmed"
-  const unconfirmedStatuses = ["Non confirmé", "unconfirmed", "À risque", "at_risk"];
-  if (!unconfirmedStatuses.includes(appt.status)) return false;
+  // Must be non_confirme or a_risque
+  const atRiskStatuses: string[] = [AppointmentStatus.UNCONFIRMED, AppointmentStatus.AT_RISK];
+  if (!atRiskStatuses.includes(appt.status)) return false;
 
   // Appointment must be in the future
   const apptDate = new Date(`${appt.date}T${appt.time || "09:00"}`);

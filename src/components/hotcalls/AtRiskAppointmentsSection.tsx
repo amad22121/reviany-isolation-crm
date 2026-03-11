@@ -12,11 +12,12 @@ import {
   CheckCircle,
   CalendarPlus,
   XCircle,
-  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { AtRiskAppointment } from "@/lib/atRiskLogic";
-import { useCrm } from "@/store/crm-store";
+import { AppointmentStatus } from "@/domain/enums";
+import { useUpdateAppointmentStatus, useMarkAsHotCall } from "@/hooks/useAppointments";
+import { useAuth } from "@/store/crm-store";
 
 interface Props {
   appointments: AtRiskAppointment[];
@@ -24,21 +25,19 @@ interface Props {
 }
 
 const statusColors: Record<string, string> = {
-  "Non confirmé": "bg-warning/20 text-warning",
-  unconfirmed: "bg-warning/20 text-warning",
-  "À risque": "bg-destructive/20 text-destructive",
-  at_risk: "bg-destructive/20 text-destructive",
+  [AppointmentStatus.UNCONFIRMED]: "bg-warning/20 text-warning",
+  [AppointmentStatus.AT_RISK]: "bg-destructive/20 text-destructive",
 };
 
 const statusLabels: Record<string, string> = {
-  "Non confirmé": "Non confirmé",
-  unconfirmed: "Non confirmé",
-  "À risque": "À risque",
-  at_risk: "À risque",
+  [AppointmentStatus.UNCONFIRMED]: "Non confirmé",
+  [AppointmentStatus.AT_RISK]: "À risque",
 };
 
 export default function AtRiskAppointmentsSection({ appointments, canManage }: Props) {
-  const updateStatus = useCrm((s) => s.updateStatus);
+  const { currentRepId } = useAuth();
+  const updateStatusMut = useUpdateAppointmentStatus();
+  const markAsHotCallMut = useMarkAsHotCall();
 
   // Reschedule modal
   const [rescheduleId, setRescheduleId] = useState<string | null>(null);
@@ -50,26 +49,47 @@ export default function AtRiskAppointmentsSection({ appointments, canManage }: P
   const [cancelAction, setCancelAction] = useState<"cancelled_callback" | "no_show">("cancelled_callback");
 
   const handleConfirm = (id: string) => {
-    updateStatus(id, "Confirmé" as any);
-    toast.success("RDV marqué comme confirmé");
+    updateStatusMut.mutate(
+      {
+        id,
+        status: AppointmentStatus.CONFIRMED,
+        userId: currentRepId || "",
+        currentStatusLog: [],
+        previousStatus: AppointmentStatus.UNCONFIRMED,
+      },
+      { onSuccess: () => toast.success("RDV marqué comme confirmé") }
+    );
   };
 
   const handleReschedule = () => {
     if (!rescheduleId || !rescheduleDate) return;
-    // Placeholder: in production this would update the appointment date/time
-    toast.success("RDV replanifié (placeholder — le backend n'est pas encore connecté)");
+    // Placeholder: reschedule requires updating scheduled_at, handled separately
+    toast.success("Replanification demandée (non implémentée dans cette version)");
     setRescheduleId(null);
   };
 
   const handleCancel = () => {
     if (!cancelId) return;
-    const statusMap: Record<string, string> = {
-      cancelled_callback: "Annulé (à rappeler)",
-      no_show: "No-show",
-    };
-    updateStatus(cancelId, statusMap[cancelAction] as any);
-    toast.info("RDV annulé. Ce client devrait apparaître dans les Hot Calls après la connexion backend.");
-    setCancelId(null);
+    const newStatus =
+      cancelAction === "no_show"
+        ? AppointmentStatus.NO_SHOW
+        : AppointmentStatus.CANCELLED_CALLBACK;
+
+    // Update status AND promote to hot-call pool in one mutation
+    markAsHotCallMut.mutate(
+      {
+        id: cancelId,
+        status: newStatus,
+        isHotCall: true,
+        hotCallState: "pool",
+      },
+      {
+        onSuccess: () => {
+          toast.info("RDV annulé — ajouté au pool Hot Calls");
+          setCancelId(null);
+        },
+      }
+    );
   };
 
   const openGoogleMaps = (address: string, city: string) => {
@@ -226,12 +246,6 @@ export default function AtRiskAppointmentsSection({ appointments, canManage }: P
                 <option value="cancelled_callback">Annulé (à rappeler)</option>
                 <option value="no_show">No-show</option>
               </select>
-            </div>
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/20">
-              <AlertTriangle className="h-4 w-4 text-warning flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-muted-foreground">
-                Ce RDV sera automatiquement créé comme Hot Call une fois le backend connecté.
-              </p>
             </div>
             <div className="flex gap-2 pt-2">
               <Button variant="destructive" onClick={handleCancel} className="flex-1">Confirmer</Button>

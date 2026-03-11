@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback } from "react";
 import { useAuth } from "@/store/crm-store";
-import { useCrm } from "@/store/crm-store";
+import { useAppointments } from "@/hooks/useAppointments";
 import { toast } from "sonner";
 import FicheClient from "@/components/FicheClient";
 import {
@@ -63,27 +63,29 @@ const HotCallsPage = () => {
   const isRep = role === "representant";
 
   // ─── Appointments (for at-risk detection) ─────────────────────────────────
-  const storeAppointments = useCrm((s) => s.appointments);
+  const { data: rawAppointments = [] } = useAppointments();
   const allAppointments = useMemo((): AtRiskAppointment[] => {
-    let appts = storeAppointments.map((a) => ({
-      id: a.id,
-      full_name: a.fullName,
-      phone: a.phone,
-      address: a.address,
-      city: a.city,
-      date: a.date,
-      time: a.time,
-      rep_id: a.repId,
-      status: a.status,
-      notes: a.notes,
-      origin: a.origin,
-    }));
+    let appts = rawAppointments
+      .filter((a) => !a.isBacklog)
+      .map((a) => ({
+        id: a.id,
+        full_name: a.fullName,
+        phone: a.phone,
+        address: a.address,
+        city: a.city,
+        date: a.date,
+        time: a.time,
+        rep_id: a.repId,
+        status: a.status,
+        notes: a.notes,
+        origin: a.origin,
+      }));
     // Rep filter: only their own appointments
     if (isRep && currentRepId) {
       appts = appts.filter((a) => a.rep_id === currentRepId);
     }
     return appts;
-  }, [storeAppointments, isRep, currentRepId]);
+  }, [rawAppointments, isRep, currentRepId]);
 
   const atRiskToday = useMemo(() => getAtRiskToday(allAppointments), [allAppointments]);
   const atRiskWeek = useMemo(() => getAtRiskThisWeek(allAppointments), [allAppointments]);

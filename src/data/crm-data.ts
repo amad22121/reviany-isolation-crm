@@ -62,6 +62,16 @@ export interface Appointment {
   notes: string;
   status: AppointmentStatus;  // stored in DB as snake_case English: "planifie", "close", etc.
   isBacklog: boolean;          // true = minimum info captured, prequalification pending
+  // Hot Call fields
+  isHotCall: boolean;          // true = in hot-call recovery flow
+  hotCallState: string | null; // pool | claimed | recall | done
+  hotCallOwnerId: string | null;
+  hotCallTakenAt: string | null;
+  hotCallRecallAt: string | null;
+  hotCallAttemptCount: number;
+  lastHotCallAttemptAt: string | null;
+  hotCallLastFeedback: string | null;
+  hotCallTags: string[];
   createdAt: string;
   statusLog: StatusChangeLog[];  // will be populated from appointment_status_logs table (future)
   // Revenue (from appointments.close_amount)

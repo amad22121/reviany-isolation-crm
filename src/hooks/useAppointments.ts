@@ -51,6 +51,15 @@ function mapRow(row: any): Appointment {
     notes: row.notes ?? "",
     status: (row.status ?? AppointmentStatus.PLANNED) as AppointmentStatus,
     isBacklog: row.is_backlog ?? false,
+    isHotCall: row.is_hot_call ?? false,
+    hotCallState: row.hot_call_state ?? null,
+    hotCallOwnerId: row.hot_call_owner_id ?? null,
+    hotCallTakenAt: row.hot_call_taken_at ?? null,
+    hotCallRecallAt: row.hot_call_recall_at ?? null,
+    hotCallAttemptCount: row.hot_call_attempt_count ?? 0,
+    lastHotCallAttemptAt: row.last_hot_call_attempt_at ?? null,
+    hotCallLastFeedback: row.hot_call_last_feedback ?? null,
+    hotCallTags: row.hot_call_tags ?? [],
     createdAt: row.created_at ?? "",
     // Status log: parse if array (legacy), else empty
     statusLog: Array.isArray(row.status_log) ? row.status_log : [],
@@ -305,6 +314,36 @@ export function useCompleteBacklogAppointment() {
           had_inspection_report: params.hadInspectionReport || null,
           inspection_by: params.inspectionBy || null,
           decision_timeline: params.decisionTimeline || null,
+        })
+        .eq("id", params.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+    },
+  });
+}
+
+/**
+ * Mark an appointment as a hot call (or update its status + set hot_call fields).
+ * Used when status changes to non_confirme / annule_rappeler / no_show.
+ */
+export function useMarkAsHotCall() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: {
+      id: string;
+      status: AppointmentStatus;
+      isHotCall: boolean;
+      hotCallState: string | null;
+    }) => {
+      const { error } = await supabase
+        .from("appointments")
+        .update({
+          status: params.status,
+          is_hot_call: params.isHotCall,
+          hot_call_state: params.hotCallState,
         })
         .eq("id", params.id);
       if (error) throw error;

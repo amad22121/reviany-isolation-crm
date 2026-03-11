@@ -32,7 +32,16 @@ export type Database = {
           id: string
           industry: string | null
           inspection_by: string | null
+          hot_call_attempt_count: number
+          hot_call_last_feedback: string | null
+          hot_call_owner_id: string | null
+          hot_call_recall_at: string | null
+          hot_call_state: string | null
+          hot_call_tags: string[]
+          hot_call_taken_at: string | null
           is_backlog: boolean
+          is_hot_call: boolean
+          last_hot_call_attempt_at: string | null
           lead_source: string | null
           notes: string
           origin: string | null
@@ -70,7 +79,16 @@ export type Database = {
           id?: string
           industry?: string | null
           inspection_by?: string | null
+          hot_call_attempt_count?: number
+          hot_call_last_feedback?: string | null
+          hot_call_owner_id?: string | null
+          hot_call_recall_at?: string | null
+          hot_call_state?: string | null
+          hot_call_tags?: string[]
+          hot_call_taken_at?: string | null
           is_backlog?: boolean
+          is_hot_call?: boolean
+          last_hot_call_attempt_at?: string | null
           lead_source?: string | null
           notes?: string
           origin?: string | null
@@ -108,7 +126,16 @@ export type Database = {
           id?: string
           industry?: string | null
           inspection_by?: string | null
+          hot_call_attempt_count?: number
+          hot_call_last_feedback?: string | null
+          hot_call_owner_id?: string | null
+          hot_call_recall_at?: string | null
+          hot_call_state?: string | null
+          hot_call_tags?: string[]
+          hot_call_taken_at?: string | null
           is_backlog?: boolean
+          is_hot_call?: boolean
+          last_hot_call_attempt_at?: string | null
           lead_source?: string | null
           notes?: string
           origin?: string | null
