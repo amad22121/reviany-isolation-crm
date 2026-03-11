@@ -22,6 +22,43 @@ import { AppointmentStatus } from "@/domain/enums";
 import type { Appointment } from "@/data/crm-data";
 
 const QUERY_KEY = "appointments";
+const HOT_CALLS_KEY = "hot_calls";
+
+/** Statuses that enter the Hot Calls pool */
+const HOT_CALL_ENTER_STATUSES: AppointmentStatus[] = [
+  AppointmentStatus.UNCONFIRMED,        // non_confirme
+  AppointmentStatus.CANCELLED_CALLBACK, // annule_rappeler
+  AppointmentStatus.NO_SHOW,            // no_show
+];
+
+/** Statuses that exit Hot Calls entirely */
+const HOT_CALL_EXIT_STATUSES: AppointmentStatus[] = [
+  AppointmentStatus.CONFIRMED,     // confirme
+  AppointmentStatus.CANCELLED_FINAL, // annule_definitif
+  AppointmentStatus.CLOSED,        // close
+];
+
+/** Compute the hot_call field patch for a given status change */
+function hotCallPatchForStatus(status: AppointmentStatus): Record<string, unknown> {
+  if (HOT_CALL_ENTER_STATUSES.includes(status)) {
+    return {
+      is_hot_call: true,
+      hot_call_state: "pool",
+      hot_call_owner_id: null,
+      hot_call_taken_at: null,
+    };
+  }
+  if (HOT_CALL_EXIT_STATUSES.includes(status)) {
+    return {
+      is_hot_call: false,
+      hot_call_state: null,
+      hot_call_owner_id: null,
+      hot_call_taken_at: null,
+      hot_call_recall_at: null,
+    };
+  }
+  return {};
+}
 
 /** Map a Supabase row (with joined client) to the Appointment view model */
 function mapRow(row: any): Appointment {
@@ -211,17 +248,19 @@ export function useUpdateAppointmentStatus() {
       currentStatusLog: any[];
       previousStatus: string;
     }) => {
-      // Only update columns that exist in the real backend
-      // status_log is not in the real backend — future: write to appointment_status_logs table
       const { error } = await supabase
         .from("appointments")
-        .update({ status: params.status })
+        .update({
+          status: params.status,
+          ...hotCallPatchForStatus(params.status),
+        })
         .eq("id", params.id);
 
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [HOT_CALLS_KEY] });
     },
   });
 }
@@ -259,14 +298,13 @@ export function useCloseAppointment() {
     }) => {
       const now = new Date();
 
-      // Write only columns that exist in the real backend
-      // closed_value, closed_by, was_recovered, status_log are NOT in the real backend
       const { error } = await supabase
         .from("appointments")
         .update({
           status: AppointmentStatus.CLOSED,
           close_amount: params.closedValue,
           closed_at: now.toISOString(),
+          ...hotCallPatchForStatus(AppointmentStatus.CLOSED),
         })
         .eq("id", params.id);
 
@@ -274,6 +312,7 @@ export function useCloseAppointment() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [HOT_CALLS_KEY] });
     },
   });
 }
