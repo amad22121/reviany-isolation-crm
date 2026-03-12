@@ -78,7 +78,6 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     { to: "/territoires", label: "Territoires", icon: MapPinned },
     { to: "/add-appointment", label: "Nouveau rendez-vous", icon: CalendarPlus },
     { to: "/hot-calls", label: "Hot Calls", icon: Flame },
-    { to: "/marketing-leads", label: "Marketing Leads", icon: Megaphone },
     { to: "/backlog", label: "Backlog", icon: Archive },
     { to: "/leaderboard", label: "Classement", icon: Trophy },
     { to: "/appointments", label: "Rendez-vous", icon: List },

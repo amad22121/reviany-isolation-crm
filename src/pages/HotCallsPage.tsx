@@ -53,6 +53,18 @@ import AtRiskAppointmentsSection from "@/components/hotcalls/AtRiskAppointmentsS
 
 const DEFAULT_TAGS = ["Callback", "Client chaud", "Client froid", "Budget", "À rappeler matin", "À rappeler soir"];
 
+const APPT_STATUS_BADGE: Record<string, string> = {
+  [AppointmentStatus.PLANNED]:            "bg-yellow-500/20 text-yellow-400",
+  [AppointmentStatus.CONFIRMED]:          "bg-green-500/20 text-green-400",
+  [AppointmentStatus.UNCONFIRMED]:        "bg-yellow-600/20 text-yellow-300",
+  [AppointmentStatus.AT_RISK]:            "bg-orange-400/20 text-orange-400",
+  [AppointmentStatus.POSTPONED]:          "bg-blue-500/20 text-blue-400",
+  [AppointmentStatus.CANCELLED_CALLBACK]: "bg-amber-500/20 text-amber-400",
+  [AppointmentStatus.CANCELLED_FINAL]:    "bg-muted text-muted-foreground",
+  [AppointmentStatus.NO_SHOW]:            "bg-red-500/20 text-red-400",
+  [AppointmentStatus.CLOSED]:             "bg-info/20 text-info",
+};
+
 type ViewTab = "pool" | "mine" | "today" | "week";
 
 const CLAIM_DURATION_MS = 24 * 60 * 60 * 1000; // 24h
@@ -836,7 +848,7 @@ const HotCallsPage = () => {
                         {/* Statut — pool only: shows the appointment status that triggered entry */}
                         {tab === "pool" && (
                           <td className="px-3 py-3">
-                            <span className="px-2 py-1 rounded-full text-[10px] font-medium bg-warning/20 text-warning">
+                            <span className={`px-2 py-1 rounded-full text-[10px] font-medium ${APPT_STATUS_BADGE[h.appointment_status ?? ""] ?? "bg-secondary text-secondary-foreground"}`}>
                               {(h.appointment_status && APPOINTMENT_STATUS_LABELS[h.appointment_status as keyof typeof APPOINTMENT_STATUS_LABELS]) || h.appointment_status || "—"}
                             </span>
                           </td>

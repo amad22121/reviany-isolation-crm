@@ -371,7 +371,7 @@ const TerritoiresPage = () => {
   return (
     <div className="flex flex-col h-[calc(100vh-5rem)]">
       {/* Sticky filter header */}
-      <div className="sticky top-0 z-30 bg-background border-b border-border px-2 py-2 shrink-0">
+      <div className="sticky top-0 z-30 bg-background border-b border-border px-4 py-3 shrink-0">
         {/* Mobile: collapsible toggle */}
         <div className="flex items-center justify-between sm:hidden mb-1">
           <button
@@ -388,7 +388,7 @@ const TerritoiresPage = () => {
         </div>
 
         {/* Desktop: always show, Mobile: collapsible */}
-        <div className={`flex-wrap items-center gap-2 ${filtersOpen ? "flex" : "hidden sm:flex"}`}>
+        <div className={`flex-wrap items-center gap-3 ${filtersOpen ? "flex" : "hidden sm:flex"}`}>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -475,7 +475,7 @@ const TerritoiresPage = () => {
         </div>
 
         {/* RIGHT: List — hidden when panel is open */}
-        <div className={`w-full sm:w-[420px] lg:w-[480px] border-l border-border overflow-y-auto bg-card/50 ${showPanel ? "hidden" : ""}`}>
+        <div className={`w-full sm:w-[420px] lg:w-[480px] border-l border-border overflow-y-auto bg-card/50 pt-1 ${showPanel ? "hidden" : ""}`}>
           {visibleZones.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground text-sm">Aucun territoire trouvé.</div>
           ) : (
