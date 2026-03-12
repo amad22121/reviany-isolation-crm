@@ -8,10 +8,29 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import FicheClient from "@/components/FicheClient";
 
+// Statuses each role is allowed to SET on an appointment.
+// Reps can use all operational statuses except "close" (which requires manager/owner).
+const REP_ALLOWED_STATUSES: AppointmentStatus[] = [
+  AppointmentStatus.PLANNED,
+  AppointmentStatus.CONFIRMED,
+  AppointmentStatus.UNCONFIRMED,
+  AppointmentStatus.AT_RISK,
+  AppointmentStatus.POSTPONED,
+  AppointmentStatus.CANCELLED_CALLBACK,
+  AppointmentStatus.CANCELLED_FINAL,
+  AppointmentStatus.NO_SHOW,
+  // AppointmentStatus.CLOSED — restricted to gestionnaire / proprietaire
+];
+
+const MANAGER_OWNER_STATUSES: AppointmentStatus[] = [
+  ...REP_ALLOWED_STATUSES,
+  AppointmentStatus.CLOSED,
+];
+
 const STATUS_PERMISSIONS: Record<string, AppointmentStatus[]> = {
-  representant: [AppointmentStatus.PLANNED, AppointmentStatus.CONFIRMED],
-  gestionnaire: [AppointmentStatus.PLANNED, AppointmentStatus.CONFIRMED, AppointmentStatus.UNCONFIRMED, AppointmentStatus.AT_RISK, AppointmentStatus.POSTPONED, AppointmentStatus.CANCELLED_CALLBACK, AppointmentStatus.CANCELLED_FINAL, AppointmentStatus.NO_SHOW, AppointmentStatus.CLOSED],
-  proprietaire: [AppointmentStatus.PLANNED, AppointmentStatus.CONFIRMED, AppointmentStatus.UNCONFIRMED, AppointmentStatus.AT_RISK, AppointmentStatus.POSTPONED, AppointmentStatus.CANCELLED_CALLBACK, AppointmentStatus.CANCELLED_FINAL, AppointmentStatus.NO_SHOW, AppointmentStatus.CLOSED],
+  representant: REP_ALLOWED_STATUSES,
+  gestionnaire: MANAGER_OWNER_STATUSES,
+  proprietaire: MANAGER_OWNER_STATUSES,
 };
 
 const AppointmentsPage = () => {
@@ -19,7 +38,7 @@ const AppointmentsPage = () => {
   const { data: appointments = [] } = useAppointments();
   const updateStatusMutation = useUpdateAppointmentStatus();
   const updateNotesMutation = useUpdateAppointmentNotes();
-  const { role, currentManagerId } = useAuth();
+  const { role, currentRepId, currentManagerId } = useAuth();
   const { data: teamMembers = [] } = useTeamMembers();
   const [search, setSearch] = useState("");
   const [repFilter, setRepFilter] = useState("all");
@@ -47,6 +66,10 @@ const AppointmentsPage = () => {
 
   const filtered = useMemo(() => {
     return appointments.filter((a) => {
+      // Representatives only see their own appointments in this view.
+      // Shared recovery leads are accessible via the Hot Calls Pool.
+      if (role === "representant" && a.repId !== currentRepId) return false;
+      // Gestionnaires only see appointments belonging to their team.
       if (role === "gestionnaire" && teamRepIds.size > 0 && !teamRepIds.has(a.repId)) return false;
       if (a.isBacklog) return false;
       const matchSearch =
@@ -58,7 +81,7 @@ const AppointmentsPage = () => {
       const matchStatus = statusFilter === "all" || a.status === statusFilter;
       return matchSearch && matchRep && matchStatus;
     });
-  }, [appointments, search, repFilter, statusFilter, role, teamRepIds]);
+  }, [appointments, search, repFilter, statusFilter, role, teamRepIds, currentRepId]);
 
   const getRepName = (repId: string) => getRepNameFromList(teamMembers, repId);
 
