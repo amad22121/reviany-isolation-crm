@@ -395,6 +395,32 @@ export function useMarkAsHotCall() {
   });
 }
 
+/**
+ * Reschedule an appointment from within Hot Calls ("Replanifier rendez-vous").
+ * Updates scheduled_at, sets status = planifie, and clears all hot_call fields
+ * so the lead automatically leaves Hot Calls.
+ */
+export function useRescheduleHotCallAppointment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { id: string; date: string; time: string }) => {
+      const scheduledAt = `${params.date}T${params.time}:00`;
+      const { error } = await supabase
+        .from("appointments")
+        .update({
+          scheduled_at: scheduledAt,
+          ...hotCallPatchForStatus(AppointmentStatus.PLANNED),
+        })
+        .eq("id", params.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [HOT_CALLS_KEY] });
+    },
+  });
+}
+
 /** Delete an appointment */
 export function useDeleteAppointment() {
   const queryClient = useQueryClient();

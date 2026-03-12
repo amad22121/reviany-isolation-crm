@@ -1,6 +1,7 @@
 import { useMemo, useState, useCallback } from "react";
 import { useAuth } from "@/store/crm-store";
-import { useAppointments } from "@/hooks/useAppointments";
+import { useAuthContext } from "@/lib/auth/AuthProvider";
+import { useAppointments, useRescheduleHotCallAppointment } from "@/hooks/useAppointments";
 import { toast } from "sonner";
 import FicheClient from "@/components/FicheClient";
 import {
@@ -57,7 +58,11 @@ type ViewTab = "pool" | "mine" | "today" | "week";
 const CLAIM_DURATION_MS = 24 * 60 * 60 * 1000; // 24h
 
 const HotCallsPage = () => {
-  const { role, currentRepId } = useAuth();
+  const { role, currentRepId, currentManagerId } = useAuth();
+  const { user } = useAuthContext();
+  // Actor ID used for claiming — rep_id for reps, manager_id for managers,
+  // user.id for owners (proprietaire has no rep_id/manager_id)
+  const currentUserId = currentRepId || currentManagerId || user?.id || null;
   const canManage = can(role, "manage_hot_calls");
   const canReassign = can(role, "reassign_hot_calls");
   const isRep = role === "representant";
@@ -96,6 +101,7 @@ const HotCallsPage = () => {
   const updateMut = useUpdateHotCall();
   const deleteMut = useDeleteHotCall();
   const addNoteMut = useAddHotCallNote();
+  const rescheduleMut = useRescheduleHotCallAppointment();
 
   const [tab, setTab] = useState<ViewTab>("pool");
   const [search, setSearch] = useState("");
@@ -125,6 +131,11 @@ const HotCallsPage = () => {
   // Tag editing
   const [editingTagsId, setEditingTagsId] = useState<string | null>(null);
   const [newTagInput, setNewTagInput] = useState("");
+
+  // Replanifier rendez-vous (Mes Hot Calls)
+  const [rescheduleApptId, setRescheduleApptId] = useState<string | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleTime, setRescheduleTime] = useState("09:00");
 
   // Reassign popup (manager)
   const [reassignId, setReassignId] = useState<string | null>(null);
@@ -244,9 +255,9 @@ const HotCallsPage = () => {
 
   const handleClaim = useCallback(
     async (id: string) => {
-      if (!currentRepId) return;
+      if (!currentUserId) return;
       try {
-        await claimMut.mutateAsync({ id, repId: currentRepId });
+        await claimMut.mutateAsync({ id, repId: currentUserId });
         // Also set phase to "claimed"
         await updateMut.mutateAsync({
           id,
@@ -262,7 +273,7 @@ const HotCallsPage = () => {
         }
       }
     },
-    [claimMut, updateMut, currentRepId]
+    [claimMut, updateMut, currentUserId]
   );
 
   const handleReturnToPool = useCallback(
@@ -401,6 +412,17 @@ const HotCallsPage = () => {
     toast.success("Date de relance modifiée");
     setEditDateId(null);
     setEditDateValue("");
+  };
+
+  const handleReschedule = async () => {
+    if (!rescheduleApptId || !rescheduleDate) return;
+    try {
+      await rescheduleMut.mutateAsync({ id: rescheduleApptId, date: rescheduleDate, time: rescheduleTime || "09:00" });
+      toast.success("Rendez-vous replanifié — le lead quitte Hot Calls.");
+    } catch {
+      toast.error("Erreur lors de la replanification.");
+    }
+    setRescheduleApptId(null);
   };
 
   const addTag = async (hcId: string, tag: string) => {
@@ -578,10 +600,12 @@ const HotCallsPage = () => {
                       ...(tab !== "pool" ? ["Adresse"] : []),
                       ...(tab !== "pool" ? ["Phase"] : []),
                       ...(tab !== "pool" ? ["Feedback"] : []),
-                      "Tentatives", "Relance",
+                      ...(tab !== "pool" ? ["Tentatives"] : []),
+                      ...(tab !== "pool" ? ["Relance"] : []),
                       ...(tab !== "pool" ? ["Assigné à"] : []),
                       ...(tab === "mine" ? ["Lock"] : []),
-                      "Tags", "Actions",
+                      ...(tab !== "pool" ? ["Tags"] : []),
+                      "Actions",
                     ].map((h) => (
                       <th key={h} className="text-left px-3 py-3 text-muted-foreground font-medium text-xs">{h}</th>
                     ))}
@@ -595,10 +619,10 @@ const HotCallsPage = () => {
 
                     return (
                       <tr key={h.id} className={`border-b border-border/50 hover:bg-secondary/30 transition-colors ${isMine ? "bg-primary/5" : ""}`}>
-                        {/* Nom */}
+                        {/* Nom / Client */}
                         <td className="px-3 py-3 font-medium whitespace-nowrap">
                           {tab === "pool" ? (
-                            <span className="text-foreground">{h.full_name}</span>
+                            <span className="text-muted-foreground italic">Masqué</span>
                           ) : (
                             <button onClick={() => setSelectedHotCallForFiche(h)} className="text-primary hover:underline text-left">
                               {h.full_name}
@@ -651,33 +675,29 @@ const HotCallsPage = () => {
                           </td>
                         )}
 
-                        {/* Tentatives */}
-                        <td className="px-3 py-3">
-                          <div className="flex items-center gap-1">
-                            {tab !== "pool" && canManage && h.attempts > 0 && (
-                              <button
-                                onClick={() => doAction(h.id, { attempts: h.attempts - 1 })}
-                                className="w-5 h-5 rounded bg-secondary hover:bg-destructive/20 text-muted-foreground hover:text-destructive flex items-center justify-center transition-colors"
-                              >
-                                <Minus className="h-3 w-3" />
-                              </button>
-                            )}
-                            <span className="text-sm font-bold text-foreground min-w-[16px] text-center">{h.attempts}</span>
-                            {tab !== "pool" && editable && (
-                              <button
-                                onClick={() => doAction(h.id, { attempts: h.attempts + 1 })}
-                                className="w-5 h-5 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-primary flex items-center justify-center transition-colors"
-                              >
-                                <Plus className="h-3 w-3" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
+                        {/* Tentatives — hidden in pool; + only (no -) in working tabs */}
+                        {tab !== "pool" && (
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-1">
+                              <span className="text-sm font-bold text-foreground min-w-[16px] text-center">{h.attempts}</span>
+                              {editable && (
+                                <button
+                                  onClick={() => doAction(h.id, { attempts: h.attempts + 1 })}
+                                  className="w-5 h-5 rounded bg-secondary hover:bg-primary/20 text-muted-foreground hover:text-primary flex items-center justify-center transition-colors"
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        )}
 
-                        {/* Relance */}
-                        <td className="px-3 py-3 text-xs text-foreground whitespace-nowrap">
-                          {h.follow_up_date || "—"}
-                        </td>
+                        {/* Relance — hidden in pool */}
+                        {tab !== "pool" && (
+                          <td className="px-3 py-3 text-xs text-foreground whitespace-nowrap">
+                            {h.follow_up_date || "—"}
+                          </td>
+                        )}
 
                         {/* Assigné à */}
                         {tab !== "pool" && (
@@ -701,8 +721,8 @@ const HotCallsPage = () => {
                           </td>
                         )}
 
-                        {/* Tags */}
-                        <td className="px-3 py-3">
+                        {/* Tags — hidden in pool */}
+                        {tab !== "pool" && <td className="px-3 py-3">
                           <div className="flex flex-wrap gap-1 items-center max-w-[150px]">
                             {(h.tags || []).map((tag) => (
                               <span key={tag} className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent/20 text-accent-foreground">
@@ -765,7 +785,7 @@ const HotCallsPage = () => {
                               </div>
                             )}
                           </div>
-                        </td>
+                        </td>}
 
                         {/* Actions */}
                         <td className="px-3 py-3">
@@ -801,6 +821,17 @@ const HotCallsPage = () => {
                                 title="Planifier relance"
                               >
                                 <CalendarPlus className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+
+                            {/* Replanifier rendez-vous (mine tab only) — exits Hot Calls */}
+                            {editable && tab === "mine" && (
+                              <button
+                                onClick={() => { setRescheduleApptId(h.id); setRescheduleDate(""); setRescheduleTime("09:00"); }}
+                                className="p-1.5 rounded hover:bg-success/20 text-muted-foreground hover:text-success transition-colors"
+                                title="Replanifier rendez-vous"
+                              >
+                                <CalendarRange className="h-3.5 w-3.5" />
                               </button>
                             )}
 
@@ -878,6 +909,44 @@ const HotCallsPage = () => {
           </div>
         )}
       </div>
+
+      {/* Replanifier rendez-vous Modal */}
+      <Dialog open={!!rescheduleApptId} onOpenChange={(o) => { if (!o) setRescheduleApptId(null); }}>
+        <DialogContent className="sm:max-w-[380px] bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-foreground">Replanifier rendez-vous</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <p className="text-xs text-muted-foreground">
+              Le lead quittera automatiquement Hot Calls et le rendez-vous sera mis à jour.
+            </p>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Nouvelle date</label>
+              <input
+                type="date"
+                value={rescheduleDate}
+                onChange={(e) => setRescheduleDate(e.target.value)}
+                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Heure</label>
+              <input
+                type="time"
+                value={rescheduleTime}
+                onChange={(e) => setRescheduleTime(e.target.value)}
+                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button onClick={handleReschedule} className="flex-1" disabled={!rescheduleDate || rescheduleMut.isPending}>
+                Confirmer
+              </Button>
+              <Button variant="outline" onClick={() => setRescheduleApptId(null)}>Annuler</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Pool Preview Modal — no contact details */}
       <Dialog open={!!previewHotCall} onOpenChange={(o) => { if (!o) setPreviewHotCall(null); }}>
