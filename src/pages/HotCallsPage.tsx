@@ -145,6 +145,10 @@ const HotCallsPage = () => {
 
   const today = new Date().toISOString().split("T")[0];
 
+  // Inline custom date for relance (per-row)
+  const [inlineRelanceCustomId, setInlineRelanceCustomId] = useState<string | null>(null);
+  const [inlineRelanceCustomDate, setInlineRelanceCustomDate] = useState("");
+
   // ─── Phase-based filtering ──────────────────────────────────────────────────
 
   const poolCalls = useMemo(
@@ -228,14 +232,13 @@ const HotCallsPage = () => {
   };
 
   const feedbackColors: Record<string, string> = {
-    "No answer": "bg-warning/20 text-warning",
-    "Call back later": "bg-info/20 text-info",
-    "Reschedule requested": "bg-primary/20 text-primary",
-    "Not interested": "bg-muted text-muted-foreground",
-    "Follow-up 3 months": "bg-accent/20 text-accent-foreground",
-    "Follow-up 6 months": "bg-accent/20 text-accent-foreground",
-    "Follow-up 9 months": "bg-accent/20 text-accent-foreground",
-    "Follow-up 12 months": "bg-accent/20 text-accent-foreground",
+    pas_reponse: "bg-warning/20 text-warning",
+    messagerie: "bg-warning/20 text-warning",
+    numero_invalide: "bg-destructive/20 text-destructive",
+    rappeler_plus_tard: "bg-info/20 text-info",
+    pas_interesse: "bg-muted text-muted-foreground",
+    interesse: "bg-primary/20 text-primary",
+    rdv_confirme: "bg-green-500/20 text-green-500",
   };
 
   // ─── Lock time remaining ──────────────────────────────────────────────────
@@ -251,6 +254,121 @@ const HotCallsPage = () => {
 
   const getPhaseLabel = (phase: string) => {
     return HOT_CALL_PHASE_LABELS[phase as HotCallPhase] || phase;
+  };
+
+  // ─── Relance options ─────────────────────────────────────────────────────
+
+  const RELANCE_OPTIONS: { value: string; label: string; days: number | null }[] = [
+    { value: "demain",           label: "Demain",           days: 1   },
+    { value: "cette_semaine",    label: "Cette semaine",    days: 7   },
+    { value: "callback",         label: "Rappel court",     days: 3   },
+    { value: "followup_3_mois",  label: "Suivi 3 mois",     days: 90  },
+    { value: "followup_6_mois",  label: "Suivi 6 mois",     days: 180 },
+    { value: "followup_9_mois",  label: "Suivi 9 mois",     days: 270 },
+    { value: "followup_12_mois", label: "Suivi 12 mois",    days: 365 },
+    { value: "date_personnalisee", label: "Date personnalisée", days: null },
+  ];
+
+  const relanceDaysFromOption = (value: string): string | null => {
+    const opt = RELANCE_OPTIONS.find((o) => o.value === value);
+    if (!opt || opt.days === null) return null;
+    const d = new Date();
+    d.setDate(d.getDate() + opt.days);
+    return d.toISOString().split("T")[0];
+  };
+
+  /** Inline feedback change: updates DB + runs automations */
+  const handleInlineFeedbackChange = async (hc: DbHotCall, feedback: HotCallFeedback) => {
+    const repId = currentUserId || "";
+    try {
+      if (feedback === "numero_invalide" || feedback === "pas_interesse") {
+        await updateMut.mutateAsync({
+          id: hc.id,
+          updates: {
+            last_feedback: feedback,
+            attempts: (hc.attempts || 0) + 1,
+            last_contact_date: today,
+          },
+          extendLock: false,
+        });
+        await deleteMut.mutateAsync(hc.id);
+        toast.success(`Feedback enregistré — lead retiré des Hot Calls`);
+      } else if (feedback === "rdv_confirme") {
+        await updateMut.mutateAsync({
+          id: hc.id,
+          updates: {
+            last_feedback: feedback,
+            attempts: (hc.attempts || 0) + 1,
+            last_contact_date: today,
+          },
+          extendLock: false,
+        });
+        await apptStatusMut.mutateAsync({
+          id: hc.id,
+          status: AppointmentStatus.PLANNED,
+          userId: repId,
+          currentStatusLog: [],
+          previousStatus: hc.appointment_status || "",
+        });
+        toast.success("RDV confirmé — lead retiré des Hot Calls");
+      } else {
+        await updateMut.mutateAsync({
+          id: hc.id,
+          updates: {
+            last_feedback: feedback,
+            attempts: (hc.attempts || 0) + 1,
+            last_contact_date: today,
+          },
+          extendLock: true,
+        });
+        toast.success("Feedback mis à jour");
+      }
+    } catch {
+      toast.error("Erreur lors de la mise à jour du feedback.");
+    }
+  };
+
+  /** Inline relance change: sets follow_up_date + phase */
+  const handleInlineRelanceChange = async (hcId: string, option: string, customDate?: string) => {
+    if (option === "date_personnalisee") {
+      setInlineRelanceCustomId(hcId);
+      setInlineRelanceCustomDate("");
+      return;
+    }
+    const date = relanceDaysFromOption(option);
+    if (!date) return;
+    try {
+      await updateMut.mutateAsync({
+        id: hcId,
+        updates: {
+          follow_up_date: date,
+          phase: "scheduled_follow_up",
+        },
+        extendLock: true,
+      });
+      toast.success("Relance planifiée");
+    } catch {
+      toast.error("Erreur lors de la planification de la relance.");
+    }
+  };
+
+  const submitInlineCustomRelance = async () => {
+    if (!inlineRelanceCustomId || !inlineRelanceCustomDate) return;
+    try {
+      await updateMut.mutateAsync({
+        id: inlineRelanceCustomId,
+        updates: {
+          follow_up_date: inlineRelanceCustomDate,
+          phase: "scheduled_follow_up",
+        },
+        extendLock: true,
+      });
+      toast.success("Relance planifiée");
+    } catch {
+      toast.error("Erreur lors de la planification de la relance.");
+    }
+    setInlineRelanceCustomId(null);
+    setInlineRelanceCustomDate("");
   };
 
   // ─── Actions ──────────────────────────────────────────────────────────────
@@ -743,12 +861,25 @@ const HotCallsPage = () => {
                           </td>
                         )}
 
-                        {/* Feedback — hidden in pool */}
+                        {/* Feedback — hidden in pool; interactive select in mine/today/week */}
                         {tab !== "pool" && (
                           <td className="px-3 py-3">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${feedbackColors[h.last_feedback] || "bg-muted text-muted-foreground"}`}>
-                              {h.last_feedback}
-                            </span>
+                            {editable ? (
+                              <select
+                                value={h.last_feedback || ""}
+                                onChange={(e) => handleInlineFeedbackChange(h, e.target.value as HotCallFeedback)}
+                                className={`rounded-full text-xs font-medium px-2 py-1 border-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary ${feedbackColors[h.last_feedback] || "bg-muted text-muted-foreground"}`}
+                              >
+                                <option value="" disabled>— Choisir —</option>
+                                {HOT_CALL_FEEDBACKS.map((f) => (
+                                  <option key={f} value={f}>{HOT_CALL_FEEDBACK_LABELS[f]}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${feedbackColors[h.last_feedback] || "bg-muted text-muted-foreground"}`}>
+                                {h.last_feedback ? HOT_CALL_FEEDBACK_LABELS[h.last_feedback as HotCallFeedback] || h.last_feedback : "—"}
+                              </span>
+                            )}
                           </td>
                         )}
 
@@ -769,10 +900,46 @@ const HotCallsPage = () => {
                           </td>
                         )}
 
-                        {/* Relance — hidden in pool */}
+                        {/* Relance — hidden in pool; interactive select in mine/today/week */}
                         {tab !== "pool" && (
-                          <td className="px-3 py-3 text-xs text-foreground whitespace-nowrap">
-                            {h.follow_up_date || "—"}
+                          <td className="px-3 py-3">
+                            {editable ? (
+                              <div className="flex flex-col gap-1">
+                                <select
+                                  defaultValue=""
+                                  onChange={(e) => handleInlineRelanceChange(h.id, e.target.value)}
+                                  className="text-xs bg-secondary border border-border rounded px-2 py-1 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+                                >
+                                  <option value="" disabled>
+                                    {h.follow_up_date ? h.follow_up_date : "— Planifier —"}
+                                  </option>
+                                  {RELANCE_OPTIONS.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                  ))}
+                                </select>
+                                {inlineRelanceCustomId === h.id && (
+                                  <div className="flex gap-1 items-center">
+                                    <input
+                                      type="date"
+                                      value={inlineRelanceCustomDate}
+                                      onChange={(e) => setInlineRelanceCustomDate(e.target.value)}
+                                      className="text-xs bg-secondary border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                    />
+                                    <button
+                                      onClick={submitInlineCustomRelance}
+                                      disabled={!inlineRelanceCustomDate}
+                                      className="text-xs px-2 py-1 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-40"
+                                    >
+                                      OK
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-foreground whitespace-nowrap">
+                                {h.follow_up_date || "—"}
+                              </span>
+                            )}
                           </td>
                         )}
 
