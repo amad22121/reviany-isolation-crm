@@ -73,6 +73,7 @@ export interface Appointment {
   hotCallLastFeedback: string | null;
   hotCallTags: string[];
   createdAt: string;
+  confirmedAt: string | null;   // set when status transitions to confirme
   statusLog: StatusChangeLog[];  // will be populated from appointment_status_logs table (future)
   // Revenue (from appointments.close_amount)
   closedValue?: number;

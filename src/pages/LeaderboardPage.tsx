@@ -11,7 +11,7 @@ const LeaderboardPage = () => {
   const { role, currentManagerId } = useAuth();
   const [tab, setTab] = useState<"daily" | "weekly" | "monthly" | "alltime">("daily");
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = new Date().toISOString().slice(0, 10);
 
   const { data: teamMembers = [] } = useTeamMembers();
 
@@ -24,7 +24,7 @@ const LeaderboardPage = () => {
 
   const DAILY_GOAL = teamReps.length > 0 ? Math.ceil(dailyTarget / teamReps.length) : 0;
 
-  // Statuses that count toward "Rendez-vous" (booked volume)
+  // Statuses that count toward "Rendez-vous" (booked volume), excludes annule_definitif and close
   const BOOKED_STATUSES = new Set<AppointmentStatus>([
     AppointmentStatus.PLANNED,
     AppointmentStatus.CONFIRMED,
@@ -37,24 +37,33 @@ const LeaderboardPage = () => {
 
   const data = useMemo(() => {
     const now = new Date();
-    const filtered = appointments.filter((a) => {
-      const d = new Date(a.date);
-      if (tab === "daily") return a.date === today;
-      if (tab === "weekly") {
-        const weekStart = new Date(now);
-        weekStart.setDate(now.getDate() - now.getDay());
-        return d >= weekStart;
-      }
-      if (tab === "monthly") return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay());
+    const weekStartStr = weekStart.toISOString().slice(0, 10);
+    const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+    // Returns true if the ISO timestamp string falls within the selected period.
+    // Slices to date portion only to avoid timezone-offset issues.
+    const inPeriod = (isoStr: string | null | undefined): boolean => {
+      if (!isoStr) return false;
+      const d = isoStr.slice(0, 10);
+      if (tab === "daily") return d === today;
+      if (tab === "weekly") return d >= weekStartStr;
+      if (tab === "monthly") return d.startsWith(monthPrefix);
       return true; // alltime
-    });
+    };
 
     return teamReps.map((rep) => {
-      const repAppts = filtered.filter(
-        (a) => a.repId === rep.id && BOOKED_STATUSES.has(a.status as AppointmentStatus)
-      );
-      const confirmed = repAppts.filter((a) => a.status === AppointmentStatus.CONFIRMED).length;
-      const booked = repAppts.length;
+      const repAppts = appointments.filter((a) => a.repId === rep.id);
+
+      // Rendez-vous: booked (created) in the selected period, excluding terminal statuses
+      const booked = repAppts.filter(
+        (a) => BOOKED_STATUSES.has(a.status as AppointmentStatus) && inPeriod(a.createdAt)
+      ).length;
+
+      // Confirmés: confirmed in the selected period (based on confirmed_at timestamp)
+      const confirmed = repAppts.filter((a) => inPeriod(a.confirmedAt)).length;
+
       return {
         ...rep,
         booked,

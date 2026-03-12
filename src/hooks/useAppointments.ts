@@ -99,6 +99,7 @@ function mapRow(row: any): Appointment {
     hotCallLastFeedback: row.hot_call_last_feedback ?? null,
     hotCallTags: row.hot_call_tags ?? [],
     createdAt: row.created_at ?? "",
+    confirmedAt: row.confirmed_at ?? null,
     // Status log: parse if array (legacy), else empty
     statusLog: Array.isArray(row.status_log) ? row.status_log : [],
     // Revenue: close_amount is the canonical column; closed_value is a legacy alias
@@ -249,11 +250,17 @@ export function useUpdateAppointmentStatus() {
       currentStatusLog: any[];
       previousStatus: string;
     }) => {
+      const confirmedAtPatch =
+        params.status === AppointmentStatus.CONFIRMED
+          ? { confirmed_at: new Date().toISOString() }
+          : {};
+
       const { error } = await supabase
         .from("appointments")
         .update({
           status: params.status,
           ...hotCallPatchForStatus(params.status),
+          ...confirmedAtPatch,
         })
         .eq("id", params.id);
 
