@@ -70,6 +70,7 @@ export interface DbHotCall {
   origin: string | null;
   cultural_origin: string | null;
   original_date: string | null;   // scheduled_at parsed to date (original appointment date)
+  original_time: string | null;   // scheduled_at parsed to time HH:MM
   appointment_status: string | null; // real appointment status (non_confirme, annule_rappeler, no_show)
   original_appointment_id: string | null;
   assigned_to_user_id: string | null;
@@ -130,6 +131,9 @@ function mapApptToHotCall(row: any): DbHotCall {
     cultural_origin: client.cultural_origin ?? null,
     original_date: row.scheduled_at
       ? new Date(row.scheduled_at).toISOString().split("T")[0]
+      : null,
+    original_time: row.scheduled_at
+      ? new Date(row.scheduled_at).toISOString().split("T")[1]?.slice(0, 5) ?? "09:00"
       : null,
     appointment_status: row.status ?? null,
     original_appointment_id: row.id, // the appointment IS the source

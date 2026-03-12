@@ -134,6 +134,12 @@ const HotCallsPage = () => {
   const [editingTagsId, setEditingTagsId] = useState<string | null>(null);
   const [newTagInput, setNewTagInput] = useState("");
 
+  // "RDV confirmé" confirmation modal — prefilled with current scheduled_at
+  const [confirmRdvHotCall, setConfirmRdvHotCall] = useState<DbHotCall | null>(null);
+  const [confirmRdvDate, setConfirmRdvDate] = useState("");
+  const [confirmRdvTime, setConfirmRdvTime] = useState("09:00");
+  const [confirmRdvNote, setConfirmRdvNote] = useState("");
+
   // Replanifier rendez-vous (Mes Hot Calls)
   const [rescheduleApptId, setRescheduleApptId] = useState<string | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState("");
@@ -294,23 +300,9 @@ const HotCallsPage = () => {
         await deleteMut.mutateAsync(hc.id);
         toast.success(`Feedback enregistré — lead retiré des Hot Calls`);
       } else if (feedback === "rdv_confirme") {
-        await updateMut.mutateAsync({
-          id: hc.id,
-          updates: {
-            last_feedback: feedback,
-            attempts: (hc.attempts || 0) + 1,
-            last_contact_date: today,
-          },
-          extendLock: false,
-        });
-        await apptStatusMut.mutateAsync({
-          id: hc.id,
-          status: AppointmentStatus.PLANNED,
-          userId: repId,
-          currentStatusLog: [],
-          previousStatus: hc.appointment_status || "",
-        });
-        toast.success("RDV confirmé — lead retiré des Hot Calls");
+        // Open confirmation modal instead of acting immediately
+        openConfirmRdvModal(hc);
+        return;
       } else {
         await updateMut.mutateAsync({
           id: hc.id,
@@ -483,6 +475,52 @@ const HotCallsPage = () => {
     return d.toISOString().split("T")[0];
   };
 
+  /** Open the RDV confirmation modal, prefilled with the appointment's current date/time */
+  const openConfirmRdvModal = (hc: DbHotCall, note = "") => {
+    setConfirmRdvHotCall(hc);
+    setConfirmRdvDate(hc.original_date || today);
+    setConfirmRdvTime(hc.original_time || "09:00");
+    setConfirmRdvNote(note);
+  };
+
+  /** Submit the RDV confirmation: log attempt, update scheduled_at + status=planifie, exit Hot Calls */
+  const submitConfirmRdv = async () => {
+    if (!confirmRdvHotCall) return;
+    const hc = confirmRdvHotCall;
+    const repId = currentUserId || "";
+    try {
+      // 1. Log feedback + attempt
+      await updateMut.mutateAsync({
+        id: hc.id,
+        updates: {
+          last_feedback: "rdv_confirme" as HotCallFeedback,
+          attempts: (hc.attempts || 0) + 1,
+          last_contact_date: today,
+        },
+        extendLock: false,
+      });
+      // 2. Log note if present
+      if (confirmRdvNote) {
+        await addNoteMut.mutateAsync({
+          hot_call_id: hc.id,
+          user_id: repId,
+          note: confirmRdvNote,
+          call_feedback: "rdv_confirme",
+        });
+      }
+      // 3. Update scheduled_at + set status=planifie + clear hot call fields (single DB write)
+      await rescheduleMut.mutateAsync({
+        id: hc.id,
+        date: confirmRdvDate,
+        time: confirmRdvTime,
+      });
+      toast.success("RDV confirmé — rendez-vous mis à jour");
+    } catch {
+      toast.error("Erreur lors de la confirmation du RDV.");
+    }
+    setConfirmRdvHotCall(null);
+  };
+
   const submitPostCall = async () => {
     if (!postCallId) return;
     const repId = currentUserId || "";
@@ -514,33 +552,12 @@ const HotCallsPage = () => {
         await deleteMut.mutateAsync(postCallId);
         toast.success("Appel enregistré — lead retiré des Hot Calls");
       } else if (postCallFeedback === "rdv_confirme") {
-        // Log attempt + feedback
-        await updateMut.mutateAsync({
-          id: postCallId,
-          updates: {
-            last_feedback: postCallFeedback,
-            attempts: (hc?.attempts || 0) + 1,
-            last_contact_date: today,
-          },
-          extendLock: false,
-        });
-        if (postCallNote) {
-          await addNoteMut.mutateAsync({
-            hot_call_id: postCallId,
-            user_id: repId,
-            note: postCallNote,
-            call_feedback: postCallFeedback,
-          });
+        // Close post-call popup and open RDV confirmation modal (with note carried over)
+        if (hc) {
+          openConfirmRdvModal(hc, postCallNote);
+          setPostCallId(null);
         }
-        // Update appointment status to planifie (which also clears hot call via hotCallPatchForStatus)
-        await apptStatusMut.mutateAsync({
-          id: postCallId,
-          status: AppointmentStatus.PLANNED,
-          userId: repId,
-          currentStatusLog: [],
-          previousStatus: hc?.appointment_status || "",
-        });
-        toast.success("RDV confirmé — lead retiré des Hot Calls");
+        return;
       } else {
         // Standard log: record attempt, feedback, and optional relance
         const updates: Record<string, any> = {
@@ -1332,6 +1349,50 @@ const HotCallsPage = () => {
           onOpenChange={(o) => { if (!o) setSelectedHotCallForFiche(null); }}
         />
       )}
+
+      {/* RDV Confirmé — date/time confirmation modal */}
+      <Dialog open={!!confirmRdvHotCall} onOpenChange={(o) => { if (!o) setConfirmRdvHotCall(null); }}>
+        <DialogContent className="sm:max-w-[400px] bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-foreground">Confirmer le rendez-vous</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <p className="text-sm text-muted-foreground">
+              Vérifiez et ajustez la date et l'heure avant de confirmer. Le lead sera retiré des Hot Calls.
+            </p>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Date du rendez-vous</label>
+              <input
+                type="date"
+                value={confirmRdvDate}
+                onChange={(e) => setConfirmRdvDate(e.target.value)}
+                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Heure</label>
+              <input
+                type="time"
+                value={confirmRdvTime}
+                onChange={(e) => setConfirmRdvTime(e.target.value)}
+                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button
+                onClick={submitConfirmRdv}
+                disabled={!confirmRdvDate}
+                className="flex-1"
+              >
+                Confirmer le RDV
+              </Button>
+              <Button variant="outline" onClick={() => setConfirmRdvHotCall(null)}>
+                Annuler
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Post-Call Popup */}
       <Dialog open={!!postCallId} onOpenChange={(o) => { if (!o) setPostCallId(null); }}>

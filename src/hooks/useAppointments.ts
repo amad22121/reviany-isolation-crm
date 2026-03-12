@@ -409,6 +409,7 @@ export function useRescheduleHotCallAppointment() {
         .from("appointments")
         .update({
           scheduled_at: scheduledAt,
+          status: AppointmentStatus.PLANNED,
           ...hotCallPatchForStatus(AppointmentStatus.PLANNED),
         })
         .eq("id", params.id);
