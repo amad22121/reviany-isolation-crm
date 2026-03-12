@@ -250,17 +250,13 @@ export function useUpdateAppointmentStatus() {
       currentStatusLog: any[];
       previousStatus: string;
     }) => {
-      const confirmedAtPatch =
-        params.status === AppointmentStatus.CONFIRMED
-          ? { confirmed_at: new Date().toISOString() }
-          : {};
-
+      // confirmed_at is stamped server-side by the appointments_stamp_confirmed_at
+      // trigger — no need to include it in the client payload.
       const { error } = await supabase
         .from("appointments")
         .update({
           status: params.status,
           ...hotCallPatchForStatus(params.status),
-          ...confirmedAtPatch,
         })
         .eq("id", params.id);
 
@@ -269,6 +265,9 @@ export function useUpdateAppointmentStatus() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [HOT_CALLS_KEY] });
+    },
+    onError: (err) => {
+      console.error("[useUpdateAppointmentStatus] DB error:", err);
     },
   });
 }

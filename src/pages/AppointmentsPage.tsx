@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { useAuth } from "@/store/crm-store";
 import { Appointment, APPOINTMENT_STATUSES, AppointmentStatus, APPOINTMENT_STATUS_LABELS } from "@/data/crm-data";
 import { useAppointments, useUpdateAppointmentStatus, useUpdateAppointmentNotes } from "@/hooks/useAppointments";
@@ -177,13 +178,21 @@ const AppointmentsPage = () => {
                         onChange={(e) => {
                           const newStatus = e.target.value as AppointmentStatus;
                           if (allowedStatuses.includes(newStatus)) {
-                            updateStatusMutation.mutate({
-                              id: a.id,
-                              status: newStatus,
-                              userId: role || "system",
-                              currentStatusLog: a.statusLog || [],
-                              previousStatus: a.status,
-                            });
+                            updateStatusMutation.mutate(
+                              {
+                                id: a.id,
+                                status: newStatus,
+                                userId: role || "system",
+                                currentStatusLog: a.statusLog || [],
+                                previousStatus: a.status,
+                              },
+                              {
+                                onError: (err: any) => {
+                                  console.error("Status update failed:", err);
+                                  toast.error(err?.message || "Erreur lors de la mise à jour du statut");
+                                },
+                              }
+                            );
                           }
                         }}
                         className={`px-2 py-1 rounded-full text-xs font-medium border-0 cursor-pointer ${statusColors[a.status]}`}
