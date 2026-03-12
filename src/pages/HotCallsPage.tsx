@@ -774,8 +774,8 @@ const HotCallsPage = () => {
 
         {/* Hot Calls Table */}
         {!isLoading && filtered.length > 0 && (
-          <div className="glass-card overflow-hidden">
-            <div className="overflow-x-auto">
+          <div className="glass-card">
+            <div className="overflow-x-auto overflow-y-visible">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
