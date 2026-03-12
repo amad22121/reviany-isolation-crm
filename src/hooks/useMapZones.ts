@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { TerritoryStatus } from "@/store/territory-store";
+import { useWorkspaceContext } from "@/lib/workspace/WorkspaceProvider";
 
 export interface DbMapZone {
   id: string;
@@ -25,16 +26,19 @@ export interface DbStatusLog {
   changed_at: string;
 }
 
-const ZONES_KEY = ["map_zones"];
+const ZONES_KEY = (tenantId: string | null) => ["map_zones", tenantId];
 const LOGS_KEY = (zoneId: string) => ["map_zone_status_logs", zoneId];
 
 export function useMapZonesQuery() {
+  const { workspaceId } = useWorkspaceContext();
   return useQuery({
-    queryKey: ZONES_KEY,
+    queryKey: ZONES_KEY(workspaceId),
+    enabled: !!workspaceId,
     queryFn: async (): Promise<DbMapZone[]> => {
       const { data, error } = await supabase
         .from("map_zones")
         .select("*")
+        .eq("tenant_id", workspaceId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []).map((row) => ({
@@ -64,6 +68,7 @@ export function useZoneLogsQuery(zoneId: string | null) {
 
 export function useCreateZone() {
   const qc = useQueryClient();
+  const { workspaceId } = useWorkspaceContext();
   return useMutation({
     mutationFn: async (zone: {
       name: string;
@@ -75,6 +80,7 @@ export function useCreateZone() {
       polygon: [number, number][];
       created_by: string;
     }) => {
+      if (!workspaceId) throw new Error("Workspace non initialisé");
       const { data, error } = await supabase
         .from("map_zones")
         .insert({
@@ -86,18 +92,20 @@ export function useCreateZone() {
           notes: zone.notes,
           polygon: zone.polygon as unknown as import("@/integrations/supabase/types").Json,
           created_by: zone.created_by,
+          tenant_id: workspaceId,
         })
         .select()
         .single();
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ZONES_KEY }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ZONES_KEY(workspaceId) }),
   });
 }
 
 export function useUpdateZone() {
   const qc = useQueryClient();
+  const { workspaceId } = useWorkspaceContext();
   return useMutation({
     mutationFn: async ({
       id,
@@ -128,17 +136,18 @@ export function useUpdateZone() {
         if (logError) throw logError;
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ZONES_KEY }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ZONES_KEY(workspaceId) }),
   });
 }
 
 export function useDeleteZone() {
   const qc = useQueryClient();
+  const { workspaceId } = useWorkspaceContext();
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("map_zones").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ZONES_KEY }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ZONES_KEY(workspaceId) }),
   });
 }

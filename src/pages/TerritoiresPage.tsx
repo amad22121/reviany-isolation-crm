@@ -261,7 +261,8 @@ const TerritoiresPage = () => {
       mapRef.current.flyTo(pos, 16, { duration: 0.8 });
       // Auto-remove marker after 15s
       setTimeout(() => { marker.remove(); }, 15000);
-    } catch {
+    } catch (err: any) {
+      console.error("Geocoding error:", err);
       toast.error("Erreur de géocodage");
     } finally {
       setIsGeocoding(false);
@@ -283,8 +284,9 @@ const TerritoiresPage = () => {
       drawLayerRef.current?.clearLayers();
       // Keep map stable — force resize recalc
       setTimeout(() => { mapRef.current?.invalidateSize(); }, 100);
-    } catch {
-      toast.error("Erreur lors de la création");
+    } catch (err: any) {
+      console.error("Zone creation error:", err);
+      toast.error(err?.message || "Erreur lors de la création");
     }
   }, [drawnPolygon, createZone, role]);
 
@@ -302,7 +304,10 @@ const TerritoiresPage = () => {
         statusChange: { previous: selectedZone.status, next: status, changedBy: role || "system" },
       });
       toast.success("Statut mis à jour");
-    } catch { toast.error("Erreur lors de la mise à jour"); }
+    } catch (err: any) {
+      console.error("Zone status update error:", err);
+      toast.error(err?.message || "Erreur lors de la mise à jour");
+    }
   }, [selectedZone, isRep, currentRepId, updateZone, role]);
 
   const handleInlineStatus = useCallback(async (zone: DbMapZone, status: TerritoryStatus) => {
@@ -312,7 +317,10 @@ const TerritoiresPage = () => {
         id: zone.id, updates: { status },
         statusChange: { previous: zone.status, next: status, changedBy: role || "system" },
       });
-    } catch { toast.error("Erreur"); }
+    } catch (err: any) {
+      console.error("Inline status error:", err);
+      toast.error(err?.message || "Erreur");
+    }
   }, [isRep, currentRepId, updateZone, role]);
 
   const handleInlineRep = useCallback(async (zone: DbMapZone, repId: string) => {
@@ -347,7 +355,10 @@ const TerritoiresPage = () => {
       await deleteZone.mutateAsync(targetId);
       if (selectedZoneId === targetId) setSelectedZoneId(null);
       toast.success("Zone supprimée");
-    } catch { toast.error("Erreur lors de la suppression"); }
+    } catch (err: any) {
+      console.error("Zone delete error:", err);
+      toast.error(err?.message || "Erreur lors de la suppression");
+    }
   }, [selectedZone, selectedZoneId, canManage, deleteZone]);
 
   const showPanel = showCreateForm || selectedZone;
