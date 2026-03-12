@@ -1,7 +1,7 @@
 import { useMemo, useState, useCallback } from "react";
 import { useAuth } from "@/store/crm-store";
 import { useAuthContext } from "@/lib/auth/AuthProvider";
-import { useAppointments, useRescheduleHotCallAppointment } from "@/hooks/useAppointments";
+import { useAppointments, useRescheduleHotCallAppointment, useUpdateAppointmentStatus } from "@/hooks/useAppointments";
 import { toast } from "sonner";
 import FicheClient from "@/components/FicheClient";
 import {
@@ -46,7 +46,7 @@ import {
   DbHotCall,
 } from "@/hooks/useHotCalls";
 import { HotCallPhase, HOT_CALL_PHASE_LABELS, APPOINTMENT_STATUS_LABELS } from "@/domain/enums";
-import { HOT_CALL_FEEDBACKS, type HotCallFeedback, AppointmentStatus } from "@/data/crm-data";
+import { HOT_CALL_FEEDBACKS, HOT_CALL_FEEDBACK_LABELS, type HotCallFeedback, AppointmentStatus } from "@/data/crm-data";
 import { can } from "@/lib/permissions/can";
 import { getAtRiskToday, getAtRiskThisWeek, type AtRiskAppointment } from "@/lib/atRiskLogic";
 import AtRiskAppointmentsSection from "@/components/hotcalls/AtRiskAppointmentsSection";
@@ -102,6 +102,7 @@ const HotCallsPage = () => {
   const deleteMut = useDeleteHotCall();
   const addNoteMut = useAddHotCallNote();
   const rescheduleMut = useRescheduleHotCallAppointment();
+  const apptStatusMut = useUpdateAppointmentStatus();
 
   const [tab, setTab] = useState<ViewTab>("pool");
   const [search, setSearch] = useState("");
@@ -115,9 +116,10 @@ const HotCallsPage = () => {
 
   // Post-call popup
   const [postCallId, setPostCallId] = useState<string | null>(null);
-  const [postCallFeedback, setPostCallFeedback] = useState<HotCallFeedback>("No answer");
+  const [postCallFeedback, setPostCallFeedback] = useState<HotCallFeedback>("pas_reponse");
   const [postCallNote, setPostCallNote] = useState("");
-  const [postCallDate, setPostCallDate] = useState("");
+  const [postCallRelance, setPostCallRelance] = useState("none");
+  const [postCallCustomDate, setPostCallCustomDate] = useState("");
 
   // Schedule follow-up popup
   const [scheduleId, setScheduleId] = useState<string | null>(null);
@@ -346,38 +348,103 @@ const HotCallsPage = () => {
 
   const openPostCallPopup = (hc: DbHotCall) => {
     setPostCallId(hc.id);
-    setPostCallFeedback((hc.last_feedback as HotCallFeedback) || "No answer");
+    setPostCallFeedback((hc.last_feedback as HotCallFeedback) || "pas_reponse");
     setPostCallNote("");
-    setPostCallDate(hc.follow_up_date || today);
+    setPostCallRelance("none");
+    setPostCallCustomDate("");
+  };
+
+  /** Compute follow_up_date from relance option (returns null if no relance) */
+  const computeRecallDate = (option: string, customDate: string): string | null => {
+    if (option === "none") return null;
+    if (option === "custom") return customDate || null;
+    const days = parseInt(option, 10);
+    if (isNaN(days)) return null;
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return d.toISOString().split("T")[0];
   };
 
   const submitPostCall = async () => {
     if (!postCallId) return;
-    const repId = currentRepId || "";
+    const repId = currentUserId || "";
+    const hc = hotCalls.find((h) => h.id === postCallId);
+    const recallDate = computeRecallDate(postCallRelance, postCallCustomDate);
 
     try {
-      await updateMut.mutateAsync({
-        id: postCallId,
-        updates: {
-          last_feedback: postCallFeedback,
-          status: postCallFeedback,
-          attempts: (hotCalls.find((h) => h.id === postCallId)?.attempts || 0) + 1,
-          last_contact_date: today,
-          follow_up_date: postCallDate || undefined,
-        },
-        extendLock: true,
-      });
-
-      if (postCallNote) {
-        await addNoteMut.mutateAsync({
-          hot_call_id: postCallId,
-          user_id: repId,
-          note: postCallNote,
-          call_feedback: postCallFeedback,
+      // Automations based on feedback
+      if (postCallFeedback === "numero_invalide" || postCallFeedback === "pas_interesse") {
+        // Log the attempt + feedback first, then exit hot calls
+        await updateMut.mutateAsync({
+          id: postCallId,
+          updates: {
+            last_feedback: postCallFeedback,
+            attempts: (hc?.attempts || 0) + 1,
+            last_contact_date: today,
+          },
+          extendLock: false,
         });
+        if (postCallNote) {
+          await addNoteMut.mutateAsync({
+            hot_call_id: postCallId,
+            user_id: repId,
+            note: postCallNote,
+            call_feedback: postCallFeedback,
+          });
+        }
+        // Exit hot calls (clears is_hot_call flag)
+        await deleteMut.mutateAsync(postCallId);
+        toast.success("Appel enregistré — lead retiré des Hot Calls");
+      } else if (postCallFeedback === "rdv_confirme") {
+        // Log attempt + feedback
+        await updateMut.mutateAsync({
+          id: postCallId,
+          updates: {
+            last_feedback: postCallFeedback,
+            attempts: (hc?.attempts || 0) + 1,
+            last_contact_date: today,
+          },
+          extendLock: false,
+        });
+        if (postCallNote) {
+          await addNoteMut.mutateAsync({
+            hot_call_id: postCallId,
+            user_id: repId,
+            note: postCallNote,
+            call_feedback: postCallFeedback,
+          });
+        }
+        // Update appointment status to planifie (which also clears hot call via hotCallPatchForStatus)
+        await apptStatusMut.mutateAsync({
+          id: postCallId,
+          status: AppointmentStatus.PLANNED,
+          userId: repId,
+          currentStatusLog: [],
+          previousStatus: hc?.appointment_status || "",
+        });
+        toast.success("RDV confirmé — lead retiré des Hot Calls");
+      } else {
+        // Standard log: record attempt, feedback, and optional relance
+        const updates: Record<string, any> = {
+          last_feedback: postCallFeedback,
+          attempts: (hc?.attempts || 0) + 1,
+          last_contact_date: today,
+        };
+        if (recallDate) {
+          updates.follow_up_date = recallDate;
+          updates.phase = "scheduled_follow_up";
+        }
+        await updateMut.mutateAsync({ id: postCallId, updates, extendLock: true });
+        if (postCallNote) {
+          await addNoteMut.mutateAsync({
+            hot_call_id: postCallId,
+            user_id: repId,
+            note: postCallNote,
+            call_feedback: postCallFeedback,
+          });
+        }
+        toast.success("Appel enregistré");
       }
-
-      toast.success("Appel enregistré");
     } catch {
       toast.error("Erreur lors de l'enregistrement.");
     }
@@ -1107,33 +1174,60 @@ const HotCallsPage = () => {
           </DialogHeader>
           <div className="space-y-4 mt-2">
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Dernier feedback</label>
+              <label className="text-xs text-muted-foreground mb-1 block">Résultat de l'appel</label>
               <select
                 value={postCallFeedback}
                 onChange={(e) => setPostCallFeedback(e.target.value as HotCallFeedback)}
                 className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground"
               >
-                {HOT_CALL_FEEDBACKS.map((f) => <option key={f} value={f}>{f}</option>)}
+                {HOT_CALL_FEEDBACKS.map((f) => (
+                  <option key={f} value={f}>{HOT_CALL_FEEDBACK_LABELS[f]}</option>
+                ))}
               </select>
+              {(postCallFeedback === "numero_invalide" || postCallFeedback === "pas_interesse") && (
+                <p className="text-xs text-destructive mt-1">Ce lead sera retiré des Hot Calls.</p>
+              )}
+              {postCallFeedback === "rdv_confirme" && (
+                <p className="text-xs text-green-500 mt-1">Le rendez-vous sera reconfirmé et le lead retiré des Hot Calls.</p>
+              )}
             </div>
 
+            {postCallFeedback !== "numero_invalide" && postCallFeedback !== "pas_interesse" && postCallFeedback !== "rdv_confirme" && (
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Prochaine relance</label>
+                <select
+                  value={postCallRelance}
+                  onChange={(e) => setPostCallRelance(e.target.value)}
+                  className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="none">Aucune relance</option>
+                  <option value="1">Demain</option>
+                  <option value="3">Dans 3 jours</option>
+                  <option value="7">Dans 1 semaine</option>
+                  <option value="14">Dans 2 semaines</option>
+                  <option value="30">Dans 1 mois</option>
+                  <option value="90">Dans 3 mois</option>
+                  <option value="180">Dans 6 mois</option>
+                  <option value="custom">Date personnalisée</option>
+                </select>
+                {postCallRelance === "custom" && (
+                  <input
+                    type="date"
+                    value={postCallCustomDate}
+                    onChange={(e) => setPostCallCustomDate(e.target.value)}
+                    className="w-full mt-2 bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                )}
+              </div>
+            )}
+
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Note</label>
+              <label className="text-xs text-muted-foreground mb-1 block">Note (optionnelle)</label>
               <textarea
                 value={postCallNote}
                 onChange={(e) => setPostCallNote(e.target.value)}
                 placeholder="Note rapide..."
                 className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground min-h-[60px] resize-none focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Prochaine relance</label>
-              <input
-                type="date"
-                value={postCallDate}
-                onChange={(e) => setPostCallDate(e.target.value)}
-                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 

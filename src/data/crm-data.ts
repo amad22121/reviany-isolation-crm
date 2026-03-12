@@ -124,25 +124,33 @@ export const HOT_CALL_PHASES: HotCallPhase[] = [
 ];
 
 export type HotCallFeedback =
-  | "No answer"
-  | "Call back later"
-  | "Reschedule requested"
-  | "Not interested"
-  | "Follow-up 3 months"
-  | "Follow-up 6 months"
-  | "Follow-up 9 months"
-  | "Follow-up 12 months";
+  | "pas_reponse"
+  | "messagerie"
+  | "numero_invalide"
+  | "rappeler_plus_tard"
+  | "pas_interesse"
+  | "interesse"
+  | "rdv_confirme";
 
 export const HOT_CALL_FEEDBACKS: HotCallFeedback[] = [
-  "No answer",
-  "Call back later",
-  "Reschedule requested",
-  "Not interested",
-  "Follow-up 3 months",
-  "Follow-up 6 months",
-  "Follow-up 9 months",
-  "Follow-up 12 months",
+  "pas_reponse",
+  "messagerie",
+  "numero_invalide",
+  "rappeler_plus_tard",
+  "pas_interesse",
+  "interesse",
+  "rdv_confirme",
 ];
+
+export const HOT_CALL_FEEDBACK_LABELS: Record<HotCallFeedback, string> = {
+  pas_reponse: "Pas de réponse",
+  messagerie: "Messagerie",
+  numero_invalide: "Numéro invalide",
+  rappeler_plus_tard: "Rappeler plus tard",
+  pas_interesse: "Pas intéressé",
+  interesse: "Intéressé",
+  rdv_confirme: "RDV confirmé",
+};
 
 export interface CallLogEntry {
   date: string;
