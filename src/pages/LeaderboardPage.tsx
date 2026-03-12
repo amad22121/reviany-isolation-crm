@@ -61,8 +61,14 @@ const LeaderboardPage = () => {
         (a) => BOOKED_STATUSES.has(a.status as AppointmentStatus) && inPeriod(a.createdAt)
       ).length;
 
-      // Confirmés: confirmed in the selected period (based on confirmed_at timestamp)
-      const confirmed = repAppts.filter((a) => inPeriod(a.confirmedAt)).length;
+      // Confirmés: confirmed in the selected period.
+      // Prefer confirmed_at (set by client write + DB trigger once migration is applied).
+      // Fall back to createdAt for rows that are already confirmed but have no
+      // confirmed_at yet (migration pending or backfill incomplete).
+      const confirmed = repAppts.filter((a) => {
+        const ts = a.confirmedAt || (a.status === AppointmentStatus.CONFIRMED ? a.createdAt : null);
+        return inPeriod(ts);
+      }).length;
 
       return {
         ...rep,

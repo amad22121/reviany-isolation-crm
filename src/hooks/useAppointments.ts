@@ -250,8 +250,7 @@ export function useUpdateAppointmentStatus() {
       currentStatusLog: any[];
       previousStatus: string;
     }) => {
-      // confirmed_at is stamped server-side by the appointments_stamp_confirmed_at
-      // trigger — no need to include it in the client payload.
+      // Step 1 (critical): update status and hot_call fields.
       const { error } = await supabase
         .from("appointments")
         .update({
@@ -261,6 +260,21 @@ export function useUpdateAppointmentStatus() {
         .eq("id", params.id);
 
       if (error) throw error;
+
+      // Step 2 (non-critical): stamp confirmed_at when transitioning to confirme.
+      // Awaited so the cache refetch happens after the write, but errors are swallowed
+      // so the status update is never blocked by a missing column (migration pending).
+      if (params.status === AppointmentStatus.CONFIRMED) {
+        await supabase
+          .from("appointments")
+          .update({ confirmed_at: new Date().toISOString() })
+          .eq("id", params.id)
+          .then(({ error: stampErr }) => {
+            if (stampErr) {
+              console.warn("[confirmed_at] Stamp skipped — column may not exist yet:", stampErr.message);
+            }
+          });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
