@@ -162,9 +162,10 @@ const StatisticsPage = () => {
         onCardClick={(key, label) => setKpiPanel({ key, label })}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className={`grid grid-cols-1 ${filteredLeads.length > 0 ? "lg:grid-cols-2" : ""} gap-6`}>
         <StatusChart appointments={filteredAppts} />
-        <LeadsPerformance leads={filteredLeads} />
+        {/* Performance Leads: only shown when the marketing_leads pipeline has data */}
+        {filteredLeads.length > 0 && <LeadsPerformance leads={filteredLeads} />}
       </div>
 
       {/* Revenue — Owner/Manager only */}

@@ -1,19 +1,21 @@
 import { useState, useMemo } from "react";
 import { Appointment } from "@/data/crm-data";
+import { AppointmentStatus, APPOINTMENT_STATUS_LABELS } from "@/domain/enums";
 import { useTeamMembers, getRepNameFromList } from "@/hooks/useTeamMembers";
 import { ChevronDown, ChevronUp, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
+// Keys are AppointmentStatus enum values (what a.status actually contains).
 const STATUS_BADGE: Record<string, string> = {
-  "Planifié": "bg-yellow-500/20 text-yellow-400",
-  "Confirmé": "bg-green-500/20 text-green-400",
-  "Non confirmé": "bg-yellow-600/20 text-yellow-300",
-  "À risque": "bg-orange-400/20 text-orange-400",
-  "Reporté": "bg-blue-500/20 text-blue-400",
-  "Annulé (à rappeler)": "bg-amber-500/20 text-amber-400",
-  "Annulé (définitif)": "bg-muted text-muted-foreground",
-  "No-show": "bg-red-500/20 text-red-400",
-  "Closé": "bg-info/20 text-info",
+  [AppointmentStatus.PLANNED]:            "bg-yellow-500/20 text-yellow-400",
+  [AppointmentStatus.CONFIRMED]:          "bg-green-500/20 text-green-400",
+  [AppointmentStatus.UNCONFIRMED]:        "bg-yellow-600/20 text-yellow-300",
+  [AppointmentStatus.AT_RISK]:            "bg-orange-400/20 text-orange-400",
+  [AppointmentStatus.POSTPONED]:          "bg-blue-500/20 text-blue-400",
+  [AppointmentStatus.CANCELLED_CALLBACK]: "bg-amber-500/20 text-amber-400",
+  [AppointmentStatus.CANCELLED_FINAL]:    "bg-muted text-muted-foreground",
+  [AppointmentStatus.NO_SHOW]:            "bg-red-500/20 text-red-400",
+  [AppointmentStatus.CLOSED]:             "bg-info/20 text-info",
 };
 
 interface Props {
@@ -35,6 +37,7 @@ const DetailedAppointmentTable = ({ appointments }: Props) => {
         a.phone.includes(q) ||
         a.address.toLowerCase().includes(q) ||
         a.status.toLowerCase().includes(q) ||
+        (APPOINTMENT_STATUS_LABELS[a.status as AppointmentStatus] ?? "").toLowerCase().includes(q) ||
         getRepName(a.repId).toLowerCase().includes(q)
     );
   }, [appointments, search]);
@@ -75,7 +78,6 @@ const DetailedAppointmentTable = ({ appointments }: Props) => {
                 <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Heure</th>
                 <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Statut</th>
                 <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Rep</th>
-                <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Source</th>
               </tr>
             </thead>
             <tbody>
@@ -87,12 +89,11 @@ const DetailedAppointmentTable = ({ appointments }: Props) => {
                   <td className="px-3 py-2.5 text-foreground">{a.date}</td>
                   <td className="px-3 py-2.5 text-foreground">{a.time}</td>
                   <td className="px-3 py-2.5">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${STATUS_BADGE[a.status] || "bg-secondary text-secondary-foreground"}`}>
-                      {a.status}
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${STATUS_BADGE[a.status] ?? "bg-secondary text-secondary-foreground"}`}>
+                      {APPOINTMENT_STATUS_LABELS[a.status as AppointmentStatus] ?? a.status}
                     </span>
                   </td>
                   <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">{getRepName(a.repId)}</td>
-                  <td className="px-3 py-2.5 text-muted-foreground">{a.source || "—"}</td>
                 </tr>
               ))}
             </tbody>

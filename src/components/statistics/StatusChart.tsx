@@ -1,17 +1,19 @@
 import { useMemo } from "react";
 import { Appointment } from "@/data/crm-data";
+import { AppointmentStatus, APPOINTMENT_STATUS_LABELS } from "@/domain/enums";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
-const COLORS: Record<string, string> = {
-  "Planifié": "#facc15",
-  "Confirmé": "#4ade80",
-  "Non confirmé": "#fdba74",
-  "À risque": "#fb923c",
-  "Reporté": "#60a5fa",
-  "Annulé (à rappeler)": "#f59e0b",
-  "Annulé (définitif)": "#6b7280",
-  "No-show": "#f87171",
-  "Closé": "#60a5fa",
+// Keys are AppointmentStatus enum values (what a.status actually contains).
+const STATUS_COLORS: Record<string, string> = {
+  [AppointmentStatus.PLANNED]:            "#facc15",
+  [AppointmentStatus.CONFIRMED]:          "#4ade80",
+  [AppointmentStatus.UNCONFIRMED]:        "#fdba74",
+  [AppointmentStatus.AT_RISK]:            "#fb923c",
+  [AppointmentStatus.POSTPONED]:          "#60a5fa",
+  [AppointmentStatus.CANCELLED_CALLBACK]: "#f59e0b",
+  [AppointmentStatus.CANCELLED_FINAL]:    "#6b7280",
+  [AppointmentStatus.NO_SHOW]:            "#f87171",
+  [AppointmentStatus.CLOSED]:             "#38bdf8",
 };
 
 interface Props {
@@ -24,7 +26,13 @@ const StatusChart = ({ appointments }: Props) => {
     appointments.forEach((a) => {
       counts[a.status] = (counts[a.status] || 0) + 1;
     });
-    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+    return Object.entries(counts)
+      .filter(([, v]) => v > 0)
+      .map(([status, value]) => ({
+        status,                                              // enum value (for color lookup)
+        name: APPOINTMENT_STATUS_LABELS[status as AppointmentStatus] ?? status, // French label
+        value,
+      }));
   }, [appointments]);
 
   if (data.length === 0) {
@@ -52,14 +60,22 @@ const StatusChart = ({ appointments }: Props) => {
             paddingAngle={3}
           >
             {data.map((entry) => (
-              <Cell key={entry.name} fill={COLORS[entry.name] || "#6b7280"} />
+              <Cell key={entry.status} fill={STATUS_COLORS[entry.status] ?? "#6b7280"} />
             ))}
           </Pie>
           <Tooltip
-            contentStyle={{ background: "hsl(220 18% 13%)", border: "1px solid hsl(220 14% 20%)", borderRadius: "8px", fontSize: "12px", color: "hsl(210 20% 92%)" }}
+            contentStyle={{
+              background: "hsl(220 18% 13%)",
+              border: "1px solid hsl(220 14% 20%)",
+              borderRadius: "8px",
+              fontSize: "12px",
+              color: "hsl(210 20% 92%)",
+            }}
           />
           <Legend
-            formatter={(value) => <span style={{ color: "hsl(210 20% 92%)", fontSize: "11px" }}>{value}</span>}
+            formatter={(value) => (
+              <span style={{ color: "hsl(210 20% 92%)", fontSize: "11px" }}>{value}</span>
+            )}
           />
         </PieChart>
       </ResponsiveContainer>
