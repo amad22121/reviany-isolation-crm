@@ -68,6 +68,9 @@ export interface DbHotCall {
   prequal_decision_timeline: string | null;
   tags: string[];
   origin: string | null;
+  cultural_origin: string | null;
+  original_date: string | null;   // scheduled_at parsed to date (original appointment date)
+  appointment_status: string | null; // real appointment status (non_confirme, annule_rappeler, no_show)
   original_appointment_id: string | null;
   assigned_to_user_id: string | null;
   locked_at: string | null;    // = hot_call_taken_at
@@ -124,6 +127,11 @@ function mapApptToHotCall(row: any): DbHotCall {
     prequal_decision_timeline: row.decision_timeline ?? null,
     tags: row.hot_call_tags ?? [],
     origin: client.origin ?? row.origin ?? null,
+    cultural_origin: client.cultural_origin ?? null,
+    original_date: row.scheduled_at
+      ? new Date(row.scheduled_at).toISOString().split("T")[0]
+      : null,
+    appointment_status: row.status ?? null,
     original_appointment_id: row.id, // the appointment IS the source
     assigned_to_user_id: effectiveState === "pool" ? null : (row.hot_call_owner_id ?? null),
     locked_at: takenAt,

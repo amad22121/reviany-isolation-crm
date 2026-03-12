@@ -45,7 +45,7 @@ import {
   useAddHotCallNote,
   DbHotCall,
 } from "@/hooks/useHotCalls";
-import { HotCallPhase, HOT_CALL_PHASE_LABELS } from "@/domain/enums";
+import { HotCallPhase, HOT_CALL_PHASE_LABELS, APPOINTMENT_STATUS_LABELS } from "@/domain/enums";
 import { HOT_CALL_FEEDBACKS, type HotCallFeedback, AppointmentStatus } from "@/data/crm-data";
 import { can } from "@/lib/permissions/can";
 import { getAtRiskToday, getAtRiskThisWeek, type AtRiskAppointment } from "@/lib/atRiskLogic";
@@ -154,13 +154,13 @@ const HotCallsPage = () => {
     () =>
       hotCalls.filter(
         (h) =>
-          h.assigned_to_user_id === currentRepId &&
+          h.assigned_to_user_id === currentUserId &&
           (h.phase === HotCallPhase.CLAIMED ||
             h.phase === "claimed" ||
             h.phase === HotCallPhase.SCHEDULED_FOLLOW_UP ||
             h.phase === "scheduled_follow_up")
       ),
-    [hotCalls, currentRepId]
+    [hotCalls, currentUserId]
   );
 
   const todayCalls = useMemo(() => {
@@ -596,6 +596,7 @@ const HotCallsPage = () => {
                   <tr className="border-b border-border">
                     {[
                       tab === "pool" ? "Client" : "Nom",
+                      ...(tab === "pool" ? ["Statut"] : []),
                       ...(tab !== "pool" ? ["Téléphone"] : []),
                       ...(tab !== "pool" ? ["Adresse"] : []),
                       ...(tab !== "pool" ? ["Phase"] : []),
@@ -629,6 +630,15 @@ const HotCallsPage = () => {
                             </button>
                           )}
                         </td>
+
+                        {/* Statut — pool only: shows the appointment status that triggered entry */}
+                        {tab === "pool" && (
+                          <td className="px-3 py-3">
+                            <span className="px-2 py-1 rounded-full text-[10px] font-medium bg-warning/20 text-warning">
+                              {(h.appointment_status && APPOINTMENT_STATUS_LABELS[h.appointment_status as keyof typeof APPOINTMENT_STATUS_LABELS]) || h.appointment_status || "—"}
+                            </span>
+                          </td>
+                        )}
 
                         {/* Téléphone — hidden in pool */}
                         {tab !== "pool" && (
@@ -1000,9 +1010,27 @@ const HotCallsPage = () => {
                 </div>
               )}
 
-              {/* Attempt count */}
-              <div className="flex items-center gap-4 pt-1 border-t border-border">
+              {/* Origin / cultural profile */}
+              {(previewHotCall.origin || previewHotCall.cultural_origin) && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Profil client</p>
+                  <dl className="space-y-1">
+                    {previewHotCall.origin && (
+                      <div className="flex gap-2"><dt className="text-muted-foreground min-w-[130px] text-xs">Origine</dt><dd className="text-xs text-foreground">{previewHotCall.origin}</dd></div>
+                    )}
+                    {previewHotCall.cultural_origin && (
+                      <div className="flex gap-2"><dt className="text-muted-foreground min-w-[130px] text-xs">Profil culturel</dt><dd className="text-xs text-foreground">{previewHotCall.cultural_origin}</dd></div>
+                    )}
+                  </dl>
+                </div>
+              )}
+
+              {/* Attempt count + original appointment date */}
+              <div className="flex flex-wrap items-center gap-4 pt-1 border-t border-border">
                 <span className="text-xs text-muted-foreground">Tentatives: <span className="font-bold text-foreground">{previewHotCall.attempts}</span></span>
+                {previewHotCall.original_date && (
+                  <span className="text-xs text-muted-foreground">RDV original: <span className="font-bold text-foreground">{previewHotCall.original_date}</span></span>
+                )}
                 {previewHotCall.follow_up_date && (
                   <span className="text-xs text-muted-foreground">Relance prévue: <span className="font-bold text-foreground">{previewHotCall.follow_up_date}</span></span>
                 )}
