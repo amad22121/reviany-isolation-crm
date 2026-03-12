@@ -13,6 +13,7 @@ interface Props {
   prevAppointments?: Appointment[];
   prevLeads?: MarketingLead[];
   showComparison: boolean;
+  isRep?: boolean;
   onCardClick?: (key: string, label: string) => void;
 }
 
@@ -28,7 +29,7 @@ const VariationBadge = ({ value }: { value: number | undefined }) => {
   );
 };
 
-const KpiCards = ({ appointments, leads, prevAppointments = [], prevLeads = [], showComparison, onCardClick }: Props) => {
+const KpiCards = ({ appointments, leads, prevAppointments = [], prevLeads = [], showComparison, isRep = false, onCardClick }: Props) => {
   const c = computeStatusCounts(appointments);
   const p = computeStatusCounts(prevAppointments);
 
@@ -48,14 +49,28 @@ const KpiCards = ({ appointments, leads, prevAppointments = [], prevLeads = [], 
   const bookedLeads = leads.filter((l) => l.status === "Appointment Booked" || l.status === "Closed").length;
   const conversionRate = totalLeads > 0 ? Math.round((bookedLeads / totalLeads) * 100) : 0;
 
-  const derivedCards = [
+  // Rate cards shown to all roles
+  const rateCards = [
     { key: "confirmRate", label: "Taux confirmation", value: pct(c.confirmed, c.total), prev: pct(p.confirmed, p.total), icon: Percent, color: "text-green-400", suffix: "%" },
     { key: "closingRate", label: "Taux closing", value: pct(c.closed, c.total), prev: pct(p.closed, p.total), icon: TrendingUp, color: "text-info", suffix: "%" },
     { key: "noShowRate", label: "Taux no-show", value: pct(c.noShow, c.total), prev: pct(p.noShow, p.total), icon: CalendarOff, color: "text-red-400", suffix: "%" },
     { key: "cancelCbRate", label: "Taux annul. (rappeler)", value: pct(c.cancelledCb, c.total), prev: pct(p.cancelledCb, p.total), icon: PhoneOff, color: "text-amber-400", suffix: "%" },
-    { key: "leads", label: "Marketing Leads", value: totalLeads, prev: prevLeads.length, icon: Users, color: "text-primary" },
     { key: "leadConv", label: "Conversion Leads", value: conversionRate, prev: 0, icon: ArrowUpRight, color: "text-warning", suffix: "%" },
   ];
+
+  // Marketing Leads count card — acquisition metric, owner/manager only
+  const derivedCards = isRep
+    ? rateCards
+    : [
+        ...rateCards.slice(0, 4),
+        { key: "leads", label: "Marketing Leads", value: totalLeads, prev: prevLeads.length, icon: Users, color: "text-primary", suffix: undefined },
+        rateCards[4], // Conversion Leads
+      ];
+
+  // Grid columns: 5 cards for reps, 6 cards for owner/manager
+  const derivedGridCols = isRep
+    ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"
+    : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6";
 
   return (
     <div className="space-y-3">
@@ -76,7 +91,7 @@ const KpiCards = ({ appointments, leads, prevAppointments = [], prevLeads = [], 
         ))}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+      <div className={`grid ${derivedGridCols} gap-2`}>
         {derivedCards.map((c) => (
           <div
             key={c.key}

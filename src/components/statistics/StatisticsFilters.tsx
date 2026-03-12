@@ -9,7 +9,13 @@ const DATE_RANGES: { value: DateRange; label: string }[] = [
   { value: "custom", label: "Période personnalisée" },
 ];
 
-const SOURCE_OPTIONS = [
+const REP_SOURCE_OPTIONS = [
+  { value: "all", label: "Toutes sources" },
+  { value: "Door-to-door", label: "Door-to-door" },
+  { value: "Referral", label: "Référence" },
+];
+
+const ALL_SOURCE_OPTIONS = [
   { value: "all", label: "Toutes sources" },
   { value: "Door-to-door", label: "Door-to-door" },
   { value: "Referral", label: "Référence" },
@@ -45,6 +51,7 @@ const StatisticsFilters = ({
   onSourceChange,
 }: Props) => {
   const { data: teamMembers = [] } = useTeamMembers();
+  const sourceOptions = isRep ? REP_SOURCE_OPTIONS : ALL_SOURCE_OPTIONS;
   return (
   <div className="flex flex-wrap items-end gap-3">
     <Select value={dateRange} onValueChange={(v) => onDateRangeChange(v as DateRange)}>
@@ -95,7 +102,7 @@ const StatisticsFilters = ({
         <SelectValue placeholder="Source" />
       </SelectTrigger>
       <SelectContent>
-        {SOURCE_OPTIONS.map((o) => (
+        {sourceOptions.map((o) => (
           <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
         ))}
       </SelectContent>

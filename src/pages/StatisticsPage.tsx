@@ -121,7 +121,7 @@ const StatisticsPage = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-foreground">Revenue & Performance</h1>
+        <h1 className="text-xl font-bold text-foreground">{isRep ? "Performance" : "Revenue & Performance"}</h1>
         <div className="flex items-center gap-2">
           <Switch id="compare" checked={showComparison} onCheckedChange={setShowComparison} />
           <Label htmlFor="compare" className="text-xs text-muted-foreground cursor-pointer">Comparer période</Label>
@@ -158,13 +158,19 @@ const StatisticsPage = () => {
         prevAppointments={prevAppts}
         prevLeads={prevLeads}
         showComparison={showComparison}
+        isRep={isRep}
         onCardClick={(key, label) => setKpiPanel({ key, label })}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {isRep ? (
+        // Rep view: status chart full-width; Performance Leads is acquisition-only
         <StatusChart appointments={filteredAppts} />
-        <LeadsPerformance leads={filteredLeads} />
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <StatusChart appointments={filteredAppts} />
+          <LeadsPerformance leads={filteredLeads} />
+        </div>
+      )}
 
       {/* Revenue — Owner/Manager only */}
       {canSeeRevenue && (
