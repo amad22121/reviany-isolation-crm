@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useCrm, useAuth } from "@/store/crm-store";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
+import { AppointmentStatus } from "@/domain/enums";
 import { Trophy, Medal } from "lucide-react";
 
 const LeaderboardPage = () => {
@@ -23,6 +24,17 @@ const LeaderboardPage = () => {
 
   const DAILY_GOAL = teamReps.length > 0 ? Math.ceil(dailyTarget / teamReps.length) : 0;
 
+  // Statuses that count toward "Rendez-vous" (booked volume)
+  const BOOKED_STATUSES = new Set<AppointmentStatus>([
+    AppointmentStatus.PLANNED,
+    AppointmentStatus.CONFIRMED,
+    AppointmentStatus.UNCONFIRMED,
+    AppointmentStatus.AT_RISK,
+    AppointmentStatus.POSTPONED,
+    AppointmentStatus.CANCELLED_CALLBACK,
+    AppointmentStatus.NO_SHOW,
+  ]);
+
   const data = useMemo(() => {
     const now = new Date();
     const filtered = appointments.filter((a) => {
@@ -38,13 +50,16 @@ const LeaderboardPage = () => {
     });
 
     return teamReps.map((rep) => {
-      const repAppts = filtered.filter((a) => a.repId === rep.id);
-      const confirmed = repAppts.filter((a) => a.status === "Confirmé" || a.status === "Closé").length;
+      const repAppts = filtered.filter(
+        (a) => a.repId === rep.id && BOOKED_STATUSES.has(a.status as AppointmentStatus)
+      );
+      const confirmed = repAppts.filter((a) => a.status === AppointmentStatus.CONFIRMED).length;
+      const booked = repAppts.length;
       return {
         ...rep,
-        booked: repAppts.length,
+        booked,
         confirmed,
-        rate: repAppts.length > 0 ? Math.round((confirmed / repAppts.length) * 100) : 0,
+        rate: booked > 0 ? Math.round((confirmed / booked) * 100) : 0,
       };
     }).sort((a, b) => b.booked - a.booked);
   }, [appointments, tab, today, teamReps]);
@@ -79,7 +94,7 @@ const LeaderboardPage = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
-              {["Rang", "Représentant", "Réservés", "Confirmés", "Taux", "Progression objectif"].map((h) => (
+              {["Rang", "Représentant", "Rendez-vous", "Confirmés", "Taux", "Progression objectif"].map((h) => (
                 <th key={h} className="text-left px-4 py-3 text-muted-foreground font-medium">{h}</th>
               ))}
             </tr>
