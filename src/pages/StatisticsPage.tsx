@@ -12,7 +12,6 @@ import KpiCards from "@/components/statistics/KpiCards";
 import StatusChart from "@/components/statistics/StatusChart";
 import RepPerformanceTable from "@/components/statistics/RepPerformanceTable";
 import LeadsPerformance from "@/components/statistics/LeadsPerformance";
-import DetailedAppointmentTable from "@/components/statistics/DetailedAppointmentTable";
 import KpiDetailPanel from "@/components/statistics/KpiDetailPanel";
 import RepDetailPanel from "@/components/statistics/RepDetailPanel";
 import RevenueSection from "@/components/statistics/RevenueSection";
@@ -162,10 +161,9 @@ const StatisticsPage = () => {
         onCardClick={(key, label) => setKpiPanel({ key, label })}
       />
 
-      <div className={`grid grid-cols-1 ${filteredLeads.length > 0 ? "lg:grid-cols-2" : ""} gap-6`}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <StatusChart appointments={filteredAppts} />
-        {/* Performance Leads: only shown when the marketing_leads pipeline has data */}
-        {filteredLeads.length > 0 && <LeadsPerformance leads={filteredLeads} />}
+        <LeadsPerformance leads={filteredLeads} />
       </div>
 
       {/* Revenue — Owner/Manager only */}
@@ -180,8 +178,6 @@ const StatisticsPage = () => {
           onRepClick={(rep) => setRepPanel(rep)}
         />
       )}
-
-      <DetailedAppointmentTable appointments={filteredAppts} />
 
       {/* Panels */}
       <KpiDetailPanel
