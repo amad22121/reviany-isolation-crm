@@ -129,12 +129,11 @@ function mapApptToHotCall(row: any): DbHotCall {
     tags: row.hot_call_tags ?? [],
     origin: client.origin ?? row.origin ?? null,
     cultural_origin: client.cultural_origin ?? null,
-    original_date: row.scheduled_at
-      ? new Date(row.scheduled_at).toISOString().split("T")[0]
-      : null,
-    original_time: row.scheduled_at
-      ? new Date(row.scheduled_at).toISOString().split("T")[1]?.slice(0, 5) ?? "09:00"
-      : null,
+    // Extract date/time directly from the stored string — same convention as
+    // mapRow in useAppointments.ts: no Date object, no TZ conversion.
+    // "2026-03-17T12:00:00+00:00" → date "2026-03-17", time "12:00"
+    original_date: row.scheduled_at ? row.scheduled_at.slice(0, 10) : null,
+    original_time: row.scheduled_at ? (row.scheduled_at.slice(11, 16) || "09:00") : null,
     appointment_status: row.status ?? null,
     original_appointment_id: row.id, // the appointment IS the source
     assigned_to_user_id: effectiveState === "pool" ? null : (row.hot_call_owner_id ?? null),

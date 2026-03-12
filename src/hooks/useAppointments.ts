@@ -66,8 +66,6 @@ function hotCallPatchForStatus(status: AppointmentStatus): Record<string, unknow
 function mapRow(row: any): Appointment {
   // Prefer joined client data; fall back to legacy columns stored directly on the appointment row
   const client = row.clients ?? {};
-  const scheduledAt = row.scheduled_at ? new Date(row.scheduled_at) : null;
-
   return {
     id: row.id,
     // Client identity: join result takes precedence; fall back to direct columns (legacy rows)
@@ -78,11 +76,12 @@ function mapRow(row: any): Appointment {
     origin: client.origin ?? row.origin ?? undefined,
     culturalOrigin: client.cultural_origin ?? row.cultural_origin ?? undefined,
     leadSource: client.lead_source ?? row.lead_source ?? undefined,
-    // Appointment time: prefer scheduled_at; fall back to legacy date/time columns
-    date: scheduledAt ? scheduledAt.toISOString().split("T")[0] : (row.date ?? ""),
-    time: scheduledAt
-      ? `${String(scheduledAt.getHours()).padStart(2, "0")}:${String(scheduledAt.getMinutes()).padStart(2, "0")}`
-      : (row.time ?? ""),
+    // Appointment time: extract date/time directly from stored string to avoid
+    // any browser-timezone offset being applied (scheduled_at is always stored
+    // as a wall-clock local time — "store as typed, display as stored").
+    // e.g. "2026-03-17T12:00:00+00:00" → date "2026-03-17", time "12:00"
+    date: row.scheduled_at ? row.scheduled_at.slice(0, 10) : (row.date ?? ""),
+    time: row.scheduled_at ? row.scheduled_at.slice(11, 16) : (row.time ?? ""),
     repId: row.rep_id ?? "",
     // Pre-qualification: prefer structured columns; fall back to legacy pre_qual_1/2 columns
     preQual1: buildPreQualFromColumns(row) || (row.pre_qual_1 ?? ""),
